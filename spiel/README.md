@@ -47,9 +47,10 @@ Standbild (für die PNGs in `shots/`).
 ## Technik
 - **Koordinaten:** x nach Osten, z nach Süden (zum Meer). 1 Laufsekunde ≈ 4 Einheiten, Figur ≈ 2.75 hoch,
   Zone ≈ 132 × 40 Einheiten → einmal quer ≈ 33 s gehen.
-- **Maßstab der Gebäude:** Bar, Verleih, Hotel und Hütten sind als Gruppe um `BUILDING_SCALE` (1.5) vergrößert,
-  ihre Collider rechnen Offsets und Maße mit (`scaledRect`/`scaledCircle`). Ein Test sichert, dass jedes Gebäude
-  mindestens 1.5 × Figurenhöhe hoch ist und Türen figurengroß sind. Palmen (1.4), Laternen (1.4), Schirme,
+- **Maßstab der Gebäude:** je Gebäudetyp eine eigene Skala in `BUILDING_SCALES` (Bar und Hotel 1.5, Verleih,
+  Dorfhäuser und Mentor-Hütte 2.1); die Gruppen werden damit vergrößert, ihre Collider rechnen Offsets und Maße mit
+  (`scaledRect`/`scaledCircle`). Ein Test sichert, dass jeder Typ Skala und Basismaße hat, jedes Gebäude mindestens
+  1.5 × Figurenhöhe hoch ist und Türen figurengroß sind. Palmen (1.4), Laternen (1.4), Schirme,
   Liegen, Absperrungen (1.3) und Wegweiser (1.25) sind moderat mitgewachsen; Figuren und Kleinkram nicht.
 - **Bewegung:** Richtung aus Tasten relativ zur Kamera; Tempo läuft weich an und aus; die Figur dreht sich
   exponentiell in Laufrichtung. Die Watschel-Phase wächst mit der tatsächlich zurückgelegten Strecke, also bleibt
@@ -60,7 +61,8 @@ Standbild (für die PNGs in `shots/`).
 - **Kamera:** fester Offset (13 zurück, 13 hoch, ≈ 45°) um die Gierung gedreht, Position und Blickpunkt
   exponentiell nachgezogen. Standard steht die Kamera im Norden und schaut übers Land aufs Meer — so ist das Wasser
   fast immer im Bild; mit Q/E dreht man sich die Hütten und Hügel ins Bild.
-- **Verdeckung:** Jeden Frame geht ein Strahl von der Kamera zum Spieler. Vorfilter ist die reine Funktion
+- **Verdeckung:** Jeden Frame gehen zwei Strahlen von der Kamera zum Spieler (Kopf- und Kniehöhe, damit auch
+  hängende Palmenkronen zählen). Vorfilter ist die reine Funktion
   `isOccluder()` (Kugel schneidet die Sichtlinie oder liegt vor der Linse, getestet), danach ein Raycast gegen die
   Meshes der Kandidaten. Getroffene Props werden als ganze Gruppe auf 25 % Deckkraft gesetzt — inklusive
   Kontur-Hülle (der Kontur-Shader hat dafür ein `opacity`-Uniform). Weil Materialien pro Farbe geteilt sind, bekommt

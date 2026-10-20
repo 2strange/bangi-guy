@@ -207,10 +207,12 @@ test('isOccluder: Szene „mitte“ — Wegweiser steht NICHT zwischen Kamera un
 });
 
 // ---------- Gebäudemaßstab ----------
-import { FIGURE_HEIGHT, BUILDING_SCALE, BUILDING_BASE, buildingHeight, doorHeight, scaledRect, scaledCircle } from '../js/logic.js';
+import { FIGURE_HEIGHT, BUILDING_SCALES, BUILDING_BASE, buildingHeight, doorHeight, scaledRect, scaledCircle } from '../js/logic.js';
 
 test('Gebäude sind mindestens 1,5 × Figurenhöhe, Türen figurengroß', () => {
-  assert.equal(BUILDING_SCALE, 1.5);
+  assert.deepEqual(Object.keys(BUILDING_SCALES).sort(), Object.keys(BUILDING_BASE).sort(), 'jeder Typ hat Skala + Basis');
+  assert.equal(BUILDING_SCALES.bar, 1.5); assert.equal(BUILDING_SCALES.hotel, 1.5);
+  assert.equal(BUILDING_SCALES.rental, 2.1); assert.equal(BUILDING_SCALES.hut, 2.1);
   for (const name of Object.keys(BUILDING_BASE)) {
     assert.ok(buildingHeight(name) >= 1.5 * FIGURE_HEIGHT, `${name}: ${buildingHeight(name)} < ${1.5 * FIGURE_HEIGHT}`);
     if (BUILDING_BASE[name].door > 0) assert.ok(doorHeight(name) >= FIGURE_HEIGHT, `${name}: Tür ${doorHeight(name)} zu niedrig`);

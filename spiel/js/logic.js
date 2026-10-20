@@ -198,16 +198,19 @@ export function cameraTargetPos(player, camYaw) {
 
 // ---------- Maßstab der Gebäude (50 % größer als ursprünglich, Figuren bleiben) ----------
 export const FIGURE_HEIGHT = 2.75;   // Schluffi mit Haaren, Einheiten
-export const BUILDING_SCALE = 1.5;
+// Skalierung je Gebäudetyp (einzeln drehbar): Bar/Hotel 1.5, Verleih/Dorfhäuser/Mentor-Hütte 2.1
+export const BUILDING_SCALES = { bar: 1.5, hotel: 1.5, rental: 2.1, hut: 2.1, mentor: 2.1 };
 // Basishöhen (unskaliert) der Bauteile aus props.js: Dachspitze über dem Boden bzw. Türhöhe
 export const BUILDING_BASE = {
   bar: { height: 4.55, door: 0 },
   hut: { height: 4.1, door: 1.9 },
+  mentor: { height: 4.1, door: 1.9 },
   rental: { height: 4.0, door: 1.9 },
   hotel: { height: 7.35, door: 2.6 },
 };
-export const buildingHeight = (name) => BUILDING_BASE[name].height * BUILDING_SCALE;
-export const doorHeight = (name) => BUILDING_BASE[name].door * BUILDING_SCALE;
+export const buildingScale = (name) => BUILDING_SCALES[name];
+export const buildingHeight = (name) => BUILDING_BASE[name].height * BUILDING_SCALES[name];
+export const doorHeight = (name) => BUILDING_BASE[name].door * BUILDING_SCALES[name];
 
 // Collider eines skalierten Gebäudes: Offsets/Maße relativ zur Gebäude-Position mitskalieren
 export function scaledRect(origin, scale, dx, dz, w, d) {

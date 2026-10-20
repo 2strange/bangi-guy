@@ -148,25 +148,28 @@ function unfadeAll(keep) {
     faded.delete(m);
   }
 }
+const FADE_TARGET_HEIGHTS = [2.5, 0.8]; // Kopf und Knie: Palmenkronen hängen sonst über dem Brust-Strahl
 function updateFade() {
   const camPos = camera.position;
-  const target = tmpV.set(state.x, 1.4, state.z);
-  const dist = camPos.distanceTo(target);
-  fadeRay.set(camPos, target.clone().sub(camPos).normalize());
-  fadeRay.far = dist - 0.8;
   const keep = new Set();
-  // Vorfilter (reine Logik, getestet): Props, deren Kugel die Sichtlinie schneidet oder vor der Linse liegt
-  const candidates = [];
-  for (const o of world.group.children) {
-    if (o.userData.sphere && isOccluder(camPos, target, o.userData.sphere)) candidates.push(o);
-  }
-  // Feinprüfung per Raycast gegen die Meshes der Kandidaten (eine große Kugel heißt noch nicht Treffer)
-  const hits = fadeRay.intersectObjects(candidates, true);
   const groups = new Set();
-  for (const h of hits) {
-    let o = h.object;
-    while (o.parent && o.parent !== world.group) o = o.parent;
-    groups.add(o);
+  const candidates = [];
+  for (const h of FADE_TARGET_HEIGHTS) {
+    const target = tmpV.set(state.x, h, state.z);
+    const dist = camPos.distanceTo(target);
+    // Vorfilter (reine Logik, getestet): Props, deren Kugel die Sichtlinie schneidet oder vor der Linse liegt
+    candidates.length = 0;
+    for (const o of world.group.children) {
+      if (o.userData.sphere && isOccluder(camPos, target, o.userData.sphere)) candidates.push(o);
+    }
+    // Feinprüfung per Raycast gegen die Meshes der Kandidaten (eine große Kugel heißt noch nicht Treffer)
+    fadeRay.set(camPos, target.clone().sub(camPos).normalize());
+    fadeRay.far = dist - 0.8;
+    for (const hit of fadeRay.intersectObjects(candidates, true)) {
+      let o = hit.object;
+      while (o.parent && o.parent !== world.group) o = o.parent;
+      groups.add(o);
+    }
   }
   // direkt vor der Linse: Mesh-Kugel nahe an der Kamera
   for (const o of candidates) {

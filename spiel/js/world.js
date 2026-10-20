@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { toonMesh, toon, basicMat, deform, rng } from './toon.js';
 import { palm, beachBar, pier, boat, signpost, hammock, parasol, beachBall, coconut, crab, cloud, sun, footprints, limb, hut, mailbox, hotel, lounger, rental, sleepingSurfer, barrier, lamp, hedge, shell, starfish, sandcastle, driftwood } from './props.js';
-import { shoreZ, WORLD, BUILDING_SCALE as S, scaledRect, scaledCircle } from './logic.js';
+import { shoreZ, WORLD, buildingScale, scaledRect, scaledCircle } from './logic.js';
 
 export const WATER_Y = 0.06;
 
@@ -30,8 +30,8 @@ export function buildWorld() {
   const circle = (x, z, r) => colliders.push({ x, z, r });
   const rect = (x, z, w, d) => colliders.push({ x, z, w, d });
   // Gebäude werden als Gruppe um BUILDING_SCALE vergrößert; ihre Collider rechnen Offsets/Maße mit
-  const bRect = (o, dx, dz, w, d) => colliders.push(scaledRect(o, S, dx, dz, w, d));
-  const bCircle = (o, dx, dz, r) => colliders.push(scaledCircle(o, S, dx, dz, r));
+  const bRect = (o, s, dx, dz, w, d) => colliders.push(scaledRect(o, s, dx, dz, w, d));
+  const bCircle = (o, s, dx, dz, r) => colliders.push(scaledCircle(o, s, dx, dz, r));
 
   // Boden: Sand überall, darüber Gras im Norden, nasser Sand + Schaum + Wasser im Süden
   const sand = toonMesh(new THREE.PlaneGeometry(520, 520), 0xf7d984, { outline: 0, shadow: false });
@@ -69,16 +69,16 @@ export function buildWorld() {
   const mentor = hut({ w: 3, h: 2.4, d: 2.6, lean: 0.35, wall: 0x8b5a2b, straw: true, seed: 8 });
   mentor.position.set(-45, 11.5, -52);
   mentor.rotation.y = 0.4;
-  mentor.scale.setScalar(S);
+  mentor.scale.setScalar(buildingScale('mentor'));
   g.add(mentor);
 
   // Krummgassen-Kulisse hinter dem Nordrand
-  const huts = [[-8, -36, 0xf08ac4, 0x2fa9b9, 0.5, 2], [6, -40, 0xffb347, 0xd62e2e, -0.4, 3], [20, -35, 0x9fd8ff, 0xffd54a, 0.45, 4], [34, -41, 0xc9a0ff, 0x3bb84a, -0.5, 5]];
+  const huts = [[-14, -37, 0xf08ac4, 0x2fa9b9, 0.5, 2], [2, -42, 0xffb347, 0xd62e2e, -0.4, 3], [18, -36, 0x9fd8ff, 0xffd54a, 0.45, 4], [36, -43, 0xc9a0ff, 0x3bb84a, -0.5, 5]];
   for (const [x, z, wall, roofColor, lean, seed] of huts) {
     const h = hut({ w: 3.2, h: 3.0, d: 3.0, lean, wall, roofColor, seed });
     h.position.set(x, 0, z);
     h.rotation.y = (seed - 3) * 0.3;
-    h.scale.setScalar(S);
+    h.scale.setScalar(buildingScale('hut'));
     g.add(h);
   }
 
@@ -98,12 +98,13 @@ export function buildWorld() {
   const ho = hotel();
   const hoPos = { x: 34, z: -19 };
   ho.position.set(hoPos.x, 0, hoPos.z);
-  ho.scale.setScalar(S);
+  const hs = buildingScale('hotel');
+  ho.scale.setScalar(hs);
   // Pool nicht voll mitskalieren (sonst liegt er auf der Promenade): 1.2-fach, östlich neben dem Gebäude
-  ho.userData.pool.scale.setScalar(1.2 / S);
-  ho.userData.pool.position.set((52 - hoPos.x) / S, 0, (-16 - hoPos.z) / S);
+  ho.userData.pool.scale.setScalar(1.2 / hs);
+  ho.userData.pool.position.set((52 - hoPos.x) / hs, 0, (-16 - hoPos.z) / hs);
   g.add(ho);
-  bRect(hoPos, 0.3, 0, 15.2, 7.4);
+  bRect(hoPos, hs, 0.3, 0, 15.2, 7.4);
   rect(52, -16, 13.5, 10.5); // Pool (Rutsche hängt hoch genug)
   for (let i = 0; i < 4; i++) {
     const lo = lounger(i % 2 ? ['#3a7bd5', '#ffffff'] : ['#e8463a', '#fff5e0']);
@@ -116,18 +117,19 @@ export function buildWorld() {
 
   // Verleih im Westen + Surfer-Siesta
   const re = rental();
-  const rePos = { x: -50, z: -6 };
+  const rePos = { x: -52, z: -7 };
   re.position.set(rePos.x, 0, rePos.z);
   re.rotation.y = 0.25;
-  re.scale.setScalar(S);
+  const rs = buildingScale('rental');
+  re.scale.setScalar(rs);
   g.add(re);
-  bRect(rePos, 0, 0, 4.2, 3.4);
-  bRect(rePos, 3.8, 1.0, 3.4, 1.0);
+  bRect(rePos, rs, 0, 0, 4.2, 3.4);
+  bRect(rePos, rs, 3.8, 1.0, 3.4, 1.0);
   const su = sleepingSurfer();
-  su.position.set(-44, 0, 6);
+  su.position.set(-42, 0, 7);
   su.rotation.y = 0.5;
   g.add(su);
-  rect(-44, 6, 1.4, 3.0);
+  rect(-42, 7, 1.4, 3.0);
 
   // Felsen an den Enden des Strands
   for (const [x, z, sc] of [[-60, 8, 1.6], [-63, 4, 1.1], [62, 6, 1.4], [65, 1, 1.0], [58, 10, 0.8]]) {
@@ -141,7 +143,7 @@ export function buildWorld() {
 
   // Palmen entlang des Strands (Position, Neigung, Seed)
   const palms = [
-    [-58, -2, [1.2, 0, 0.6], 1], [-48, 4, [-0.9, 0, 0.8], 2], [-40, -8, [0.8, 0, 0.3], 3],
+    [-60, -1, [1.2, 0, 0.6], 1], [-57, 7, [-0.9, 0, 0.8], 2], [-36, -9, [0.8, 0, 0.3], 3],
     [-14, 1, [1.1, 0, 0.5], 4], [-9, 5, [-0.8, 0, 0.7], 5], [2, -9, [0.6, 0, 0.9], 6],
     [16, 3, [-1.0, 0, 0.6], 7], [26, -6, [1.2, 0, -0.3], 8], [52, 2, [0.7, 0, 0.9], 9],
     [60, -9, [-1.1, 0, 0.4], 10], [-38, -13, [0.5, 0, 1.0], 11], [22, 8, [-0.6, 0, 0.8], 12],
@@ -167,11 +169,12 @@ export function buildWorld() {
   const barPos = { x: -28, z: -6 };
   bar.position.set(barPos.x, 0, barPos.z);
   bar.rotation.y = 0.08;
-  bar.scale.setScalar(S);
+  const bs = buildingScale('bar');
+  bar.scale.setScalar(bs);
   g.add(bar);
-  bRect(barPos, 0, 0.4, 5.0, 2.2);   // Theke + Rückwand
-  bCircle(barPos, -2.1, -1.1, 0.25); bCircle(barPos, 2.1, -1.1, 0.25); bCircle(barPos, -1.9, 1.0, 0.25); bCircle(barPos, 2.1, 1.0, 0.25);
-  bCircle(barPos, -1.1, 1.9, 0.4); bCircle(barPos, 0.5, 1.9, 0.4); // Hocker
+  bRect(barPos, bs, 0, 0.4, 5.0, 2.2);   // Theke + Rückwand
+  bCircle(barPos, bs, -2.1, -1.1, 0.25); bCircle(barPos, bs, 2.1, -1.1, 0.25); bCircle(barPos, bs, -1.9, 1.0, 0.25); bCircle(barPos, bs, 2.1, 1.0, 0.25);
+  bCircle(barPos, bs, -1.1, 1.9, 0.4); bCircle(barPos, bs, 0.5, 1.9, 0.4); // Hocker
 
   // Steg vom Strand ins Meer, mit Boot
   const pierObj = pier({ length: 14, seed: 5 });
@@ -239,9 +242,9 @@ export function buildWorld() {
     pier: { x: -37, z: 9, yaw: 0.4 },
     mitte: { x: 6, z: 5, yaw: -2.4 },
     hotel: { x: 20, z: -4, yaw: 1.3 },
-    verleih: { x: -40, z: 2, yaw: 2.4 },
+    verleih: { x: -45, z: 3, yaw: 0.3 },
     ost: { x: 58, z: -2, yaw: Math.PI / 2 },
-    nord: { x: 0, z: -16, yaw: 0.3 },
+    nord: { x: 8, z: -17, yaw: 0.3 },
   };
   return { group: g, colliders, spots };
 }
