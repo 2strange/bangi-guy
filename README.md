@@ -8,7 +8,8 @@ Hier gibt es noch kein Spiel, nur erste Bausteine:
 
 - **`stiltest/`**: eine Stilprobe in [Three.js](https://threejs.org/) mit Toon-Shading, Tusche-Konturen
   (Inverted Hull) und gemalten Gesichtern. Alles ist prozedural im Code gebaut, ohne fremde Assets.
-- **`welt/`**: eine Welt-Skizze (Karte von oben) für den ersten Strandort, sobald sie fertig ist.
+- **`spiel/`**: ein erster begehbarer Prototyp der Zone „Bangi Beach“ (WASD/Pfeile, Shift, Q/E, Klick).
+- **`welt/`**: die Welt-Skizze „Bangi Bay“ (Karte von oben, Zonen, Fluchtrouten).
 
 ![Stilprobe](stiltest/shots/bangi-probe.png)
 
@@ -19,7 +20,7 @@ weil ES-Module per `file://` nicht laden, zum Beispiel:
 
 ```sh
 python3 -m http.server 8000
-# dann http://localhost:8000/stiltest/ öffnen
+# dann http://localhost:8000/spiel/ (Prototyp) oder /stiltest/ öffnen
 ```
 
 Three.js (`three@0.170.0`) kommt per Importmap von jsDelivr.

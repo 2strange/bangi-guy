@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bangi Beach</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #8fe0ff; }
+  canvas { display: block; }
+  #hint { position: fixed; left: 12px; bottom: 10px; font: 13px/1.3 sans-serif; color: #123; background: rgba(255,255,255,.65); padding: 5px 9px; border-radius: 6px; pointer-events: none; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="hint">WASD / Pfeile = gehen · Shift = „rennen“ · Q/E = Kamera drehen · Klick = hinlaufen</div>
+<pre id="err" style="position:fixed;top:0;left:0;margin:0;padding:8px;background:#fff;color:#c00;font:14px monospace;white-space:pre-wrap;display:none;z-index:9"></pre>
+<script>
+  // Laufzeitfehler sichtbar machen (auch im Screenshot-Modus): Text-Overlay statt leerem Bild
+  window.showErr = (m) => { const e = document.getElementById('err'); e.style.display = 'block'; e.textContent += m + '\n'; };
+  window.addEventListener('error', (e) => showErr((e.message || e.type) + ' @ ' + (e.filename || '') + ':' + (e.lineno || '')));
+  window.addEventListener('unhandledrejection', (e) => showErr('rejection: ' + (e.reason && (e.reason.stack || e.reason))));
+  if (/[?&]snap=1/.test(location.search)) document.getElementById('hint').remove();
+</script>
+<script type="module">import('./js/main.js').catch((e) => showErr('import: ' + (e.stack || e)));</script>
+</body>
+</html>
