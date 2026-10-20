@@ -106,7 +106,7 @@ export function sneaker(color = 0xe8463a) {
 
 // ---------- Figur ----------
 export function figure(kind = 'schluffi') {
-  const g = new THREE.Group();
+  let g = new THREE.Group();
   const isSlob = kind === 'schluffi';
   const skin = isSlob ? 0xf0b98a : 0xe8a773;
   const stance = isSlob ? 0.6 : 0.48; // Fußabstand
@@ -146,7 +146,20 @@ export function figure(kind = 'schluffi') {
     }
   }
 
-  // Rumpf
+  // Rumpf — beim Schluffi hängt alles ab Hüfte in einer Gruppe, die zurückgelehnt und schief steht
+  const root = g;
+  let body = g;
+  if (isSlob) {
+    const pivot = new THREE.Group();
+    pivot.position.set(0, hipY - 0.1, 0);
+    pivot.rotation.set(-0.14, 0, 0.09);
+    body = new THREE.Group();
+    body.position.set(0, -(hipY - 0.1), 0);
+    pivot.add(body);
+    root.add(pivot);
+  }
+  const g0 = g;
+  g = body;
   let torso;
   if (isSlob) {
     const tg = new THREE.SphereGeometry(0.5, 16, 12);
@@ -167,8 +180,8 @@ export function figure(kind = 'schluffi') {
     torso.rotation.x = 0.12;
     g.add(torso);
     // Bauch guckt raus (Hemd offen)
-    const belly = toonMesh(new THREE.SphereGeometry(0.3, 14, 10), skin, { outline: 0.035 });
-    belly.position.set(0.02, hipY + 0.25, 0.33);
+    const belly = toonMesh(new THREE.SphereGeometry(0.34, 14, 10), skin, { outline: 0.035 });
+    belly.position.set(0.02, hipY + 0.22, 0.38);
     g.add(belly);
     const navel = toonMesh(new THREE.SphereGeometry(0.035, 6, 5), BLACK, { outline: 0, basic: true });
     navel.position.set(0, -0.05, 0.3);
@@ -198,7 +211,7 @@ export function figure(kind = 'schluffi') {
   }
 
   // Arme + Hände (groß)
-  const shoulderY = hipY + (isSlob ? 0.75 : 0.9);
+  const shoulderY = hipY + (isSlob ? 0.66 : 0.9);
   const handR = 0.2;
   const armColor = isSlob ? skin : skin;
   const sleeve = isSlob ? 0xff7f3f : 0xf4f4f8;
@@ -248,7 +261,7 @@ export function figure(kind = 'schluffi') {
   g.add(limb(V(0, neckY - 0.2, 0), V(0, neckY + 0.3, 0), 0.14, skin, { outline: 0.035 }));
   const head = new THREE.Group();
   head.position.set(0, neckY + 0.75, isSlob ? 0.12 : 0);
-  if (isSlob) head.rotation.x = 0.12;
+  if (isSlob) head.rotation.set(0.1, 0.05, 0.2);
   g.add(head);
 
   if (isSlob) {
@@ -275,9 +288,21 @@ export function figure(kind = 'schluffi') {
       h.rotation.z = a;
       head.add(h);
     }
+    // Stirnband mit Knoten hinten
+    const band = toonMesh(new THREE.TorusGeometry(0.43, 0.065, 8, 24), 0xe8463a, { outline: 0.03 });
+    band.position.set(0, 0.44, 0); band.rotation.set(Math.PI / 2 + 0.1, 0, 0.05); head.add(band);
+    for (const s of [-1, 1]) {
+      const tail = toonMesh(new THREE.BoxGeometry(0.08, 0.3, 0.05), 0xe8463a, { outline: 0.025 });
+      tail.position.set(s * 0.1, 0.28, -0.44); tail.rotation.z = s * 0.4; head.add(tail);
+    }
+    // Hemd schief geknöpft
+    for (let i = 0; i < 3; i++) {
+      const btn = toonMesh(new THREE.SphereGeometry(0.035, 6, 5), 0xfff5e0, { outline: 0.012 });
+      btn.position.set(-0.3 + i * 0.07, hipY + 0.62 - i * 0.14, 0.44 - i * 0.03); g.add(btn);
+    }
     for (const s of [-1, 1]) {
       const lens = toonMesh(new THREE.TorusGeometry(0.11, 0.03, 6, 12), BLACK, { outline: 0, basic: true });
-      lens.position.set(s * 0.14, 0.5, 0.42); lens.rotation.x = -0.6; head.add(lens);
+      lens.position.set(s * 0.14, 0.6, 0.3); lens.rotation.x = -0.9; head.add(lens);
     }
   } else {
     // Kopf: Kugel Richtung Würfel gezogen (kantiger Kiefer), Gesicht = gemaltes Decal
@@ -313,7 +338,7 @@ export function figure(kind = 'schluffi') {
     bud.position.set(0.58, -0.02, 0.06); head.add(bud);
     g.add(limb(V(0.6, neckY + 0.72, 0.05), V(0.45, neckY + 0.2, 0.2), 0.012, 0xffffff, { outline: 0.008 }));
   }
-  return g;
+  return g0;
 }
 
 // Namensschild unter der Figur (kleines Sandschild)

@@ -77,22 +77,39 @@ function finish(c) {
 // Schluffi: verpeilt + selig — schwere, schräge Lider, Pupillen nach innen-oben, schiefes Grinsen, Stoppeln
 export function schluffiFace(skinCss) {
   const [c, ctx] = makeCanvas();
-  eye(ctx, 372, 330, 128, { lid: 0.48, lidTilt: 0.18, lidColor: skinCss, pupil: 24, px: 30, py: 14, veins: 3, seed: 3 });
-  eye(ctx, 652, 330, 128, { lid: 0.48, lidTilt: -0.18, lidColor: skinCss, pupil: 24, px: -30, py: 14, veins: 3, seed: 4 });
-  // entspannte, hochgezogene Brauen
-  strokePath(ctx, [[260, 215], [360, 160, 470, 200]], 22);
-  strokePath(ctx, [[554, 200], [664, 160, 764, 215]], 22);
+  // schwere, flache Lider; Pupillen auseinander und nach unten ins Leere
+  eye(ctx, 372, 330, 128, { lid: 0.5, lidTilt: -0.06, lidColor: skinCss, pupil: 20, px: -26, py: 30, veins: 3, seed: 3 });
+  eye(ctx, 652, 330, 128, { lid: 0.5, lidTilt: 0.06, lidColor: skinCss, pupil: 20, px: 34, py: 22, veins: 3, seed: 4 });
+  // hohe, runde, entspannte Brauen
+  strokePath(ctx, [[262, 205], [372, 120, 482, 195]], 20);
+  strokePath(ctx, [[542, 195], [652, 120, 762, 205]], 20);
   // Stoppeln am Kinn
   const rand = rng(9);
   ctx.fillStyle = 'rgba(80, 45, 20, 0.55)';
   for (let i = 0; i < 140; i++) {
     const x = 300 + rand() * 424, y = 600 + rand() * 300;
     if (Math.hypot(x - 512, y - 560) < 90) continue; // Platz für die 3D-Nase
+    if (x > 320 && x < 720 && y > 590 && y < 760) continue; // Platz für den Mund
     ctx.beginPath(); ctx.arc(x, y, 3.5 + rand() * 2.5, 0, Math.PI * 2); ctx.fill();
   }
-  // schiefes seliges Grinsen
-  strokePath(ctx, [[330, 625], [520, 750, 730, 585]], 20);
-  strokePath(ctx, [[730, 585], [752, 607]], 20);
+  // offenes, dümmlich-glückliches Grinsen mit Zahnlücke und Zunge
+  const mouth = () => {
+    ctx.beginPath(); ctx.moveTo(320, 600);
+    ctx.quadraticCurveTo(520, 640, 730, 586);
+    ctx.quadraticCurveTo(620, 880, 320, 600);
+    ctx.closePath();
+  };
+  ctx.save(); mouth(); ctx.clip();
+  ctx.fillStyle = '#2a0f0f'; ctx.fillRect(300, 560, 460, 260);
+  ctx.fillStyle = '#ff7b9c'; ctx.beginPath(); ctx.ellipse(570, 790, 130, 60, -0.15, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(300, 560, 460, 95);
+  ctx.fillStyle = '#2a0f0f'; ctx.fillRect(492, 560, 40, 110); // Zahnlücke
+  ctx.strokeStyle = '#111111'; ctx.lineWidth = 8;
+  for (const x of [395, 445, 585, 640, 695]) { ctx.beginPath(); ctx.moveTo(x, 575); ctx.lineTo(x, 660); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(300, 655); ctx.lineTo(760, 655); ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle = '#111111'; ctx.lineWidth = 16; ctx.lineJoin = 'round';
+  mouth(); ctx.stroke();
   return finish(c);
 }
 

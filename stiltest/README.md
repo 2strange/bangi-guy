@@ -49,6 +49,9 @@ Dann `http://localhost:8000/` öffnen. Ziehen = drehen, Rad = zoomen (OrbitContr
   steht gerade, Stegbretter mit Jitter aus einem festen Seed (das Standbild ist reproduzierbar), ein Brett fehlt.
 - **Proportionen:** Kopf etwa ein Drittel der Körperhöhe, Hände und Füße riesig. Die Füße sind nach außen gedreht,
   damit das Schuh-Profil auch von vorn lesbar ist.
+- **Haltung ohne Rig:** Beim Schluffi hängt alles ab Hüfte in einer Gruppe, die um die Hüfte leicht zurück und zur
+  Seite gekippt ist; Schultern tiefer, Bauch weiter raus, Kopf zur Seite geneigt. Dazu Stirnband und schief geknöpftes
+  Hemd. Der Turnschuh-Typ steht dagegen kerzengerade.
 - **Schuhe:** Sandale = Holzsohle in zwei Lagen, Fußblock, fünf Zehenkugeln mit Nägeln, zwei dunkle Riemchen
   (Halb-Tori). Turnschuh = roter Low-Top mit dicker weißer `RoundedBox`-Sohle, weißer Zehenkappe, drei Streifen je Seite,
   Schnürsenkeln mit Ösen, Schleife, Zunge und Fersenlasche; darüber Knöchel, weiße Socke und Chinos, die klar über dem
@@ -57,8 +60,9 @@ Dann `http://localhost:8000/` öffnen. Ziehen = drehen, Rad = zoomen (OrbitContr
   Pupillen, hautfarbene Lider mit Lidlinie (auf den Augapfel geclippt), Brauen und Mund als Striche, rote Äderchen,
   Stoppeln als Punktwolke mit Aussparung für die 3D-Nase. `faceDecal()` legt die Textur als vorderes Kugel-Segment
   (Radius +1 %, dieselbe Verformung wie der Kopf) über den Kopf, mit `polygonOffset` gegen Z-Fighting und `alphaTest`
-  statt Transparenz-Sortierung. Nasen, Ohren, Haare, Cap und Sonnenbrille bleiben 3D. Schluffi: schwere schräge Lider,
-  schiefes seliges Grinsen. Turnschuh-Typ: schmale Lider, V-Brauen, Tränensäcke, zusammengekniffener Mund, Blick zum
+  statt Transparenz-Sortierung. Nasen, Ohren, Haare, Cap und Sonnenbrille bleiben 3D. Schluffi: schwere, flache Lider,
+  hohe entspannte Brauen, Pupillen auseinander ins Leere, offenes dümmlich-glückliches Grinsen mit Zahnlücke und Zunge
+  (als gefüllte Form mit Clip gemalt). Turnschuh-Typ: schmale Lider, V-Brauen, Tränensäcke, zusammengekniffener Mund, Blick zum
   Schluffi. Die Sonne bekommt mit derselben Technik Schlafzimmeraugen, Äderchen, ein seliges Grinsen und einen
   Rauchkringel.
 
