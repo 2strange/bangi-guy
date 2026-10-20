@@ -10,19 +10,20 @@ export const DORF = { minX: -9, maxX: 38, minZ: -73, maxZ: -26 }; // im Süden (
 // Grundriss eines Hauses bei Gebäudeskala 2.1 (hut(): 3.2 × 3.0 → 6.72 × 6.3) plus Rand
 export const HOUSE = { w: 6.72, d: 6.3, margin: 0.12 };
 
-// kind: 'hut' (eine Etage, Kegeldach) | 'town' (zwei Etagen, Balkon). rot: Gierung, 0 = Tür nach Süden (+z).
+// kind: 'hut' (eine Etage, Kegeldach) | 'town' (zwei Etagen, Balkon). rot: Gierung, 0 = Tür nach Süden (+z);
+// jedes Haus ist 6–12° aus dem Raster gedreht (Krummgassen).
 export const HOUSES = [
-  { id: 'A', x: -5, z: -30, rot: Math.PI / 2 + 0.05, kind: 'hut', wall: 0xf08ac4, roof: 0x2fa9b9, seed: 2, sign: 'KLINGEL KAPUTT – RUFEN' },
-  { id: 'B', x: 6, z: -30, rot: -Math.PI / 2 - 0.05, kind: 'hut', wall: 0xffb347, roof: 0xd62e2e, seed: 3 },
+  { id: 'A', x: -5.3, z: -30, rot: Math.PI / 2 + 0.12, kind: 'hut', wall: 0xf08ac4, roof: 0x2fa9b9, seed: 2, sign: 'KLINGEL KAPUTT – RUFEN' },
+  { id: 'B', x: 6, z: -30, rot: -Math.PI / 2 - 0.1, kind: 'hut', wall: 0xffb347, roof: 0xd62e2e, seed: 3 },
   { id: 'C', x: 16, z: -41, rot: -Math.PI / 2 + 0.1, kind: 'town', wall: 0x9fd8ff, roof: 0xffd54a, seed: 4, balcony: 'oma' },
-  { id: 'D', x: 28, z: -30, rot: Math.PI + 0.12, kind: 'hut', wall: 0xc9a0ff, roof: 0x3bb84a, seed: 5 },
-  { id: 'E', x: 28, z: -41, rot: -0.1, kind: 'hut', wall: 0x9fe6c8, roof: 0xe8463a, seed: 6 },
-  { id: 'F', x: 2, z: -52, rot: 0.1, kind: 'hut', wall: 0xffe14a, roof: 0x2a3f8f, seed: 7 },
-  { id: 'G', x: 13, z: -52, rot: -Math.PI / 2 + 0.08, kind: 'town', wall: 0xff8c69, roof: 0x2fa9b9, seed: 8 },
-  { id: 'H', x: 24, z: -52, rot: Math.PI - 0.1, kind: 'hut', wall: 0xc5e86c, roof: 0x8b5a2b, seed: 9 },
-  { id: 'I', x: 2, z: -63, rot: Math.PI / 2 + 0.1, kind: 'hut', wall: 0x7fd8ff, roof: 0xd62e2e, seed: 10 },
-  { id: 'J', x: 14, z: -64, rot: -Math.PI / 2 - 0.05, kind: 'town', wall: 0xfff1c2, roof: 0xff5fa2, seed: 11 },
-  { id: 'K', x: 27, z: -64, rot: 0.08, kind: 'hut', wall: 0xe8463a, roof: 0x2a3f8f, seed: 12 },
+  { id: 'D', x: 28, z: -30, rot: Math.PI + 0.2, kind: 'hut', wall: 0xc9a0ff, roof: 0x3bb84a, seed: 5 },
+  { id: 'E', x: 28, z: -41, rot: -0.15, kind: 'hut', wall: 0x9fe6c8, roof: 0xe8463a, seed: 6 },
+  { id: 'F', x: 2, z: -52, rot: 0.17, kind: 'hut', wall: 0xffe14a, roof: 0x2a3f8f, seed: 7 },
+  { id: 'G', x: 13, z: -52, rot: -Math.PI / 2 + 0.12, kind: 'town', wall: 0xff8c69, roof: 0x2fa9b9, seed: 8 },
+  { id: 'H', x: 24.3, z: -52, rot: Math.PI - 0.19, kind: 'hut', wall: 0xc5e86c, roof: 0x8b5a2b, seed: 9 },
+  { id: 'I', x: 2, z: -63, rot: Math.PI / 2 + 0.15, kind: 'hut', wall: 0x7fd8ff, roof: 0xd62e2e, seed: 10 },
+  { id: 'J', x: 14, z: -64, rot: -Math.PI / 2 - 0.1, kind: 'town', wall: 0xfff1c2, roof: 0xff5fa2, seed: 11 },
+  { id: 'K', x: 27, z: -64, rot: 0.14, kind: 'hut', wall: 0xe8463a, roof: 0x2a3f8f, seed: 12 },
 ];
 
 // Gassen als Polylinien (Mittellinie). Eingang = Heckenlücke bei (0, -26), Ausgänge Markt (Osten) und Posten 7 (Norden).

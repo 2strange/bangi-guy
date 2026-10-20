@@ -6,14 +6,35 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { toonMesh, toon, deform, rng, textTexture, stripeTexture, BLACK } from './toon.js';
-import { limb, hut, mailbox, barrier, lamp } from './props.js';
+import { limb, mailbox, barrier, lamp } from './props.js';
 import { sneaker } from './figures.js';
 import { face, faceDecal } from './faces.js';
 import { BUILDING_BASE, buildingScale } from './logic.js';
 import { HOUSES, LANES, EXITS, PROPS, EDGES, DORF_SPOTS, footprintAABB } from './zone-dorf-layout.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const UP = new THREE.Vector3(0, 1, 0);
 const SCALE = buildingScale('hut');
+
+// Haus schief hinstellen: Position + Drehung + Skalierung, dazu eine Scherung (x' = x + kx·y, z' = z + kz·y),
+// die das ganze Haus samt Dach zur Seite kippt. Der Grundriss bei y = 0 bleibt, der Collider stimmt weiter.
+function placeCrooked(obj, x, z, rot, scale, kx, kz) {
+  const shear = new THREE.Matrix4().set(1, kx, 0, 0, 0, 1, 0, 0, 0, kz, 1, 0, 0, 0, 0, 1);
+  obj.matrix.compose(V(x, 0, z), new THREE.Quaternion().setFromAxisAngle(UP, rot), V(scale, scale, scale)).multiply(shear);
+  obj.matrixAutoUpdate = false;
+  obj.matrixWorldNeedsUpdate = true;
+}
+
+// Krumme Fernsehantenne fürs Dach
+function antenna() {
+  const g = new THREE.Group();
+  g.add(limb(V(0, 0, 0), V(0.15, 1.6, 0.08), 0.04, 0x555566, { outline: 0.02 }));
+  for (let i = 0; i < 3; i++) {
+    const bar = toonMesh(new THREE.BoxGeometry(0.9 - i * 0.2, 0.04, 0.04), 0x555566, { outline: 0.02 });
+    bar.position.set(0.08 + i * 0.03, 0.9 + i * 0.3, 0.04); bar.rotation.set(0, 0.3 + i * 0.2, 0.08 * (i % 2 ? 1 : -1)); g.add(bar);
+  }
+  return g;
+}
 const tint = (hex, k) => new THREE.Color(hex).lerp(new THREE.Color(0xffffff), k).getHex();
 
 // ---------- Canvas-Texturen (keine Fremd-Assets) ----------
@@ -322,33 +343,98 @@ function oma() {
   return g;
 }
 
+// ---------- Dorfhaus: eine Etage, Grundriss wie hut() (3.2 × 3.0), aber hohes verzogenes Dach mit welligem
+// Überhang, Gaube auf manchen, krummer Schornstein — damit es auch von oben schief aussieht ----------
+function cottage({ wall = 0xf08ac4, roofColor = 0x2fa9b9, lean = 0.4, seed = 2, sign = null } = {}) {
+  const g = new THREE.Group();
+  const rand = rng(seed);
+  const w = 3.2, d = 3.0, h = 2.3 + (seed % 3) * 0.3, flare = 1.12, twist = (seed % 2 ? 1 : -1) * 0.06;
+  const wallGeo = new THREE.BoxGeometry(w, h, d);
+  deform(wallGeo, (v) => { if (v.y > 0) { v.x = v.x * flare + lean; v.z = v.z * 1.06 + lean * 0.25; } });
+  wallGeo.translate(0, h / 2, 0);
+  g.add(toonMesh(wallGeo, wall, { outline: 0.06 }));
+  const frontZ = (t) => (d / 2) * (1 - t) + (d / 2 * 1.06 + lean * 0.25) * t;
+  const frontX = (t, x) => x * (1 + (flare - 1) * t) + lean * t;
+  // Tür, Klinke, Schild
+  const doorH = BUILDING_BASE.hut.door;
+  const door = toonMesh(new THREE.BoxGeometry(0.95, doorH, 0.12), 0x4a2e1a, { outline: 0.04 });
+  door.position.set(frontX(0.3, -0.55), doorH / 2, frontZ(0.35) + 0.02); door.rotation.z = 0.06; g.add(door);
+  const knob = toonMesh(new THREE.SphereGeometry(0.07, 8, 6), 0xffd54a, { outline: 0.02 });
+  knob.position.set(0.28, 0, 0.1); door.add(knob);
+  if (sign) {
+    const sp = plate(sign, 1.0, 0.17, { font: 'bold 60px sans-serif', tw: 1024, th: 112, thick: 0.03 });
+    sp.position.set(frontX(0.3, -0.55), doorH * 0.8, frontZ(0.35) + 0.1); sp.rotation.z = 0.1; g.add(sp);
+  }
+  // Fenster mit Läden, einer hängt; Blumenkasten darunter
+  const wx = frontX(0.62, 0.75), wy = h * 0.62, wz = frontZ(0.62) + 0.04;
+  const win = new THREE.Group();
+  win.add(toonMesh(new THREE.BoxGeometry(0.85, 0.8, 0.14), 0xfff4d6, { outline: 0.04 }));
+  win.add(toonMesh(new THREE.BoxGeometry(0.62, 0.58, 0.16), 0x7fd8ff, { outline: 0.02 }));
+  for (const sd of [-1, 1]) {
+    const sh = toonMesh(new THREE.BoxGeometry(0.28, 0.86, 0.08), roofColor, { outline: 0.03 });
+    sh.position.set(sd * 0.58, sd > 0 ? -0.05 : 0, -0.02); sh.rotation.z = sd > 0 ? 0.16 : 0; win.add(sh);
+  }
+  win.position.set(wx, wy, wz); win.rotation.z = -0.07; g.add(win);
+  const fb = flowerBox(0.95, seed); fb.position.set(wx, wy - 0.58, wz + 0.22); g.add(fb);
+  // Dach: hohe Pyramide, Spitze weit verzogen, Traufe wellig, Überhang, schräg aufgesetzt
+  const rr = w * flare * 0.8, roofH = 2.0 + (seed % 2) * 0.5;
+  const roofGeo = new THREE.ConeGeometry(rr, roofH, 4);
+  roofGeo.rotateY(Math.PI / 4 + twist);
+  deform(roofGeo, (v) => { if (v.y > 0.4) { v.x += lean * 1.5; v.z += lean * 0.4; } else { v.y -= 0.16 * Math.abs(Math.sin(v.x * 2.2 + 0.5)); } });
+  roofGeo.scale(1, 1, (d * 1.06) / (w * flare));
+  const roof = toonMesh(roofGeo, roofColor, { outline: 0.06 });
+  roof.position.set(lean * 0.9, h + roofH / 2 - 0.18, lean * 0.2); roof.rotation.set(0.03, 0, 0.06); g.add(roof);
+  // Gaube vorn auf jedem zweiten Haus
+  if (seed % 3 === 1) {
+    const dormer = toonMesh(new THREE.BoxGeometry(0.8, 0.7, 0.9), wall, { outline: 0.04 });
+    dormer.position.set(lean * 0.8 - 0.3, h + 0.55, d * 0.3); dormer.rotation.z = 0.05; g.add(dormer);
+    const dw = toonMesh(new THREE.BoxGeometry(0.45, 0.4, 0.1), 0x7fd8ff, { outline: 0.025 });
+    dw.position.set(0, 0.02, 0.46); dormer.add(dw);
+    const dr = toonMesh(new THREE.ConeGeometry(0.75, 0.6, 4), roofColor, { outline: 0.04 });
+    dr.geometry.rotateY(Math.PI / 4); dr.position.set(0, 0.6, 0); dr.rotation.z = 0.08; dormer.add(dr);
+  }
+  // Schornstein krumm, Antenne auf jedem dritten Haus
+  const cx = w * 0.3 - lean * 0.3, cz = -d * 0.2;
+  g.add(limb(V(cx, h + 0.4, cz), V(cx + 0.4, h + 1.9 + (seed % 2) * 0.3, cz + 0.1), 0.15, 0x555566, { outline: 0.04 }));
+  const cap = toonMesh(new THREE.CylinderGeometry(0.24, 0.24, 0.12, 10), 0x333344, { outline: 0.03 });
+  cap.position.set(cx + 0.42, h + 1.96 + (seed % 2) * 0.3, cz + 0.1); cap.rotation.z = 0.2; g.add(cap);
+  if (seed % 3 === 0) { const a = antenna(); a.position.set(-0.7, h + 1.0, -0.4); a.rotation.z = 0.2; g.add(a); }
+  void rand;
+  return g;
+}
+
 // ---------- Stadthaus: zwei Etagen, Balkon, Fensterläden, Blumenkästen (Grundriss wie hut: 3.2 × 3.0) ----------
 function townhouse({ wall = 0x9fd8ff, roofColor = 0xffd54a, lean = 0.3, seed = 4 } = {}) {
   const g = new THREE.Group();
   const rand = rng(seed);
-  const w = 3.2, d = 3.0, h1 = 2.4, h2 = 2.2, flare = 1.08;
+  // Höhen je Haus verschieden, Obergeschoss gegen das Erdgeschoss verdreht und weiter ausgestellt
+  const w = 3.2, d = 3.0, h1 = 2.2 + (seed % 3) * 0.3, h2 = 1.9 + (seed % 2) * 0.5, flare = 1.1, twist = (seed % 2 ? 1 : -1) * 0.07;
   const f1 = new THREE.BoxGeometry(w, h1, d);
-  deform(f1, (v) => { if (v.y > 0) { v.x = v.x * flare + lean * 0.5; v.z *= 1.03; } });
+  deform(f1, (v) => { if (v.y > 0) { v.x = v.x * flare + lean * 0.6; v.z = v.z * 1.04 + lean * 0.15; } });
   f1.translate(0, h1 / 2, 0);
   g.add(toonMesh(f1, wall, { outline: 0.06 }));
-  const w2 = w * flare, d2 = d * 1.03;
+  const w2 = w * flare, d2 = d * 1.04;
   const f2 = new THREE.BoxGeometry(w2, h2, d2);
-  deform(f2, (v) => { if (v.y > 0) { v.x = v.x * flare + lean * 0.6; v.z *= 1.04; } });
-  f2.translate(lean * 0.5, h1 + h2 / 2, 0);
+  deform(f2, (v) => { if (v.y > 0) { v.x = v.x * flare + lean * 0.8; v.z = v.z * 1.06 + lean * 0.2; } });
+  f2.rotateY(twist);
+  f2.translate(lean * 0.6, h1 + h2 / 2, lean * 0.15);
   g.add(toonMesh(f2, tint(wall, 0.35), { outline: 0.06 }));
-  const band = toonMesh(new THREE.BoxGeometry(w2 + 0.12, 0.14, d2 + 0.12), 0x5a3b1a, { outline: 0.035 });
-  band.position.set(lean * 0.5, h1, 0); band.rotation.z = 0.01; g.add(band);
-  // Dach: Pyramide, Spitze verzogen
-  const rr = w2 * flare * 0.85;
-  const roofGeo = new THREE.ConeGeometry(rr, 1.4, 4);
-  roofGeo.rotateY(Math.PI / 4);
-  deform(roofGeo, (v) => { if (v.y > 0.5) { v.x += lean * 0.9; v.z += lean * 0.25; } });
-  roofGeo.scale(1, 1, (d2 * 1.04) / (w2 * flare));
+  const band = toonMesh(new THREE.BoxGeometry(w2 + 0.16, 0.14, d2 + 0.16), 0x5a3b1a, { outline: 0.035 });
+  band.position.set(lean * 0.6, h1, lean * 0.15); band.rotation.set(0.02, twist, 0.03); g.add(band);
+  // Dach: hohe Pyramide mit Überhang, Spitze weit verzogen, insgesamt schräg aufgesetzt
+  const rr = w2 * flare * 0.82;
+  const roofH = 1.9 + (seed % 3) * 0.3;
+  const roofGeo = new THREE.ConeGeometry(rr, roofH, 4);
+  roofGeo.rotateY(Math.PI / 4 + twist);
+  deform(roofGeo, (v) => { if (v.y > 0.5) { v.x += lean * 1.6; v.z += lean * 0.5; } else { v.y -= 0.12 * Math.abs(Math.sin(v.x * 2.5)); } });
+  roofGeo.scale(1, 1, (d2 * 1.06) / (w2 * flare));
   const roof = toonMesh(roofGeo, roofColor, { outline: 0.06 });
-  roof.position.set(lean * 1.1, h1 + h2 + 0.65, 0); roof.rotation.z = 0.04; g.add(roof);
-  g.add(limb(V(-w * 0.3, h1 + h2 + 0.5, -d * 0.2), V(-w * 0.3 - 0.3, h1 + h2 + 1.9, -d * 0.2), 0.15, 0x555566, { outline: 0.04 }));
+  roof.position.set(lean * 1.0, h1 + h2 + roofH / 2 - 0.1, lean * 0.2); roof.rotation.set(0.04, 0, 0.07); g.add(roof);
+  const topY = h1 + h2 + roofH * 0.35;
+  g.add(limb(V(-w * 0.3, topY - 0.3, -d * 0.2), V(-w * 0.3 - 0.45, topY + 1.3, -d * 0.2 + 0.1), 0.15, 0x555566, { outline: 0.04 }));
   const cap = toonMesh(new THREE.CylinderGeometry(0.24, 0.24, 0.12, 10), 0x333344, { outline: 0.03 });
-  cap.position.set(-w * 0.3 - 0.32, h1 + h2 + 1.95, -d * 0.2); cap.rotation.z = 0.15; g.add(cap);
+  cap.position.set(-w * 0.3 - 0.47, topY + 1.36, -d * 0.2 + 0.1); cap.rotation.z = 0.25; g.add(cap);
+  if (seed % 2) { const a = antenna(); a.position.set(w * 0.35, topY + 0.1, d * 0.15); a.rotation.z = -0.15; g.add(a); }
 
   const frontZ1 = (t) => (d / 2) * (1 + 0.03 * t);
   const frontZ2 = (t) => (d2 / 2) * (1 + 0.04 * t);
@@ -537,19 +623,11 @@ export function buildDorf(parent, colliders) {
         towel.position.copy(obj.userData.railing).add(V(-0.4, -0.2, 0.02)); obj.add(towel);
       }
     } else {
-      obj = hut({ w: 3.2, h: 3.0, d: 3.0, lean, wall: h.wall, roofColor: h.roof, seed: h.seed });
-      // Blumenkasten unterm Fenster (Fensterposition wie in props.hut)
-      const fx = 0.75 * (1 + 0.14 * 0.62) + lean * 0.62, fz = 1.5 * 0.38 + (1.5 * 1.06 + lean * 0.25) * 0.62;
-      const fb = flowerBox(0.95, h.seed); fb.position.set(fx, 3.0 * 0.62 - 0.58, fz + 0.26); obj.add(fb);
-      if (h.sign) {
-        const s = plate(h.sign, 1.0, 0.17, { font: 'bold 60px sans-serif', tw: 1024, th: 112, thick: 0.03 });
-        s.position.set(-0.55 * 1.042 + 0.3 * lean, BUILDING_BASE.hut.door * 0.8, 1.5 * 0.65 + (1.59 + 0.25 * lean) * 0.35 + 0.1);
-        s.rotation.z = 0.1; obj.add(s);
-      }
+      obj = cottage({ wall: h.wall, roofColor: h.roof, lean: lean * (1 + (h.seed % 2) * 0.3), seed: h.seed, sign: h.sign });
     }
-    obj.position.set(h.x, 0, h.z);
-    obj.rotation.y = h.rot;
-    obj.scale.setScalar(SCALE);
+    // ganzes Haus zur Seite kippen (Scherung 4–9 %), Richtung je Haus anders
+    const r2 = rng(100 + h.seed);
+    placeCrooked(obj, h.x, h.z, h.rot, SCALE, (r2() - 0.5) * 0.18, (r2() - 0.5) * 0.14);
     add(obj);
     houseObjs[h.id] = obj;
     colliders.push(footprintAABB(h));
