@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bangi Bay – Welt-Skizze v1</title>
+<title>Bangi Bay – Welt-Skizze v1.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Patrick+Hand&display=swap" rel="stylesheet">
 <style>
@@ -286,6 +286,16 @@
   <rect x="14" y="-40" width="10" height="20" fill="#555" class="o3"/>
 </g>
 <g fill="none" stroke="var(--ink)" stroke-width="4"><circle cx="290" cy="178" r="7"/><circle cx="300" cy="160" r="9"/><circle cx="314" cy="138" r="12"/></g>
+<!-- Garten des Mentors (Nachschub) -->
+<g transform="translate(170,250) rotate(-8)">
+  <rect x="-34" y="-20" width="68" height="40" rx="4" fill="#9A6A3A" class="o3"/>
+  <g stroke="#6CCB4C" stroke-width="4" stroke-linecap="round" fill="none">
+    <path d="M-24 -10 l 0 -9 M-24 -10 l -6 -5 M-24 -10 l 6 -5 M-8 -8 l 0 -10 M-8 -8 l -6 -5 M-8 -8 l 6 -5 M8 -10 l 0 -9 M8 -10 l -6 -5 M8 -10 l 6 -5 M24 -8 l 0 -10 M24 -8 l -6 -5 M24 -8 l 6 -5"/>
+    <path d="M-24 10 l 0 -9 M-24 10 l -6 -5 M-24 10 l 6 -5 M-8 12 l 0 -10 M-8 12 l -6 -5 M-8 12 l 6 -5 M8 10 l 0 -9 M8 10 l -6 -5 M8 10 l 6 -5 M24 12 l 0 -10 M24 12 l -6 -5 M24 12 l 6 -5"/>
+  </g>
+  <path d="M-40 -24 L 40 -26 M-40 24 L 40 22" stroke="var(--ink)" stroke-width="4" stroke-dasharray="7 5"/>
+  <g transform="translate(44,-14)"><rect x="-2" y="-18" width="4" height="30" fill="var(--wood-dark)"/><rect x="-10" y="-14" width="20" height="4" fill="var(--wood-dark)"/><circle cy="-22" r="6" fill="#F2C29B" class="o3"/><path d="M-8 -26 L 8 -26 L 6 -31 L -6 -31 Z" fill="var(--blue)" class="o3"/></g>
+</g>
 <!-- Fernglas-Aussichtspunkt -->
 <g transform="translate(380,290)"><rect x="-10" y="-8" width="20" height="14" fill="#333" class="o3"/><rect x="-6" y="6" width="3" height="18" fill="var(--ink)"/><rect x="3" y="6" width="3" height="18" fill="var(--ink)"/></g>
 <!-- Blumen/Büsche -->
@@ -348,12 +358,12 @@
 <use href="#mV" x="1150" y="452"/><text x="1172" y="458" class="t halo">3 Gedränge</text>
 <use href="#mV" x="1180" y="700"/><text x="1202" y="706" class="t halo">4 Boote</text>
 <use href="#mV" x="1000" y="708"/><text x="1022" y="714" class="t halo">5 Unter Rentnern</text>
-<use href="#mV" x="300" y="250"/><text x="200" y="300" class="t halo">6 Mentor-Hütte</text>
+<use href="#mV" x="300" y="250"/><text x="200" y="300" class="t halo">6 Mentor-Hütte + Garten</text>
 <!-- Fluchtrouten-Marker -->
 <use href="#mF" x="580" y="590"/><text x="602" y="596" class="t halo">1 Wäschegasse</text>
 <use href="#mF" x="1040" y="750"/><text x="1062" y="756" class="t halo">2 Furt (nur Sandalen)</text>
 <use href="#mF" x="1030" y="590"/><text x="1052" y="596" class="t halo">3 Tuk-Tuk-Express</text>
-<use href="#mF" x="340" y="470"/><text x="362" y="476" class="t halo">4 Sandrutsche</text>
+<use href="#mF" x="346" y="525"/><text x="368" y="531" class="t halo">4 Sandrutsche</text>
 <use href="#mF" x="812" y="552"/><text x="834" y="558" class="t halo">5 Durchs Hotel</text>
 
 <!-- ===== GAGS (nummeriert) ===== -->
@@ -386,18 +396,27 @@
   <text x="90" y="440" fill="var(--grass-dark)">KIFFER-KUPPE</text>
 </g>
 <g class="t halo" font-size="17">
-  <text x="130" y="612">Bar · Verleih · Hotel · Start</text>
+  <text x="130" y="612">Bar (abends Mentor) · Verleih · Hotel · Start</text>
   <text x="520" y="322">Dorf, krumme Gassen, Oma, Hunde</text>
   <text x="930" y="352">Gedränge, Mangos, laute Typen</text>
   <text x="1150" y="542">Fähre, Tuk-Tuks, Boote</text>
   <text x="640" y="82">Polizeistation, Heat-Tafel</text>
-  <text x="90" y="462">Mentor-Hütte, Aussicht, Rutsche</text>
+  <text x="90" y="462">Supplier-Garten, Nachschub, Weisheit</text>
+</g>
+<!-- MVP-Marken -->
+<g class="lg" font-size="15" text-anchor="middle">
+  <g transform="translate(470,566)"><rect x="-30" y="-13" width="60" height="26" rx="13" fill="var(--yellow)" class="o3"/><text y="6" fill="var(--ink)">MVP</text></g>
+  <g transform="translate(790,282)"><rect x="-30" y="-13" width="60" height="26" rx="13" fill="var(--yellow)" class="o3"/><text y="6" fill="var(--ink)">MVP</text></g>
+  <g transform="translate(1195,312)"><rect x="-30" y="-13" width="60" height="26" rx="13" fill="var(--yellow)" class="o3"/><text y="6" fill="var(--ink)">MVP</text></g>
+  <g transform="translate(590,46)"><rect x="-30" y="-13" width="60" height="26" rx="13" fill="var(--yellow)" class="o3"/><text y="6" fill="var(--ink)">MVP</text></g>
+  <g transform="translate(150,405)"><rect x="-44" y="-13" width="88" height="26" rx="13" fill="var(--yellow)" class="o3"/><text y="6" fill="var(--ink)">MVP klein</text></g>
+  <g transform="translate(1400,502)"><rect x="-40" y="-13" width="80" height="26" rx="13" fill="#D5D5D5" class="o3"/><text y="6" fill="var(--ink)">AUSBAU</text></g>
 </g>
 <!-- Andock-Beschriftungen -->
 <g class="t halo" font-size="17" fill="var(--ink)">
   <text x="860" y="30">später: Stadt / Landesinnere</text>
   <text x="12" y="690">später: Surfer-Bucht</text>
-  <text x="1380" y="745">später: Nachbarinsel (Fähre)</text>
+  <text x="1395" y="598">später: Nachbarinsel (Fähre)</text>
   <text x="100" y="100">später: Dschungel / Plantage</text>
 </g>
 <!-- Start -->
@@ -408,7 +427,7 @@
   <rect x="-185" y="-46" width="370" height="92" rx="10" fill="#D9A066" class="o"/>
   <rect x="-175" y="-36" width="350" height="72" rx="8" fill="none" stroke="var(--wood-dark)" stroke-width="3" stroke-dasharray="2 6"/>
   <text y="-2" text-anchor="middle" class="lg" font-size="44" fill="var(--red)">BANGI BAY</text>
-  <text y="28" text-anchor="middle" font-size="20" fill="var(--ink)">Welt-Skizze v1 · Karte von oben</text>
+  <text y="28" text-anchor="middle" font-size="20" fill="var(--ink)">Welt-Skizze v1.1 · Karte von oben</text>
 </g>
 <!-- Maßstab -->
 <g transform="translate(1245,160)">
@@ -422,23 +441,24 @@
 <use href="#wolke" x="1120" y="200"/><use href="#wolke" x="1480" y="300"/>
 
 <!-- ===== LEGENDE ===== -->
-<g transform="translate(1180,765)">
-  <rect x="0" y="0" width="400" height="225" rx="12" fill="var(--paper)" class="o"/>
-  <text x="14" y="30" class="lg" font-size="24" fill="var(--ink)">LEGENDE</text>
+<g transform="translate(1180,768)">
+  <rect x="0" y="0" width="400" height="224" rx="12" fill="var(--paper)" class="o"/>
+  <text x="14" y="28" class="lg" font-size="24" fill="var(--ink)">LEGENDE</text>
   <g class="ts">
-    <use href="#mK" x="26" y="56"/><text x="46" y="62">Kundschaft (Spawn)</text>
-    <use href="#mP" x="26" y="88"/><text x="46" y="94">Polizei-Spawn</text>
-    <path class="streife" d="M12 118 L 40 118"/><text x="46" y="124">Streifen-Route</text>
-    <use href="#mV" x="26" y="150"/><text x="46" y="156">Versteck</text>
-    <use href="#mF" x="26" y="182"/><text x="46" y="188">Fluchtroute / Abkürzung</text>
+    <use href="#mK" x="26" y="52"/><text x="46" y="58">Kundschaft (Spawn)</text>
+    <use href="#mP" x="26" y="80"/><text x="46" y="86">Polizei-Spawn</text>
+    <path class="streife" d="M12 108 L 40 108"/><text x="46" y="114">Streifen-Route</text>
+    <use href="#mV" x="26" y="136"/><text x="46" y="142">Versteck</text>
+    <use href="#mF" x="26" y="164"/><text x="46" y="170">Fluchtroute / Abkürzung</text>
+    <rect x="12" y="184" width="28" height="16" fill="var(--shallow)" class="o3"/><text x="46" y="198">Untiefe (watbar)</text>
 
     <path class="flucht" d="M200 50 L 240 50"/><text x="250" y="56">Fluchtweg</text>
-    <use href="#mG" x="214" y="88"/><text x="214" y="95" text-anchor="middle" class="lg" font-size="18" fill="var(--red)">7</text><text x="250" y="94">Gag (Liste unten)</text>
-    <use href="#mD" x="214" y="120"/><text x="250" y="126">Andockstelle (später)</text>
-    <path d="M200 150 L 240 150" stroke="var(--ink)" stroke-width="12" stroke-linecap="round"/><path d="M200 150 L 240 150" stroke="var(--road)" stroke-width="7" stroke-linecap="round"/><text x="250" y="156">Straße (Tuk-Tuk)</text>
-    <path d="M200 182 L 240 182" stroke="var(--ink)" stroke-width="9" stroke-linecap="round"/><path d="M200 182 L 240 182" stroke="var(--dirt)" stroke-width="5" stroke-linecap="round"/><text x="250" y="188">Weg / Pfad</text>
-    <path class="zone" stroke="var(--pink)" d="M200 212 L 240 212"/><text x="250" y="218">Zonengrenze</text>
-    <rect x="12" y="204" width="28" height="16" fill="var(--shallow)" class="o3"/><text x="46" y="218">Untiefe (watbar)</text>
+    <use href="#mG" x="214" y="80"/><text x="214" y="87" text-anchor="middle" class="lg" font-size="18" fill="var(--red)">7</text><text x="250" y="86">Gag (Liste unten)</text>
+    <use href="#mD" x="214" y="108"/><text x="250" y="114">Andockstelle (später)</text>
+    <path d="M200 136 L 240 136" stroke="var(--ink)" stroke-width="12" stroke-linecap="round"/><path d="M200 136 L 240 136" stroke="var(--road)" stroke-width="7" stroke-linecap="round"/><text x="250" y="142">Straße (Tuk-Tuk)</text>
+    <path d="M200 164 L 240 164" stroke="var(--ink)" stroke-width="9" stroke-linecap="round"/><path d="M200 164 L 240 164" stroke="var(--dirt)" stroke-width="5" stroke-linecap="round"/><text x="250" y="170">Weg / Pfad</text>
+    <path class="zone" stroke="var(--pink)" d="M200 192 L 240 192"/><text x="250" y="198">Zonengrenze</text>
+    <g class="lg" font-size="12" text-anchor="middle"><rect x="14" y="206" width="38" height="16" rx="8" fill="var(--yellow)" class="o3"/><text x="33" y="218">MVP</text><rect x="58" y="206" width="54" height="16" rx="8" fill="#D5D5D5" class="o3"/><text x="85" y="218">AUSBAU</text></g><text x="120" y="219">= Zonen-Schnitt (erst / später)</text>
   </g>
 </g>
 </svg>

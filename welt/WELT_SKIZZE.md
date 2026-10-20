@@ -1,4 +1,8 @@
-# Bangi Bay – Welt-Skizze v1 (Spiel-Design-Notiz, Oktober 2026)
+# Bangi Bay – Welt-Skizze v1.1 (Spiel-Design-Notiz, Oktober 2026)
+
+**Entschieden (v1.1):** flache Bühne ohne Krümmung („die Erde ist flach“) · Mentor = Supplier, tagsüber im Garten
+auf dem Hügel, abends in der Bangi Bar · MVP = Strand, Krummgassen, Markt, Posten 7 + Hügel (verkleinert) ·
+Verhaftung mild (Tag verloren, Geld bleibt) · Name „Bangi Bay“.
 
 Nur Planung, kein 3D-Bau. Karte: `welt/index.html` (inline-SVG, statisch) · Bild: `welt/shots/karte.png`.
 Grundlage: die Stil-Probe `stiltest/shots/bangi-probe.png`.
@@ -14,7 +18,8 @@ steigt das Land zum Hügel im Nordwesten an. Drei Gründe:
    verlaufen, aber jede Runde hat Abzweige.
 2. **Gefälle = Lesbarkeit.** Polizei oben (Macht, Überblick), Strand unten (Chill, Start). Der Spieler lernt
    räumlich: je weiter nach oben, desto heißer. Der Hügel ist bewusst der Gegenpol: oben, aber sicher
-   (Mentor). Das gibt dem Hügel zwei Funktionen: Rückzug und Aussicht (Leute lesen von oben).
+   (Mentor). Der Hügel hat drei Funktionen: **Nachschub** (der Mentor baut an), **Weisheit** und Rückzug. Ein Gang,
+   drei Zwecke – und derselbe Gang kostet Tageszeit, siehe Z6.
 3. **Fluchtrouten brauchen Höhenunterschied und Wasser.** Sandrutsche (nur runter), Furt (nur Sandalen),
    Wäschegasse (Sichtlinie brechen), Gedränge (untertauchen), Tuk-Tuk (teuer, aber schnell). Jede Route lehrt
    eine andere Mechanik und zeigt auf dem Weg eine andere Zone.
@@ -46,12 +51,17 @@ Das trifft die Vorgabe „2–3 Minuten einmal durch“. Die Welt ist ca. 300 m 
 ### Z1 Bangi Beach (Strand, Bar, Verleih, Hotel) – orange
 - **Stimmung:** Chill, Happy Hour 24h, Sonne stoned (aus der Stilprobe). Start- und Heimatzone, hier wird
   nie verhaftet, höchstens angepfiffen.
-- **Wer steht hier:** Mentor am Tresen (tagsüber), Surfer schlafen auf ihren Brettern (K2), Stammkunden-Schluffis
+- **Wer steht hier:** abends der Mentor am Tresen (siehe Z6), Surfer schlafen auf ihren Brettern (K2), Stammkunden-Schluffis
   (K3), am Ostende das Hotel Palmenschatten mit Rentnern auf Liegen (K6). Sandalen-Streife P2 schlurft die
   Promenade entlang (langsam, pfeift nur).
 - **Lehre / Mechanik:** **Weisheit 1 „Schuhe lesen“** (Tutorial): Sandalen = sicher, Turnschuhe = Läufer oder
   Zivi, Flip-Flops = stolpern. Erster Verkauf an einen Surfer, dann „der Typ mit den Turnschuhen“ aus der Stilprobe
   als Warnbeispiel.
+- **Abends (Tagesabschluss):** Sobald die Sonne im Meer liegt, sitzt der Mentor an der Bar. Dort passiert der
+  Tagesabschluss: Kasse zählen, Heat-Stand als „Stammtisch-Gerücht“ („Pong hat nach dir gefragt…“), der Mentor
+  erzählt die nächste Weisheit als Geschichte von früher (freischalten = Story-Beat), und man bestellt den
+  Nachschub für morgen („Komm morgen hoch, ich hab was geerntet“). Nachts verkauft man nicht; die Bar ist das
+  Kapitel-Ende.
 - **Verstecke:** V1 Hängematte hinter der Bar (Streife läuft vorbei, wenn sie dich nicht reinsteigen sah),
   V5 Unter Rentnern (Hut aufsetzen, auf eine Liege legen).
 - **Fluchtroute:** F5 Durchs Hotel (Lobby rein, Küche raus, über die Pool-Rutsche ins Meer).
@@ -95,19 +105,31 @@ Das trifft die Vorgabe „2–3 Minuten einmal durch“. Die Welt ist ca. 300 m 
 - **Wer steht hier:** Polizist Pong (Sandalen, Dienstvorschrift Tropen), Streife P1 startet hier und läuft die
   Hauptstraße bis zum Pier und zurück. Bei hohem Heat kommen zweite Streife und Zivi dazu.
 - **Lehre / Mechanik:** **Heat sichtbar machen**: die Tafel „Tage ohne Vorfall“ zeigt deinen Stand. Mango abgeben
-  senkt Heat um eine Stufe (einmal pro Tag). Verhaftung = Tag vorbei, Ware weg, Geld bleibt.
+  senkt Heat um eine Stufe (einmal pro Tag). Verhaftung ist mild: Tag vorbei, Ware weg, Geld bleibt.
 - **Gags:** 13 Pong in Sandalen pfeift nur · 14 Heat-Tafel „Tage ohne Vorfall: 0“.
 
-### Z6 Kiffer-Kuppe (Hügel, Mentor-Hütte) – grün
-- **Stimmung:** Oben, ruhig, Rauch aus dem Schornstein. Von hier sieht man die ganze Bucht.
-- **Wer steht hier:** der Mentor (alter Hippie), abends. Tagsüber sitzt er an der Bar; er ist nie unterwegs, er
-  ist einfach da („Ich geh nicht, ich bin“).
-- **Lehre / Mechanik:** **Safe Zone + Speicherpunkt + Heat kühlt ab**. Fernglas-Minispiel am Aussichtspunkt:
-  Leute von oben lesen (Schuhe, Hunde, Hemden) und markieren; markierte Kunden bleiben unten sichtbar.
-  Später: Monsun-Weisheit (Gummistiefel, Regeln wackeln) wird hier erzählt.
+### Z6 Kiffer-Kuppe (Hügel, Mentor-Hütte + Garten) – grün
+- **Stimmung:** Oben, ruhig, Rauch aus dem Schornstein, Gießkanne, ein paar Beete hinter einem schiefen Zaun.
+  Von hier sieht man die ganze Bucht.
+- **Wer steht hier:** der Mentor (alter Hippie) – **er ist der Supplier.** Tagsüber gärtnert er hier und baut an,
+  abends sitzt er in der Bangi Bar (Z1). Man trifft ihn nie unterwegs; er ist einfach schon da.
+- **Lehre / Mechanik – ein Gang, drei Zwecke:**
+  1. **Nachschub holen:** Der Garten gibt pro Tag eine feste Ernte (MVP: 1 Beutel am Morgen; später wächst der
+     Garten mit, wenn man dem Mentor Geld oder Mangos mitbringt). Ohne den Gang nach oben gibt es nichts zu verkaufen.
+  2. **Weisheit:** Beim Abholen gibt es den praktischen Teil der Weisheit, die er abends an der Bar erzählt hat
+     („Siehst du den da unten mit den weißen Schuhen? Der ist neu.“). Später: Fernglas-Minispiel am
+     Aussichtspunkt – Leute von oben lesen und markieren. Später: Monsun-Weisheit (Gummistiefel, Regeln wackeln).
+  3. **Heat kühlt ab + Speicherpunkt:** Oben ist man sicher, die Streife kommt nicht hoch („zu steil“).
+- **Gegenpol gegen Campen (sicherer Ort + Nachschub lädt zum Hocken ein):** Die Zeit läuft oben weiter, und
+  unten kommt die Kundschaft in Wellen: Surfer morgens, Backpacker mittags, Rentner nachmittags. Wer oben sitzt,
+  verpasst die Welle, und die Ernte von heute ist morgen nur noch halb so viel wert („trocken“). Dazu lässt
+  der Mentor niemanden länger als eine Zigarettenlänge rumsitzen: „Gieß wenigstens die Beete, Mann.“
+  (Gießen = kleines Minispiel, kostet weitere Tageszeit, verbessert die Ernte von morgen.) Hoch gehen lohnt sich
+  also genau einmal am Tag, und zwar früh.
 - **Versteck:** V6 Mentor-Hütte (Streife kommt nicht hoch, „zu steil“).
 - **Fluchtroute:** F4 Sandrutsche (Einbahn runter zum Strand, 6 s; Turnschuhe bleiben hängen).
-- **Gags:** 15 Rauch-Wetterbericht · 16 Schild „Nicht mit Turnschuhen“.
+- **Gags:** 15 Rauch-Wetterbericht · 16 Schild „Nicht mit Turnschuhen“ · Vogelscheuche im Garten trägt eine
+  Polizeimütze (die Hühner respektieren sie, der Mentor nicht).
 
 ### Füller (keine Zonen, nur Charme)
 Reisfeld mit Bauer Nok (zwischen Kuppe und Posten; später Kunde mit eigenem Gag), Kokoshain östlich vom Markt
@@ -140,11 +162,10 @@ Technisch: jede Zone ist ein eigenes Tile/Gruppe mit einem Straßen-Anschluss am
 „+“-Punkten angeklebt, Streifen-Routen bekommen dort neue Wegpunkte. Die Insel wächst also als **Bühne, die
 breiter wird**, nicht als Planet, der größer wird – siehe nächster Punkt.
 
-## 6. Empfehlung: Bühne oder kleiner Planet (Kugel)?
+## 6. Bühne oder kleiner Planet (Kugel)? – entschieden: Bühne, flach
 
-**Empfehlung: Bühne (flache Insel, Meer als natürlicher Rand) – plus optional eine „Animal-Crossing-Krümmung“
-im Vertex-Shader, damit der Horizont rund wirkt wie bei Messenger.** Die Stilprobe ist aus demselben Grund
-schon als Bühne gebaut.
+**Entscheidung: Bühne (flache Insel, Meer als natürlicher Rand), ohne Welt-Krümmung.** Die Stilprobe ist aus
+demselben Grund schon als Bühne gebaut. Zur Dokumentation der Abwägung:
 
 | | Bühne (flach) | Kugel (Mini-Planet) |
 |---|---|---|
@@ -155,9 +176,23 @@ schon als Bühne gebaut.
 | Charme | „Insel, die man überblickt“, DOTT-Bühnengefühl | der Messenger-Wow-Effekt beim Rundherumlaufen |
 | Aufwand Three.js | niedrig | mittel bis hoch (Kamera, Physik, Beleuchtung) |
 
-Der Messenger-Effekt lässt sich auf der Bühne zu 70 % faken: Welt-Krümmung im Shader (`y -= dist² · k`), dazu
-Nebel am Horizont. Die Kugel würde unsere Kernmechanik (Schuhe sehen!) aktiv stören. Falls die Kugel
-trotzdem gewünscht ist, dann als **Weltkarte / Levelauswahl** (Inseln auf dem Globus), nicht als Spielfläche.
+Die Kugel würde die Kernmechanik (Schuhe sehen!) aktiv stören. Falls später eine Kugel gewünscht ist, dann als
+**Weltkarte / Levelauswahl** (Inseln auf dem Globus), nicht als Spielfläche. Der Horizont bleibt gerade; die
+Tiefe kommt aus Nebel, Meer und Wolken.
+
+## 6b. MVP-Schnitt der Zonen
+
+| Zone | MVP | Warum |
+|---|---|---|
+| Z1 Bangi Beach | **ja** | Start, Weisheit 1, abends der Mentor (Tagesabschluss) |
+| Z2 Krummgassen | **ja** | Weisheit 2, Sichtlinien, erste Fluchtroute (F1) |
+| Z3 Mango-Markt | **ja** | Weisheit 3, Gedränge, Mango-Bestechung |
+| Z5 Posten 7 | **ja** | Heat sichtbar, Streife P1 |
+| Z6 Kiffer-Kuppe | **ja, verkleinert** | Supplier-Ort: ohne ihn gibt es keine Ware. MVP = Hütte + Garten + Serpentine. Fernglas, Kammweg und Sandrutsche (F4) kommen später. |
+| Z4 Tuk-Tuk-Pier | nein, Ausbau 1 | Weisheit 4 (Hemd), Tuk-Tuk (F3), Furt (F2), Zivi P3 |
+
+Im MVP ist der Hügel damit nur über die Serpentine erreichbar (25 s rauf, 25 s runter): ein klarer Morgen-Gang.
+Die Sandrutsche als Belohnung im Ausbau macht denselben Gang später zum 6-Sekunden-Spaß.
 
 ## 7. Stil-Entscheidungen auf der Karte
 1. **Zonenfarben** (orange, pink, violett, türkis, blau, grün) sind gleichzeitig Vorschlag für die Farbcodes
@@ -166,3 +201,4 @@ trotzdem gewünscht ist, dann als **Weltkarte / Levelauswahl** (Inseln auf dem G
 3. **Fonts:** Luckiest Guy (Titel) + Patrick Hand (Text) – Vorschlag für UI-Schrift im Spiel. Alternative: Bangers.
 4. Die Karte zeigt den Zustand „Tag“. Nacht-Variante (andere Spawns, Streifen mit Taschenlampe) ist bewusst nicht
    eingezeichnet.
+5. **MVP-Marken** an den Zonennamen (gelb „MVP“, grau „Ausbau“) zeigen den Schnitt aus 6b.
