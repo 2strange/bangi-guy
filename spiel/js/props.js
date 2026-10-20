@@ -755,3 +755,68 @@ export function hedge(x0, x1, z, { gapFrom = 1, gapTo = -1, seed = 3 } = {}) {
   }
   return g;
 }
+
+// ---------- Hingucker für den Sand: Muschel, Seestern, Sandburg, Treibholz ----------
+export function shell(color = 0xffd5e0, seed = 1) {
+  const g = new THREE.Group();
+  const rand = rng(seed);
+  const geo = new THREE.SphereGeometry(0.32, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.5);
+  geo.scale(1, 0.55, 0.85);
+  deform(geo, (v) => { const a = Math.atan2(v.z, v.x); v.y *= 1 + 0.25 * Math.sin(a * 6); });
+  const m = toonMesh(geo, color, { outline: 0.03 });
+  m.rotation.y = rand() * Math.PI * 2;
+  g.add(m);
+  return g;
+}
+
+export function starfish(color = 0xff8c42) {
+  const g = new THREE.Group();
+  const core = toonMesh(new THREE.SphereGeometry(0.18, 8, 6), color, { outline: 0.03 });
+  core.geometry.scale(1, 0.5, 1);
+  core.position.y = 0.08;
+  g.add(core);
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    const arm = toonMesh(new THREE.ConeGeometry(0.11, 0.5, 6), color, { outline: 0.025 });
+    arm.geometry.rotateX(Math.PI / 2);
+    arm.geometry.scale(1, 0.5, 1);
+    arm.position.set(Math.cos(a) * 0.3, 0.07, Math.sin(a) * 0.3);
+    arm.rotation.y = -a + Math.PI / 2;
+    g.add(arm);
+  }
+  return g;
+}
+
+export function sandcastle() {
+  const g = new THREE.Group();
+  const c = 0xe8c47a;
+  const base = toonMesh(new THREE.CylinderGeometry(1.0, 1.2, 0.5, 10), c, { outline: 0.04 });
+  base.position.y = 0.25; g.add(base);
+  const towers = [[-0.5, -0.4, 0.42, 1.0], [0.55, -0.3, 0.36, 0.8], [0.1, 0.5, 0.3, 1.2], [-0.2, 0.0, 0.5, 0.6]];
+  for (const [x, z, r, h] of towers) {
+    const t = toonMesh(new THREE.CylinderGeometry(r * 0.9, r, h, 10), c, { outline: 0.035 });
+    t.position.set(x, 0.5 + h / 2, z); t.rotation.z = (x - z) * 0.08; g.add(t);
+    const roof = toonMesh(new THREE.ConeGeometry(r * 1.05, r * 1.2, 10), 0xd9a84a, { outline: 0.035 });
+    roof.position.set(x, 0.5 + h + r * 0.55, z); g.add(roof);
+  }
+  // Fähnchen auf dem höchsten Turm
+  g.add(limb(new THREE.Vector3(0.1, 1.9, 0.5), new THREE.Vector3(0.15, 2.7, 0.5), 0.02, 0x333333, { outline: 0.01 }));
+  const flag = toonMesh(new THREE.BoxGeometry(0.4, 0.25, 0.03), 0xe8463a, { outline: 0.02 });
+  flag.position.set(0.37, 2.58, 0.5); g.add(flag);
+  // Burggraben-Andeutung: dunkler Ring
+  const moat = toonMesh(new THREE.RingGeometry(1.25, 1.6, 20), 0xd9b56a, { outline: 0, shadow: false, basic: true });
+  moat.rotation.x = -Math.PI / 2; moat.position.y = 0.012; g.add(moat);
+  return g;
+}
+
+export function driftwood(seed = 2) {
+  const g = new THREE.Group();
+  const rand = rng(seed);
+  const pts = [new THREE.Vector3(-1.2, 0.15, 0), new THREE.Vector3(-0.3, 0.25, 0.25), new THREE.Vector3(0.5, 0.15, -0.1), new THREE.Vector3(1.3, 0.3, 0.2)];
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const tube = toonMesh(new THREE.TubeGeometry(curve, 10, 0.16, 7, false), 0xa08a6a, { outline: 0.035 });
+  g.add(tube);
+  g.add(limb(new THREE.Vector3(0.4, 0.2, -0.1), new THREE.Vector3(0.7, 0.55, -0.5), 0.07, 0xa08a6a, { outline: 0.025, taper: 0.5 }));
+  g.rotation.y = rand() * Math.PI * 2;
+  return g;
+}

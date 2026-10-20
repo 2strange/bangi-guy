@@ -39,14 +39,14 @@ export function outlineMaterial(thickness) {
   const key = thickness.toFixed(4);
   if (!outlineMats.has(key)) {
     outlineMats.set(key, new THREE.ShaderMaterial({
-      uniforms: { thickness: { value: thickness } },
+      uniforms: { thickness: { value: thickness }, opacity: { value: 1.0 } },
       vertexShader: `
         uniform float thickness;
         void main() {
           vec3 p = position + normalize(normal) * thickness;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
         }`,
-      fragmentShader: `void main() { gl_FragColor = vec4(0.04, 0.03, 0.05, 1.0); }`,
+      fragmentShader: `uniform float opacity; void main() { gl_FragColor = vec4(0.04, 0.03, 0.05, opacity); }`,
       side: THREE.BackSide,
     }));
   }

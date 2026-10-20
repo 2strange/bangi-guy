@@ -2,7 +2,7 @@
 // Bauten und Deko mit passenden Collidern (Kreise für Stämme/Pfosten, Rechtecke für Gebäude).
 import * as THREE from 'three';
 import { toonMesh, toon, basicMat, deform, rng } from './toon.js';
-import { palm, beachBar, pier, boat, signpost, hammock, parasol, beachBall, coconut, crab, cloud, sun, footprints, limb, hut, mailbox, hotel, lounger, rental, sleepingSurfer, barrier, lamp, hedge } from './props.js';
+import { palm, beachBar, pier, boat, signpost, hammock, parasol, beachBall, coconut, crab, cloud, sun, footprints, limb, hut, mailbox, hotel, lounger, rental, sleepingSurfer, barrier, lamp, hedge, shell, starfish, sandcastle, driftwood } from './props.js';
 import { shoreZ, WORLD } from './logic.js';
 
 export const WATER_Y = 0.06;
@@ -19,6 +19,7 @@ function stripMesh(top, bottom, color, y, { x0 = -240, x1 = 240, step = 4, basic
   const m = toonMesh(geo, color, { outline: 0, shadow: false, basic });
   m.position.y = y;
   m.receiveShadow = !basic;
+  m.userData.noFade = true;
   return m;
 }
 
@@ -33,6 +34,7 @@ export function buildWorld() {
   const sand = toonMesh(new THREE.PlaneGeometry(520, 520), 0xf7d984, { outline: 0, shadow: false });
   sand.rotation.x = -Math.PI / 2;
   sand.receiveShadow = true;
+  sand.userData.noFade = true;
   g.add(sand);
   const grassEdge = (x) => -15 + 2.2 * Math.sin(x / 7) + 1.1 * Math.sin(x / 2.3 + 1);
   g.add(stripMesh(() => -260, grassEdge, 0x5fc74a, 0.02));
@@ -44,7 +46,7 @@ export function buildWorld() {
   for (let i = 0; i < 14; i++) {
     const x = -120 + i * 18 + rand() * 8, z0 = shoreZ(Math.max(WORLD.minX, Math.min(WORLD.maxX, x))) + 5 + rand() * 20;
     const w = toonMesh(new THREE.PlaneGeometry(4 + rand() * 4, 0.25), 0xdff4ff, { outline: 0, shadow: false, basic: true });
-    w.rotation.x = -Math.PI / 2; w.position.set(x, WATER_Y + 0.01, z0); g.add(w);
+    w.rotation.x = -Math.PI / 2; w.position.set(x, WATER_Y + 0.01, z0); w.userData.noFade = true; g.add(w);
   }
 
   // Hügel im Nordwesten (Kiffer-Kuppe, nur Kulisse) + Kokoshain-Hügel im Nordosten
@@ -52,11 +54,13 @@ export function buildWorld() {
   hillGeo.scale(44, 14, 30);
   const hill = toonMesh(hillGeo, 0x3f9d37, { outline: 0.12 });
   hill.position.set(-45, -2, -52);
+  hill.userData.noFade = true;
   g.add(hill);
   const hill2Geo = hillGeo.clone();
   hill2Geo.scale(0.6, 0.5, 0.7); // vor toonMesh skalieren, sonst passt die Kontur-Hülle nicht
   const hill2 = toonMesh(hill2Geo, 0x4cae3c, { outline: 0.12 });
   hill2.position.set(60, -2, -48);
+  hill2.userData.noFade = true;
   g.add(hill2);
   // Mentor-Hütte oben auf dem Hügel
   const mentor = hut({ w: 3, h: 2.4, d: 2.6, lean: 0.35, wall: 0x8b5a2b, straw: true, seed: 8 });
@@ -183,21 +187,44 @@ export function buildWorld() {
   g.add(footprints('sneaker', new THREE.Vector3(22, 0, 10), new THREE.Vector3(14, 0, 2), 6));
 
   // Himmel: Sonne (stoned) und Wolken weit weg
-  const s = sun(); s.position.set(70, 48, -170); s.scale.setScalar(5); g.add(s);
+  const s = sun(); s.position.set(70, 48, -170); s.scale.setScalar(5); s.userData.noFade = true; g.add(s);
   for (const [x, y, z, k] of [[-120, 42, -180, 1], [-20, 50, -200, 2], [140, 38, -150, 3], [-200, 30, -60, 4], [220, 34, -20, 5]]) {
-    const c = cloud(k); c.position.set(x, y, z); c.scale.setScalar(4); g.add(c);
+    const c = cloud(k); c.position.set(x, y, z); c.scale.setScalar(4); c.userData.noFade = true; g.add(c);
   }
 
-  // Snap-/Startpunkte: Spielerposition + Blickrichtung
+  // Hingucker: in jedem Kamerablick sollen 2–3 kleine Dinge liegen
+  const sc = sandcastle(); sc.position.set(-6, 0, 9); sc.rotation.y = 0.4; g.add(sc); circle(-6, 9, 1.3);
+  const sc2 = sandcastle(); sc2.position.set(48, 0, 9); sc2.scale.setScalar(0.7); g.add(sc2); circle(48, 9, 0.9);
+  for (const [x, z, sd] of [[-38, 11, 2], [20, 12, 3], [-55, 10, 4]]) {
+    const d = driftwood(sd); d.position.set(x, 0, z); g.add(d);
+  }
+  const shellColors = [0xffd5e0, 0xfff1c2, 0xffb6a3, 0xf4f4f8, 0xd9b3ff];
+  for (let i = 0; i < 26; i++) {
+    const x = WORLD.minX + 4 + rand() * (WORLD.maxX - WORLD.minX - 8);
+    const z = shoreZ(x) - 1 - rand() * 9;
+    const sh = shell(shellColors[i % shellColors.length], i + 7);
+    sh.position.set(x, 0, z); sh.scale.setScalar(0.7 + rand() * 0.6); g.add(sh);
+  }
+  for (const [x, z, col] of [[-16, 11, 0xff8c42], [8, 13, 0xff5fa2], [34, 12, 0xffd54a], [-48, 12, 0xff8c42], [60, 7, 0xff5fa2]]) {
+    const st = starfish(col); st.position.set(x, 0, z); st.rotation.y = rand() * 3; g.add(st);
+  }
+  const cr2 = crab(); cr2.position.set(-30, 0, 11); cr2.rotation.y = -0.8; g.add(cr2);
+  const cr3 = crab(); cr3.position.set(52, 0, 6); cr3.rotation.y = 2.4; g.add(cr3);
+  g.add(footprints('sandal', new THREE.Vector3(-6, 0, 2), new THREE.Vector3(6, 0, 9), 8));
+  g.add(footprints('sneaker', new THREE.Vector3(-44, 0, 12), new THREE.Vector3(-30, 0, 4), 8));
+  g.add(footprints('sandal', new THREE.Vector3(26, 0, 0), new THREE.Vector3(40, 0, 8), 8));
+  g.add(footprints('sneaker', new THREE.Vector3(54, 0, 1), new THREE.Vector3(62, 0, 9), 6));
+
+  // Snap-/Startpunkte: Spielerposition + Blickrichtung (Kamera steht im Norden → yaw ≈ π schaut zur Kamera)
   const spots = {
-    start: { x: -24, z: 3, yaw: 0.35 },
-    bar: { x: -28, z: -1, yaw: Math.PI },
-    pier: { x: -37, z: 9, yaw: -0.3 },
-    mitte: { x: 4, z: 4, yaw: -1.2 },
-    hotel: { x: 36, z: 1, yaw: 2.6 },
-    verleih: { x: -46, z: 0, yaw: 2.4 },
+    start: { x: -20, z: 2, yaw: 2.7 },
+    bar: { x: -28, z: 0, yaw: Math.PI },
+    pier: { x: -37, z: 9, yaw: 0.4 },
+    mitte: { x: 6, z: 5, yaw: -2.4 },
+    hotel: { x: 24, z: -4, yaw: 1.3 },
+    verleih: { x: -40, z: 2, yaw: 2.4 },
     ost: { x: 58, z: -2, yaw: Math.PI / 2 },
-    nord: { x: 0, z: -18, yaw: 0.2 },
+    nord: { x: 0, z: -16, yaw: 0.3 },
   };
   return { group: g, colliders, spots };
 }

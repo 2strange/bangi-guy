@@ -18,15 +18,16 @@ python3 -m http.server 8000
 Dann `http://localhost:8000/` öffnen.
 
 ## Steuerung
-- **WASD / Pfeiltasten** – gehen (Karte: oben = Norden, unten = Meer)
+- **WASD / Pfeiltasten** – gehen, relativ zur Kamera (Standard: oben im Bild = Richtung Meer)
 - **Shift** – „rennen“ (Sandalen: nur ein bisschen schneller, dafür mehr Gewackel)
 - **Q / E** – Kamera um den Spieler drehen
 - **Klick auf den Boden** – hinlaufen
 - Bis knöcheltief ins Wasser geht es, dann ist Schluss. Die drei Ausgänge (Surfer-Bucht, Krummgassen, Promenade)
   enden an Absperrungen.
 
-URL-Parameter: `?at=start|bar|pier|mitte|hotel|verleih|ost|nord` setzt den Startpunkt, `?stats=1` zeigt
-Draw-Calls/Dreiecke/FPS, `?snap=1` rendert ein einzelnes Standbild (für die PNGs in `shots/`).
+URL-Parameter: `?at=start|bar|pier|mitte|hotel|verleih|ost|nord|overview` setzt den Startpunkt, `?cy=-90` dreht die
+Kamera (Grad, relativ zum Standard), `?stats=1` zeigt Draw-Calls/Dreiecke/FPS, `?snap=1` rendert ein einzelnes
+Standbild (für die PNGs in `shots/`).
 
 ## Dateien
 - `index.html` – Seite, Importmap, Fehler-Overlay.
@@ -36,7 +37,8 @@ Draw-Calls/Dreiecke/FPS, `?snap=1` rendert ein einzelnes Standbild (für die PNG
 - `test/logic.test.js` – Tests dazu (`npm test` bzw. `node --test "test/**/*.test.js"`), kein Browser nötig.
 - `js/world.js` – die Zone: Sand, Sichelbucht (Wasser, nasser Sand, Schaum), Gras und Hügel im Norden, Promenade
   mit Laternen, Hecke mit Lücke, Absperrungen, Bangi Bar, Steg + Boot, Verleih mit Surfbrettern und schlafendem
-  Surfer, Hotel mit Pool und Rutsche, Liegen, Hängematte, Wegweiser, Deko; liefert die Collider gleich mit.
+  Surfer, Hotel mit Pool und Rutsche, Liegen, Hängematte, Wegweiser, Sandburgen, Muscheln, Seesterne, Krabben,
+  Treibholz, Fußspuren; liefert die Collider gleich mit.
 - `js/figures.js` – Schluffi (Spieler) und Turnschuh-Typ (NPC) mit Pivot-Gruppen statt Rig.
 - `js/props.js`, `js/faces.js`, `js/toon.js` – Bauteile, gemalte Gesichter, Toon-Material + Konturen
   (Material-Cache pro Farbe).
@@ -52,8 +54,13 @@ Draw-Calls/Dreiecke/FPS, `?snap=1` rendert ein einzelnes Standbild (für die PNG
   Absperrungen = achsenparallele Rechtecke (etwas größer als das sichtbare Objekt). Rausdrücken zum nächsten Punkt
   auf dem Rand, zwei Durchgänge für Ecken. Danach Welt-Grenzen und Ufer: `shoreZ(x)` + knöcheltiefe Zugabe.
 - **Kamera:** fester Offset (13 zurück, 13 hoch, ≈ 45°) um die Gierung gedreht, Position und Blickpunkt
-  exponentiell nachgezogen. Standard steht die Kamera im Süden und schaut nach Norden, damit die Welt wie auf der
-  Karte liegt (oben = Norden) und Bar, Verleih und Hotel ihre Fronten zeigen; das Meer ist dann unten im Bild.
+  exponentiell nachgezogen. Standard steht die Kamera im Norden und schaut übers Land aufs Meer — so ist das Wasser
+  fast immer im Bild; mit Q/E dreht man sich die Hütten und Hügel ins Bild.
+- **Verdeckung:** Jeden Frame geht ein Strahl von der Kamera zum Spieler. Props, die er trifft oder die direkt vor
+  der Linse stehen (Bounding-Sphere näher als 2.5), werden als ganze Gruppe auf 25 % Deckkraft gesetzt — inklusive
+  Kontur-Hülle (der Kontur-Shader hat dafür ein `opacity`-Uniform). Weil Materialien pro Farbe geteilt sind, bekommt
+  jedes ausgeblendete Mesh eine Materialkopie und beim Einblenden sein Original zurück. Boden, Wasser, Himmel und
+  Hügel sind per `userData.noFade` ausgenommen.
 - **Watscheln ohne Rig:** Beine und Arme sind Gruppen mit Pivot an Hüfte/Schulter und drehen gegenläufig um x;
   die Sandale hebt die Ferse, wenn das Bein nach hinten schwingt; der Oberkörper (eigene Pivot-Gruppe an der
   Hüfte) wippt, kippt seitlich und lehnt sich beim Rennen vor; der Kopf gegenläufig dazu.
@@ -70,6 +77,6 @@ Draw-Calls/Dreiecke/FPS, `?snap=1` rendert ein einzelnes Standbild (für die PNG
   Draw-Calls auf schwächeren Rechnern bremsen.
 - Steg begehbar machen (derzeit ein Block, man läuft am Strand daran vorbei).
 - Mehr Leben: Rentner auf den Liegen, Streife auf der Promenade, Möwe, Wellen mit leichter Bewegung.
-- Kamera-Alternativen zum Ausprobieren: Kamera im Norden (Meer immer im Bild, Karte dann um 180° gedreht und
-  Gebäude von hinten) oder leicht schräg aus Südwest.
+- Kamera-Alternative zum Ausprobieren: Kamera im Süden (Welt liegt wie auf der Karte, Gebäude zeigen ihre Fronten,
+  Meer dafür unten im Bild) — nur eine Konstante (`DEFAULT_CAM_YAW`).
 - Übergänge zu den Nachbarzonen (Krummgassen, Promenade/Pier) statt Absperrungen.

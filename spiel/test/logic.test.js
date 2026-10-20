@@ -136,12 +136,12 @@ test('followCamera: konvergiert auf Offset hinter/über dem Spieler, schaut aufs
   let c2 = { ...cam };
   for (let i = 0; i < 600; i++) c2 = followCamera(c2, p, 1 / 60, Math.PI / 2);
   close(c2.x, 10 + CAM_OFFSET.back, 1e-3); close(c2.z, 5, 1e-3);
-  // Standard-Gierung: Kamera im Süden (+z), schaut nach Norden; „hoch“ läuft nach Norden (Karte oben)
+  // Standard-Gierung: Kamera im Norden (-z), schaut nach Süden aufs Meer; „hoch“ läuft Richtung Meer
   let c3 = { ...cam };
   for (let i = 0; i < 600; i++) c3 = followCamera(c3, p, 1 / 60, DEFAULT_CAM_YAW);
-  close(c3.z, 5 + CAM_OFFSET.back, 1e-3); close(c3.tz, 5 - CAM_OFFSET.lookAhead, 1e-3);
+  close(c3.z, 5 - CAM_OFFSET.back, 1e-3); close(c3.tz, 5 + CAM_OFFSET.lookAhead, 1e-3);
   const up = inputToDir({ up: true }, DEFAULT_CAM_YAW);
-  close(up.x, 0, 1e-9); close(up.z, -1, 1e-9);
+  close(up.x, 0, 1e-9); close(up.z, 1, 1e-9);
 });
 
 test('followCamera: sanft — ein Schritt bewegt nur einen Teil', () => {

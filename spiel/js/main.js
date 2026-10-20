@@ -7,10 +7,11 @@ import {
 } from './logic.js';
 
 // Parameter per Regex, weil der Screenshot-Aufruf „?snap=1“ hinter andere Parameter hängt (…?at=bar?snap=1)
-const q = (name) => (location.search.match(new RegExp('[?&]' + name + '=([a-z0-9]+)')) || [])[1];
+const q = (name) => (location.search.match(new RegExp('[?&]' + name + '=([-a-z0-9.]+)')) || [])[1];
 const SNAP = q('snap') === '1';
 const STATS = q('stats') === '1';
 const AT = q('at');
+const CY = q('cy'); // Kamera-Gierung in Grad relativ zum Standard, z. B. ?at=hotel&cy=-90 (Kamera im Osten, Blick nach Westen)
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: SNAP });
 renderer.setPixelRatio(SNAP ? 1 : Math.min(window.devicePixelRatio, 1.5));
@@ -54,7 +55,7 @@ colliders.push({ x: NPC.x, z: NPC.z, r: 0.7 });
 // ---------- Zustand ----------
 const startSpot = world.spots[AT] || world.spots.start;
 let state = { x: startSpot.x, z: startSpot.z, yaw: startSpot.yaw, phase: 0, speed: 0 };
-let camYaw = DEFAULT_CAM_YAW;
+let camYaw = DEFAULT_CAM_YAW + (CY ? parseFloat(CY) * Math.PI / 180 : 0);
 let cam = { x: state.x, y: CAM_OFFSET.up, z: state.z - CAM_OFFSET.back, tx: state.x, ty: CAM_OFFSET.targetY, tz: state.z };
 let clickTarget = null;
 let npcHead = 0;
@@ -104,6 +105,70 @@ function applyCamera() {
   sunLight.target.position.set(state.x, 0, state.z);
 }
 
+// ---------- Verdeckung: was zwischen Kamera und Spieler steht (oder direkt vor der Linse), wird durchsichtig ----------
+// Materialien sind pro Farbe geteilt, deshalb bekommt jedes betroffene Mesh beim Ausblenden eine eigene Kopie.
+const faded = new Map(); // mesh -> Originalmaterial
+const fadeRay = new THREE.Raycaster();
+const tmpV = new THREE.Vector3();
+const tmpSphere = new THREE.Sphere();
+const FADE_OPACITY = 0.25;
+function fadeMesh(m) {
+  if (faded.has(m) || !m.isMesh) return;
+  const orig = m.material;
+  faded.set(m, orig);
+  const mats = Array.isArray(orig) ? orig : [orig];
+  const clones = mats.map((mat) => {
+    const c = mat.clone();
+    c.transparent = true;
+    if (c.isShaderMaterial) c.uniforms.opacity.value = FADE_OPACITY; else c.opacity = FADE_OPACITY;
+    c.depthWrite = false;
+    return c;
+  });
+  m.material = Array.isArray(orig) ? clones : clones[0];
+}
+function unfadeAll(keep) {
+  for (const [m, orig] of faded) {
+    if (keep.has(m)) continue;
+    const cur = Array.isArray(m.material) ? m.material : [m.material];
+    cur.forEach((c) => c.dispose());
+    m.material = orig;
+    faded.delete(m);
+  }
+}
+function updateFade() {
+  const camPos = camera.position;
+  const target = tmpV.set(state.x, 1.4, state.z);
+  const dist = camPos.distanceTo(target);
+  fadeRay.set(camPos, target.clone().sub(camPos).normalize());
+  fadeRay.far = dist - 0.8;
+  const keep = new Set();
+  // Kandidaten: Props in der Nähe des Spielers oder der Kamera (Boden/Wasser sind per noFade ausgenommen)
+  const candidates = [];
+  for (const o of world.group.children) {
+    if (o.userData.noFade) continue;
+    const d = Math.min(o.position.distanceTo(target), o.position.distanceTo(camPos));
+    if (d < 30) candidates.push(o);
+  }
+  const hits = fadeRay.intersectObjects(candidates, true);
+  const groups = new Set();
+  for (const h of hits) {
+    let o = h.object;
+    while (o.parent && o.parent !== world.group) o = o.parent;
+    groups.add(o);
+  }
+  // direkt vor der Linse: Bounding-Sphere des Meshes nahe an der Kamera
+  for (const o of candidates) {
+    if (groups.has(o)) continue;
+    o.traverse((m) => {
+      if (groups.has(o) || !m.isMesh || !m.geometry.boundingSphere) return;
+      tmpSphere.copy(m.geometry.boundingSphere).applyMatrix4(m.matrixWorld);
+      if (tmpSphere.distanceToPoint(camPos) < 2.5) groups.add(o);
+    });
+  }
+  for (const grp of groups) grp.traverse((m) => { if (m.isMesh) { fadeMesh(m); keep.add(m); } });
+  unfadeAll(keep);
+}
+
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   renderer.setSize(w, h, true);
@@ -125,8 +190,11 @@ if (SNAP) {
   applyPose(state);
   npc.userData.parts.head.rotation.y = npcHeadYaw(NPC, state);
   for (let i = 0; i < 300; i++) cam = followCamera(cam, state, 1 / 60, camYaw);
-  if (overview) cam = { x: 0, y: 78, z: 78, tx: 0, ty: 0, tz: -8 };
+  if (overview) cam = { x: 0, y: 78, z: -74, tx: 0, ty: 0, tz: 10 };
   applyCamera();
+  camera.updateMatrixWorld();
+  world.group.updateMatrixWorld(true);
+  updateFade();
   const shoot = () => { resize(); renderer.render(scene, camera); requestAnimationFrame(() => { resize(); renderer.render(scene, camera); }); };
   if (document.readyState === 'complete') shoot(); else window.addEventListener('load', shoot);
   window.addEventListener('resize', shoot);
@@ -153,6 +221,8 @@ if (SNAP) {
     npc.userData.parts.head.rotation.y = npcHead;
     cam = followCamera(cam, state, dt, camYaw);
     applyCamera();
+    camera.updateMatrixWorld();
+    updateFade();
     renderer.render(scene, camera);
     stats();
   });

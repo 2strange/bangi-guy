@@ -127,7 +127,7 @@ export function stepPlayer(state, input, dt, colliders = [], world = WORLD) {
  * sanft nachgezogen (exponentiell). cam: { x, y, z, tx, ty, tz }
  */
 export const CAM_OFFSET = { back: 13, up: 13, lookAhead: 3.0, targetY: 1.0 };
-export const DEFAULT_CAM_YAW = 0; // Kamera steht im Süden (Meer im Rücken) und schaut nach Norden: Karte oben = Norden
+export const DEFAULT_CAM_YAW = Math.PI; // Kamera steht im Norden und schaut übers Land aufs Meer (Q/E dreht)
 export function followCamera(cam, player, dt, camYaw = 0, k = 4) {
   const c = Math.cos(camYaw), s = Math.sin(camYaw);
   const ox = s * CAM_OFFSET.back, oz = c * CAM_OFFSET.back;
