@@ -160,6 +160,8 @@ function updateFade() {
     // Vorfilter (reine Logik, getestet): Props, deren Kugel die Sichtlinie schneidet oder vor der Linse liegt
     candidates.length = 0;
     for (const o of world.group.children) {
+      // Palmenkronen: Kugel an der Sichtlinie reicht (ohne Mesh-Raycast), die Krone ist eine große flache Fläche
+      if (o.userData.crown && isOccluder(camPos, target, o.userData.crown, { margin: 0.4 })) { groups.add(o); continue; }
       if (o.userData.sphere && isOccluder(camPos, target, o.userData.sphere)) candidates.push(o);
     }
     // Feinprüfung per Raycast gegen die Meshes der Kandidaten (eine große Kugel heißt noch nicht Treffer)

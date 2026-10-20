@@ -225,3 +225,14 @@ test('scaledRect/scaledCircle: Offsets und Maße wachsen mit dem Gebäude', () =
   const c = scaledCircle(o, 1.5, -2.1, -1.1, 0.25);
   close(c.x, -31.15); close(c.z, -7.65); close(c.r, 0.375);
 });
+
+test('isOccluder: Palmenkrone neben der Sichtlinie — Kugel mit Blattlängen-Radius fängt sie, kleine Kugel nicht', () => {
+  // Szene „dorf“ (alter Punkt) mit Kamera von Süden: Spieler (0, −16), Kamera (0, 13, −3); Palme bei (2, −9),
+  // Krone ca. (2.8, 6.3, −7.7) — im Bild hing sie massiv vor der Figur, Abstand zur Sichtlinie 3.6
+  const cam = { x: 0, y: 13, z: -3 }, head = { x: 0, y: 2.5, z: -16 };
+  const crown = { x: 2.8, y: 6.3, z: -7.7, r: 4.8 };
+  assert.equal(isOccluder(cam, head, { ...crown, r: 2.0 }, { margin: 0.4 }), false, 'als kompakter Ball kein Verdecker');
+  assert.equal(isOccluder(cam, head, crown, { margin: 0.4 }), true, 'mit Blattlängen-Radius ein Verdecker');
+  // weit abseits bleibt sie unsichtbar für die Regel
+  assert.equal(isOccluder(cam, head, { ...crown, x: 20 }, { margin: 0.4 }), false);
+});

@@ -62,7 +62,9 @@ Standbild (für die PNGs in `shots/`).
   exponentiell nachgezogen. Standard steht die Kamera im Norden und schaut übers Land aufs Meer — so ist das Wasser
   fast immer im Bild; mit Q/E dreht man sich die Hütten und Hügel ins Bild.
 - **Verdeckung:** Jeden Frame gehen zwei Strahlen von der Kamera zum Spieler (Kopf- und Kniehöhe, damit auch
-  hängende Palmenkronen zählen). Vorfilter ist die reine Funktion
+  hängende Palmenkronen zählen). Palmen haben zusätzlich eine Kronen-Kugel (Mitte Stammspitze, Radius Blattlänge):
+  berührt sie die Sichtlinie, wird die Palme ohne Mesh-Raycast ausgeblendet, weil die flache Krone vom Strahl oft
+  verfehlt wird. Für alles andere ist der Vorfilter die reine Funktion
   `isOccluder()` (Kugel schneidet die Sichtlinie oder liegt vor der Linse, getestet), danach ein Raycast gegen die
   Meshes der Kandidaten. Getroffene Props werden als ganze Gruppe auf 25 % Deckkraft gesetzt — inklusive
   Kontur-Hülle (der Kontur-Shader hat dafür ein `opacity`-Uniform). Weil Materialien pro Farbe geteilt sind, bekommt

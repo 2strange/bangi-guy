@@ -156,6 +156,10 @@ export function buildWorld() {
     g.add(p);
     palmObjs.push(p);
     circle(x, z, 0.63);
+    // Krone als Kugel (Welt): Mitte = Stammspitze, Radius = Blattlänge. Für die Verdeckung reicht der Strahl bei
+    // der großen flachen Krone nicht, deshalb wird die ganze Palme ausgeblendet, sobald die Kugel die Sichtlinie berührt.
+    const top = p.userData.curve.getPointAt(1).multiplyScalar(1.4);
+    p.userData.crown = { x: x + top.x, y: top.y - 0.6, z: z + top.z, r: 4.8 };
   }
   // Hängematte zwischen Palme 4 und 5 (Versteck hinter der Bar)
   {
