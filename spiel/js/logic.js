@@ -164,3 +164,55 @@ export function npcHeadYaw(npc, player, maxTurn = 1.1) {
   const rel = Math.atan2(Math.sin(want), Math.cos(want));
   return Math.max(-maxTurn, Math.min(maxTurn, rel));
 }
+
+// ---------- Verdeckung: welche Objekte stehen zwischen Kamera und Spieler? ----------
+// Abstand eines Punkts p zur Strecke a→b (3D)
+export function segmentPointDistance(a, b, p) {
+  const abx = b.x - a.x, aby = b.y - a.y, abz = b.z - a.z;
+  const apx = p.x - a.x, apy = p.y - a.y, apz = p.z - a.z;
+  const len2 = abx * abx + aby * aby + abz * abz;
+  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby + apz * abz) / len2));
+  const dx = apx - abx * t, dy = apy - aby * t, dz = apz - abz * t;
+  return Math.hypot(dx, dy, dz);
+}
+
+/**
+ * true, wenn die Kugel {x,y,z,r} die Sichtlinie Kamera→Ziel schneidet (um `margin` vor dem Ziel verkürzt,
+ * damit der Spieler selbst bzw. der Boden unter ihm nicht zählt) oder näher als `near` an der Kamera liegt.
+ */
+export function isOccluder(cam, target, sphere, { near = 2.5, margin = 0.8 } = {}) {
+  const dx = target.x - cam.x, dy = target.y - cam.y, dz = target.z - cam.z;
+  const len = Math.hypot(dx, dy, dz);
+  if (len < 1e-6) return false;
+  const k = Math.max(0, len - margin) / len;
+  const end = { x: cam.x + dx * k, y: cam.y + dy * k, z: cam.z + dz * k };
+  if (segmentPointDistance(cam, end, sphere) < sphere.r) return true;
+  return Math.hypot(sphere.x - cam.x, sphere.y - cam.y, sphere.z - cam.z) < sphere.r + near;
+}
+
+// Kamera-Weltposition aus Spieler + Gierung (dieselbe Formel wie followCamera, ohne Nachziehen)
+export function cameraTargetPos(player, camYaw) {
+  const c = Math.cos(camYaw), s = Math.sin(camYaw);
+  return { x: player.x + s * CAM_OFFSET.back, y: CAM_OFFSET.up, z: player.z + c * CAM_OFFSET.back };
+}
+
+// ---------- Maßstab der Gebäude (50 % größer als ursprünglich, Figuren bleiben) ----------
+export const FIGURE_HEIGHT = 2.75;   // Schluffi mit Haaren, Einheiten
+export const BUILDING_SCALE = 1.5;
+// Basishöhen (unskaliert) der Bauteile aus props.js: Dachspitze über dem Boden bzw. Türhöhe
+export const BUILDING_BASE = {
+  bar: { height: 4.55, door: 0 },
+  hut: { height: 4.1, door: 1.9 },
+  rental: { height: 4.0, door: 1.9 },
+  hotel: { height: 7.35, door: 2.6 },
+};
+export const buildingHeight = (name) => BUILDING_BASE[name].height * BUILDING_SCALE;
+export const doorHeight = (name) => BUILDING_BASE[name].door * BUILDING_SCALE;
+
+// Collider eines skalierten Gebäudes: Offsets/Maße relativ zur Gebäude-Position mitskalieren
+export function scaledRect(origin, scale, dx, dz, w, d) {
+  return { x: origin.x + dx * scale, z: origin.z + dz * scale, w: w * scale, d: d * scale };
+}
+export function scaledCircle(origin, scale, dx, dz, r) {
+  return { x: origin.x + dx * scale, z: origin.z + dz * scale, r: r * scale };
+}

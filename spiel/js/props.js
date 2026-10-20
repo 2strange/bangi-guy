@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { toonMesh, toon, deform, rng, textTexture, stripeTexture, BLACK } from './toon.js';
 import { faceDecal, sunFace } from './faces.js';
+import { BUILDING_BASE } from './logic.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -80,9 +81,10 @@ export function hut({ w = 3, h = 2.6, d = 2.8, lean = 0.4, wall = 0xf08ac4, roof
   const frontX = (t, x) => x * (1 + (flare - 1) * t) + lean * t;
 
   // Tür (schief eingesetzt)
-  const doorGeo = new THREE.BoxGeometry(0.85, 1.5, 0.12);
+  const doorH = BUILDING_BASE.hut.door; // figurengroß nach Skalierung (Test in logic.test.js)
+  const doorGeo = new THREE.BoxGeometry(0.95, doorH, 0.12);
   const doorM = toonMesh(doorGeo, door, { outline: 0.04 });
-  doorM.position.set(frontX(0.25, -0.55), stilts + 0.75, frontZ(0.28) + 0.02);
+  doorM.position.set(frontX(0.3, -0.55), stilts + doorH / 2, frontZ(0.35) + 0.02);
   doorM.rotation.z = 0.06;
   g.add(doorM);
   const knob = toonMesh(new THREE.SphereGeometry(0.07, 8, 6), 0xffd54a, { outline: 0.02 });
@@ -589,8 +591,9 @@ export function hotel() {
     door.position.set(x + lean * 0.6, H1 + 1.9, frontZ2); g.add(door);
   }
   // Eingang mit Vordach
-  const entry = toonMesh(new THREE.BoxGeometry(2.4, 2.6, 0.2), 0x5a3b1a, { outline: 0.05 });
-  entry.position.set(W * 0.05, 1.3, frontZ1 + 0.02); g.add(entry);
+  const entryH = BUILDING_BASE.hotel.door;
+  const entry = toonMesh(new THREE.BoxGeometry(2.4, entryH, 0.2), 0x5a3b1a, { outline: 0.05 });
+  entry.position.set(W * 0.05, entryH / 2, frontZ1 + 0.02); g.add(entry);
   const canopy = toonMesh(new THREE.BoxGeometry(3.6, 0.2, 2.2), 0xe8463a, { outline: 0.05 });
   canopy.position.set(W * 0.05, 2.9, frontZ1 + 1.1); canopy.rotation.x = 0.08; g.add(canopy);
   // Schild auf dem Dach
@@ -621,6 +624,7 @@ export function hotel() {
     rung.position.set(3.5, 0.6 + i * 0.7, -0.5); pool.add(rung);
   }
   g.add(pool);
+  g.userData.pool = pool;
   g.userData.poolOffset = { x: pool.position.x, z: pool.position.z };
   return g;
 }

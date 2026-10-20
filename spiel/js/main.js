@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { buildWorld } from './world.js';
 import { schluffi, runner } from './figures.js';
 import {
-  inputToDir, dirToTarget, stepPlayer, followCamera, waddlePose, npcHeadYaw, CAM_OFFSET, DEFAULT_CAM_YAW,
+  inputToDir, dirToTarget, stepPlayer, followCamera, waddlePose, npcHeadYaw, CAM_OFFSET, DEFAULT_CAM_YAW, isOccluder,
 } from './logic.js';
 
 // Parameter per Regex, weil der Screenshot-Aufruf „?snap=1“ hinter andere Parameter hängt (…?at=bar?snap=1)
@@ -39,6 +39,19 @@ scene.add(new THREE.HemisphereLight(0xcfeeff, 0xd9b27a, 0.75));
 // Welt + Figuren
 const world = buildWorld();
 scene.add(world.group);
+world.group.updateMatrixWorld(true);
+// Welt-Bounding-Sphere je Prop (einmalig) als Vorfilter für die Verdeckung
+{
+  const box = new THREE.Box3();
+  const sph = new THREE.Sphere();
+  for (const o of world.group.children) {
+    if (o.userData.noFade) continue;
+    box.setFromObject(o);
+    if (box.isEmpty()) continue;
+    box.getBoundingSphere(sph);
+    o.userData.sphere = { x: sph.center.x, y: sph.center.y, z: sph.center.z, r: sph.radius };
+  }
+}
 const colliders = world.colliders.slice();
 
 const player = schluffi();
@@ -142,13 +155,12 @@ function updateFade() {
   fadeRay.set(camPos, target.clone().sub(camPos).normalize());
   fadeRay.far = dist - 0.8;
   const keep = new Set();
-  // Kandidaten: Props in der Nähe des Spielers oder der Kamera (Boden/Wasser sind per noFade ausgenommen)
+  // Vorfilter (reine Logik, getestet): Props, deren Kugel die Sichtlinie schneidet oder vor der Linse liegt
   const candidates = [];
   for (const o of world.group.children) {
-    if (o.userData.noFade) continue;
-    const d = Math.min(o.position.distanceTo(target), o.position.distanceTo(camPos));
-    if (d < 30) candidates.push(o);
+    if (o.userData.sphere && isOccluder(camPos, target, o.userData.sphere)) candidates.push(o);
   }
+  // Feinprüfung per Raycast gegen die Meshes der Kandidaten (eine große Kugel heißt noch nicht Treffer)
   const hits = fadeRay.intersectObjects(candidates, true);
   const groups = new Set();
   for (const h of hits) {
@@ -156,7 +168,7 @@ function updateFade() {
     while (o.parent && o.parent !== world.group) o = o.parent;
     groups.add(o);
   }
-  // direkt vor der Linse: Bounding-Sphere des Meshes nahe an der Kamera
+  // direkt vor der Linse: Mesh-Kugel nahe an der Kamera
   for (const o of candidates) {
     if (groups.has(o)) continue;
     o.traverse((m) => {

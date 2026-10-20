@@ -172,3 +172,54 @@ test('angleLerp: nimmt den kurzen Weg über ±π', () => {
   const a = angleLerp(Math.PI - 0.1, -Math.PI + 0.1, 0.5);
   close(Math.abs(Math.atan2(Math.sin(a), Math.cos(a))), Math.PI, 1e-6);
 });
+
+// ---------- Verdeckung ----------
+import { segmentPointDistance, isOccluder, cameraTargetPos } from '../js/logic.js';
+
+test('segmentPointDistance: auf, neben und hinter der Strecke', () => {
+  const a = { x: 0, y: 0, z: 0 }, b = { x: 10, y: 0, z: 0 };
+  close(segmentPointDistance(a, b, { x: 5, y: 0, z: 0 }), 0);
+  close(segmentPointDistance(a, b, { x: 5, y: 3, z: 4 }), 5);
+  close(segmentPointDistance(a, b, { x: 13, y: 0, z: 4 }), 5, 1e-6, 'hinter dem Ende: Abstand zum Endpunkt');
+});
+
+test('isOccluder: Objekt auf der Sichtlinie ja, daneben nein, direkt vor der Linse ja', () => {
+  const cam = { x: 0, y: 13, z: -13 }, target = { x: 0, y: 1.4, z: 0 };
+  assert.equal(isOccluder(cam, target, { x: 0, y: 6, z: -6.5, r: 1.5 }), true, 'mitten auf der Linie');
+  assert.equal(isOccluder(cam, target, { x: 6, y: 6, z: -6.5, r: 1.5 }), false, 'seitlich daneben');
+  assert.equal(isOccluder(cam, target, { x: 2, y: 12, z: -12, r: 0.5 }), true, 'direkt vor der Linse');
+  // der Spieler selbst (am Zielpunkt) zählt nicht, weil die Strecke vorher endet
+  assert.equal(isOccluder(cam, target, { x: 0, y: 1.4, z: 0, r: 0.6 }), false, 'Ziel selbst');
+});
+
+test('isOccluder: Szene „mitte“ — Wegweiser steht NICHT zwischen Kamera und Spieler', () => {
+  // Spieler bei (6, 5), Kamera im Norden (Standard-Gierung), Wegweiser bei (4, -1), Bretter bis ~2.6 hoch
+  const player = { x: 6, z: 5 };
+  const cam = cameraTargetPos(player, DEFAULT_CAM_YAW);
+  close(cam.z, 5 - CAM_OFFSET.back);
+  const target = { x: 6, y: 1.4, z: 5 };
+  const signpost = { x: 4, y: 1.5, z: -1, r: 1.4 };
+  assert.equal(isOccluder(cam, target, signpost), false, 'Strahl läuft hoch über dem Wegweiser');
+  // ein Wegweiser direkt vor dem Spieler ist bei 45° Kamera noch 3 Einheiten unter dem Strahl → auch kein Verdecker
+  assert.equal(isOccluder(cam, target, { x: 6, y: 1.5, z: 1.5, r: 1.4 }), false);
+  // eine Palmenkrone (Mitte 5 hoch) auf der Sichtlinie verdeckt
+  assert.equal(isOccluder(cam, target, { x: 6, y: 5, z: 1.0, r: 1.5 }), true);
+});
+
+// ---------- Gebäudemaßstab ----------
+import { FIGURE_HEIGHT, BUILDING_SCALE, BUILDING_BASE, buildingHeight, doorHeight, scaledRect, scaledCircle } from '../js/logic.js';
+
+test('Gebäude sind mindestens 1,5 × Figurenhöhe, Türen figurengroß', () => {
+  assert.equal(BUILDING_SCALE, 1.5);
+  for (const name of Object.keys(BUILDING_BASE)) {
+    assert.ok(buildingHeight(name) >= 1.5 * FIGURE_HEIGHT, `${name}: ${buildingHeight(name)} < ${1.5 * FIGURE_HEIGHT}`);
+    if (BUILDING_BASE[name].door > 0) assert.ok(doorHeight(name) >= FIGURE_HEIGHT, `${name}: Tür ${doorHeight(name)} zu niedrig`);
+  }
+});
+
+test('scaledRect/scaledCircle: Offsets und Maße wachsen mit dem Gebäude', () => {
+  const o = { x: -28, z: -6 };
+  assert.deepEqual(scaledRect(o, 1.5, 0, 0.4, 5, 2.2), { x: -28, z: -5.4, w: 7.5, d: 3.3000000000000003 });
+  const c = scaledCircle(o, 1.5, -2.1, -1.1, 0.25);
+  close(c.x, -31.15); close(c.z, -7.65); close(c.r, 0.375);
+});

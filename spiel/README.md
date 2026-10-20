@@ -45,8 +45,12 @@ Standbild (für die PNGs in `shots/`).
 - `js/main.js` – Szene, Licht, Eingabe, Spielschleife, Standbild-Modus.
 
 ## Technik
-- **Koordinaten:** x nach Osten, z nach Süden (zum Meer). 1 Laufsekunde ≈ 4 Einheiten, Figur ≈ 2.7 hoch,
+- **Koordinaten:** x nach Osten, z nach Süden (zum Meer). 1 Laufsekunde ≈ 4 Einheiten, Figur ≈ 2.75 hoch,
   Zone ≈ 132 × 40 Einheiten → einmal quer ≈ 33 s gehen.
+- **Maßstab der Gebäude:** Bar, Verleih, Hotel und Hütten sind als Gruppe um `BUILDING_SCALE` (1.5) vergrößert,
+  ihre Collider rechnen Offsets und Maße mit (`scaledRect`/`scaledCircle`). Ein Test sichert, dass jedes Gebäude
+  mindestens 1.5 × Figurenhöhe hoch ist und Türen figurengroß sind. Palmen (1.4), Laternen (1.4), Schirme,
+  Liegen, Absperrungen (1.3) und Wegweiser (1.25) sind moderat mitgewachsen; Figuren und Kleinkram nicht.
 - **Bewegung:** Richtung aus Tasten relativ zur Kamera; Tempo läuft weich an und aus; die Figur dreht sich
   exponentiell in Laufrichtung. Die Watschel-Phase wächst mit der tatsächlich zurückgelegten Strecke, also bleibt
   die Animation vor einer Wand stehen.
@@ -56,8 +60,9 @@ Standbild (für die PNGs in `shots/`).
 - **Kamera:** fester Offset (13 zurück, 13 hoch, ≈ 45°) um die Gierung gedreht, Position und Blickpunkt
   exponentiell nachgezogen. Standard steht die Kamera im Norden und schaut übers Land aufs Meer — so ist das Wasser
   fast immer im Bild; mit Q/E dreht man sich die Hütten und Hügel ins Bild.
-- **Verdeckung:** Jeden Frame geht ein Strahl von der Kamera zum Spieler. Props, die er trifft oder die direkt vor
-  der Linse stehen (Bounding-Sphere näher als 2.5), werden als ganze Gruppe auf 25 % Deckkraft gesetzt — inklusive
+- **Verdeckung:** Jeden Frame geht ein Strahl von der Kamera zum Spieler. Vorfilter ist die reine Funktion
+  `isOccluder()` (Kugel schneidet die Sichtlinie oder liegt vor der Linse, getestet), danach ein Raycast gegen die
+  Meshes der Kandidaten. Getroffene Props werden als ganze Gruppe auf 25 % Deckkraft gesetzt — inklusive
   Kontur-Hülle (der Kontur-Shader hat dafür ein `opacity`-Uniform). Weil Materialien pro Farbe geteilt sind, bekommt
   jedes ausgeblendete Mesh eine Materialkopie und beim Einblenden sein Original zurück. Boden, Wasser, Himmel und
   Hügel sind per `userData.noFade` ausgenommen.
