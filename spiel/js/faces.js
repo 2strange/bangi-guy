@@ -6,8 +6,12 @@
 // API: face(kind, mood, opts) → gecachte CanvasTexture (faceCanvas() liefert das rohe Canvas, z. B. für 2D-Vorschauen).
 //   kind: 'schluffi' | 'runner' | 'sun' | 'kunde'
 //   mood: 'neutral' | 'misstrauisch' | 'erschrocken' | 'zufrieden' | 'selig'   (selig = stoned, heutiger Schluffi-Look)
-//   opts: skin (CSS-Farbe oder Hex-Zahl, Lidfarbe = Haut), beard (true = Vollbart, 'stoppeln'), glasses, wrinkles (Oma),
-//         seed (kleine Abweichungen bei Augenabstand/-größe und Mundbreite, damit Kunden sich unterscheiden), look [px, py]
+//   opts: skin (CSS-Farbe oder Hex-Zahl, Lidfarbe = Haut), beard (true = Vollbart, 'stoppeln', 'schnauzer'),
+//         glasses (true/'lese' = Lesebrille, 'sonnen' = Sonnenbrille, 'sport' = Sportbrille), wrinkles (Oma),
+//         seed (kleine Abweichungen bei Augenabstand/-größe und Mundbreite, damit Kunden sich unterscheiden), look [px, py].
+//   Katalog-Felder aus data/kunden.json gehen direkt rein: hautton (hell|mittel|dunkel|sonnenbrand), bart
+//   (keiner|stoppel|vollbart|schnauzer), brille (keine|sonnenbrille|lesebrille|sportbrille), haare (weiss → graue
+//   Brauen + Falten). kundeFace(datensatz, mood) nimmt den ganzen Datensatz; kundeSkin(datensatz) liefert die Kopffarbe.
 import * as THREE from 'three';
 import { toon, rng } from './toon.js';
 
@@ -88,6 +92,34 @@ function finish(c) {
 const cssColor = (c, fallback) => (typeof c === 'number' ? '#' + c.toString(16).padStart(6, '0') : (c ?? fallback));
 const pick = (v, i) => (Array.isArray(v) ? v[i] : v);
 
+// Hauttöne des Kundschaft-Katalogs (Hex für den Kopf-Mesh, CSS fürs Gesicht = dieselbe Farbe)
+export const SKIN_TONES = { hell: 0xf5c9a0, mittel: 0xd9a06e, dunkel: 0x8d5a3a, sonnenbrand: 0xf0876a };
+export const kundeSkin = (k) => SKIN_TONES[k?.hautton] ?? SKIN_TONES.mittel;
+
+// Katalog-Felder → interne Optionen (alte Optionen bleiben gültig und gewinnen, wenn beide gesetzt sind)
+const BART = { keiner: false, stoppel: 'stoppeln', vollbart: true, schnauzer: 'schnauzer' };
+const BRILLE = { keine: false, sonnenbrille: 'sonnen', lesebrille: 'lese', sportbrille: 'sport' };
+function normalize(o) {
+  const weiss = o.haare === 'weiss';
+  return {
+    skin: cssColor(o.skin ?? SKIN_TONES[o.hautton], '#f0b98a'),
+    beard: o.beard ?? BART[o.bart] ?? false,
+    glasses: o.glasses ?? BRILLE[o.brille] ?? false,
+    wrinkles: o.wrinkles ?? weiss,
+    seed: o.seed ?? 0,
+    look: o.look ?? null,
+    beardColor: cssColor(o.beardColor, weiss ? '#d8d8e0' : '#6b4423'),
+    browColor: weiss ? '#d8d8e0' : null,
+  };
+}
+
+// Kleiner stabiler Hash (Kunden-id → seed), damit gleiche Optionen pro Kunde anders streuen
+function hashSeed(str) {
+  let h = 7;
+  for (const ch of String(str)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return 1 + (h % 997);
+}
+
 // ---------- Stimmungen: Lid (0 = offen … 1 = zu), Lidneigung (linkes Auge; rechts gespiegelt, + = innen tiefer),
 // Pupillengröße (Faktor), Pupillenversatz (je Auge oder gemeinsam), Augengröße ----------
 const MOODS = {
@@ -122,7 +154,16 @@ const KINDS = {
 };
 
 // ---------- Brauen ----------
-function brows(ctx, mood, eyes, r, width) {
+function brows(ctx, mood, eyes, r, width, light = null) {
+  if (light) { // helle Brauen: erst Tinte breiter, dann die helle Farbe drüber
+    brows(ctx, mood, eyes, r, width + 8);
+    const sp = strokePath;
+    const lightStroke = (c, pts, w) => sp(c, pts, w, light);
+    return browsWith(ctx, mood, eyes, r, width - 2, lightStroke);
+  }
+  return browsWith(ctx, mood, eyes, r, width, strokePath);
+}
+function browsWith(ctx, mood, eyes, r, width, strokePath) {
   for (let i = 0; i < 2; i++) {
     const [ex, ey] = eyes[i];
     const s = i === 0 ? 1 : -1; // Spiegelung: innen = Richtung Mitte
@@ -235,25 +276,54 @@ function beard(ctx, m, skin, color, big) {
   ctx.closePath(); ctx.fill(); ctx.stroke();
   ctx.fillStyle = skin;
   ctx.beginPath(); ctx.ellipse(m.x, m.y + (big ? 40 : 14), m.w * (big ? 0.62 : 0.54), big ? 170 : 84, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = color; ctx.lineWidth = 8;
+  mustache(ctx, m, color);
+}
+function mustache(ctx, m, color) {
+  ctx.fillStyle = color; ctx.strokeStyle = INK; ctx.lineWidth = 8;
   for (const s of [-1, 1]) {
     ctx.beginPath(); ctx.ellipse(m.x + s * 78, m.y - 50, 98, 34, s * 0.22, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   }
 }
 
-function glasses(ctx, eyes, r) {
-  const R = r * 1.24;
+function glasses(ctx, eyes, r, kind = true) {
+  const [[lx, ly], [rx, ry]] = eyes;
   ctx.lineCap = 'round';
+  if (kind === 'sport') { // Sportbrille: ein breites Visier, orange getönt
+    const R = r * 1.3, x0 = lx - R, x1 = rx + R, y0 = ly - r * 0.95, y1 = ly + r * 0.75;
+    const band = () => { ctx.beginPath(); ctx.roundRect(x0, y0, x1 - x0, y1 - y0, r * 0.7); };
+    ctx.fillStyle = 'rgba(255, 140, 40, 0.6)'; band(); ctx.fill();
+    ctx.strokeStyle = INK; ctx.lineWidth = 18; band(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 10;
+    ctx.beginPath(); ctx.moveTo(x0 + 60, y0 + 40); ctx.lineTo(x0 + 190, y0 + 28); ctx.stroke();
+    strokePath(ctx, [[x0, ly - 20], [30, ly - 70]], 14);
+    strokePath(ctx, [[x1, ly - 20], [S - 30, ly - 70]], 14);
+    return;
+  }
+  if (kind === 'lese') { // Lesebrille: kleine Halbgläser, sitzen tief — der Blick geht über den Rand
+    const R = r * 0.95, cy = ly + r * 0.38;
+    for (const ex of [lx, rx]) {
+      ctx.fillStyle = 'rgba(160, 225, 255, 0.2)';
+      ctx.beginPath(); ctx.arc(ex, cy, R, 0, Math.PI); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = INK; ctx.lineWidth = 14;
+      ctx.beginPath(); ctx.arc(ex, cy, R, 0, Math.PI); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ex - R, cy); ctx.lineTo(ex + R, cy); ctx.stroke();
+    }
+    strokePath(ctx, [[lx + R, cy], [(lx + rx) / 2, cy - 14, rx - R, cy]], 12);
+    strokePath(ctx, [[lx - R, cy], [30, cy - 70]], 10);
+    strokePath(ctx, [[rx + R, cy], [S - 30, cy - 70]], 10);
+    return;
+  }
+  const R = r * 1.24;
+  const sonnen = kind === 'sonnen';
   for (let i = 0; i < 2; i++) {
     const [ex, ey] = eyes[i];
-    ctx.fillStyle = 'rgba(160, 225, 255, 0.22)';
+    ctx.fillStyle = sonnen ? 'rgba(20, 20, 40, 0.8)' : 'rgba(160, 225, 255, 0.22)';
     ctx.beginPath(); ctx.arc(ex, ey, R, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = INK; ctx.lineWidth = 18;
+    ctx.strokeStyle = INK; ctx.lineWidth = sonnen ? 22 : 18;
     ctx.beginPath(); ctx.arc(ex, ey, R, 0, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 10;
     ctx.beginPath(); ctx.arc(ex, ey, R * 0.78, Math.PI * 1.15, Math.PI * 1.45); ctx.stroke();
   }
-  const [[lx, ly], [rx, ry]] = eyes;
   strokePath(ctx, [[lx + R, ly - 12], [(lx + rx) / 2, ly - 40, rx - R, ry - 12]], 14);
   strokePath(ctx, [[lx - R, ly - 10], [40, ly - 60]], 12);
   strokePath(ctx, [[rx + R, ry - 10], [S - 40, ry - 60]], 12);
@@ -286,8 +356,8 @@ function sweatDrop(ctx, x, y) {
 function paint(kind, mood, o) {
   const K = KINDS[kind] ?? KINDS.kunde;
   const M = { ...MOODS[mood] ?? MOODS.neutral, ...(K.moods?.[mood] ?? {}) };
-  const skin = cssColor(o.skin, '#f0b98a');
-  const rand = rng(1000 + (o.seed ?? 0));
+  const skin = o.skin;
+  const rand = rng(1000 + o.seed);
   // Abweichungen per seed (nur wenn gesetzt): Augenabstand, Augengröße, Mundbreite, Pupillengröße
   const vary = o.seed ? 1 : 0;
   const r = K.r * (1 + vary * (rand() - 0.5) * 0.22) * (M.eyeScale ?? 1);
@@ -304,7 +374,7 @@ function paint(kind, mood, o) {
     ctx.beginPath(); ctx.arc(215, 600, 70, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(809, 600, 70, 0, Math.PI * 2); ctx.fill();
   }
-  if (o.beard === true) beard(ctx, m, skin, cssColor(o.beardColor, '#6b4423'), mood === 'selig');
+  if (o.beard === true) beard(ctx, m, skin, o.beardColor, mood === 'selig');
   for (let i = 0; i < 2; i++) {
     const look = o.look ? [pick(o.look[0], i), pick(o.look[1], i)] : [pick(M.px, i), pick(M.py, i)];
     eye(ctx, eyes[i][0], eyes[i][1], r, {
@@ -312,9 +382,10 @@ function paint(kind, mood, o) {
       veins, bag: !!K.bag, seed: K.seeds?.[i] ?? 1 + i, stroke: K.stroke,
     });
   }
-  if (o.glasses) glasses(ctx, eyes, r);
-  if (K.brows !== false) brows(ctx, mood, eyes, r, 20);
-  if (K.stubble || o.beard === 'stoppeln') stubble(ctx, m, K.stubble ? 9 : 9 + (o.seed ?? 0));
+  if (o.glasses) glasses(ctx, eyes, r, o.glasses);
+  if (K.brows !== false) brows(ctx, mood, eyes, r, 20, o.browColor);
+  if (K.stubble || o.beard === 'stoppeln') stubble(ctx, m, K.stubble ? 9 : 9 + o.seed);
+  if (o.beard === 'schnauzer') mustache(ctx, m, o.beardColor);
   if (K.cheekbones) {
     strokePath(ctx, [[150, 560], [190, 680]], 8);
     strokePath(ctx, [[874, 560], [834, 680]], 8);
@@ -327,20 +398,27 @@ function paint(kind, mood, o) {
 
 const canvasCache = new Map();
 const texCache = new Map();
-const key = (kind, mood, o) => `${kind}|${mood}|${cssColor(o.skin, '')}|${o.beard ?? ''}|${o.glasses ? 1 : 0}|${o.wrinkles ? 1 : 0}|${o.seed ?? 0}|${o.look ? o.look.join(',') : ''}|${cssColor(o.beardColor, '')}`;
+const key = (kind, mood, o) => `${kind}|${mood}|${o.skin}|${o.beard}|${o.glasses}|${o.wrinkles ? 1 : 0}|${o.seed}|${o.look ? o.look.join(',') : ''}|${o.beardColor}|${o.browColor ?? ''}`;
 
 /** Rohes Canvas (gecacht) — für 2D-Vorschauen oder eigene Texturen. */
 export function faceCanvas(kind, mood = 'neutral', opts = {}) {
-  const k = key(kind, mood, opts);
-  if (!canvasCache.has(k)) canvasCache.set(k, paint(kind, mood, opts));
+  const o = normalize(opts);
+  const k = key(kind, mood, o);
+  if (!canvasCache.has(k)) canvasCache.set(k, paint(kind, mood, o));
   return canvasCache.get(k);
 }
 
 /** Gesicht als CanvasTexture (gecacht; gleiche Parameter = dieselbe Textur). */
 export function face(kind, mood = 'neutral', opts = {}) {
-  const k = key(kind, mood, opts);
-  if (!texCache.has(k)) texCache.set(k, finish(faceCanvas(kind, mood, opts)));
+  const o = normalize(opts);
+  const k = key(kind, mood, o);
+  if (!texCache.has(k)) texCache.set(k, finish(faceCanvas(kind, mood, o)));
   return texCache.get(k);
+}
+
+/** Kundengesicht direkt aus einem Datensatz von data/kunden.json; mood fehlt → stimmung_start. */
+export function kundeFace(k, mood = k.stimmung_start ?? 'neutral', extra = {}) {
+  return face('kunde', mood, { hautton: k.hautton, bart: k.bart, brille: k.brille, haare: k.haare, seed: hashSeed(k.id ?? k.name ?? 'x'), ...extra });
 }
 
 // Bisherige Exporte: die drei Ursprungs-Looks

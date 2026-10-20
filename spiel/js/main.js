@@ -378,9 +378,15 @@ function resize() {
 
 const hint = document.getElementById('hint');
 function stats() {
-  if (!hint || !STATS) return;
+  if (!STATS) return;
+  let el = hint || document.getElementById('stats');
+  if (!el) {
+    el = document.createElement('div'); el.id = 'stats'; el.className = 'comic';
+    el.style.cssText = 'position:fixed;right:12px;top:10px;background:#fff8e6;border:3px solid #111;border-radius:12px;padding:4px 12px;font-size:16px;box-shadow:3px 3px 0 #111';
+    document.body.appendChild(el);
+  }
   const r = renderer.info.render;
-  hint.textContent = `calls ${r.calls} · tris ${r.triangles} · ${Math.round(1000 / Math.max(1, frameMs))} fps`;
+  el.textContent = `calls ${r.calls} · tris ${r.triangles}` + (SNAP ? '' : ` · ${Math.round(1000 / Math.max(1, frameMs))} fps`);
 }
 let frameMs = 16;
 
@@ -447,7 +453,7 @@ if (SNAP) {
     setupScene();
     applyPose(state);
     for (let i = 0; i < 300; i++) cam = followCamera(cam, state, 1 / 60, camYaw);
-    if (overview) cam = { x: 0, y: 78, z: -74, tx: 0, ty: 0, tz: 10 };
+    if (overview) { cam = { x: 6, y: 112, z: -128, tx: 6, ty: 0, tz: -10 }; scene.fog = null; } // Übersicht ohne Nebel
     if (mode === 'inspect') {
       cam = inspectCamera(talking.npc, state, inspectOpts(talking));
       talking.npc.yaw = Math.atan2(cam.x - talking.npc.x, cam.z - talking.npc.z);
@@ -463,7 +469,7 @@ if (SNAP) {
       resize(); camera.updateMatrixWorld();
       if (mode === 'dialog') placeBubbleAtHead();
       renderer.render(scene, camera);
-      requestAnimationFrame(() => { resize(); if (mode === 'dialog') placeBubbleAtHead(); renderer.render(scene, camera); });
+      requestAnimationFrame(() => { resize(); if (mode === 'dialog') placeBubbleAtHead(); renderer.render(scene, camera); stats(); });
     };
     if (document.readyState === 'complete') shoot(); else window.addEventListener('load', shoot);
     window.addEventListener('resize', shoot);

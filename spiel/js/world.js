@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { toonMesh, toon, basicMat, deform, rng } from './toon.js';
 import { palm, beachBar, pier, boat, signpost, hammock, parasol, beachBall, coconut, crab, cloud, sun, footprints, limb, hut, mailbox, hotel, lounger, rental, sleepingSurfer, barrier, lamp, hedge, shell, starfish, sandcastle, driftwood } from './props.js';
 import { shoreZ, WORLD, buildingScale, scaledRect, scaledCircle } from './logic.js';
+import { buildDorf } from './zone-dorf.js';
 
 export const WATER_Y = 0.06;
 
@@ -72,15 +73,8 @@ export function buildWorld() {
   mentor.scale.setScalar(buildingScale('mentor'));
   g.add(mentor);
 
-  // Krummgassen-Kulisse hinter dem Nordrand
-  const huts = [[-14, -37, 0xf08ac4, 0x2fa9b9, 0.5, 2], [2, -42, 0xffb347, 0xd62e2e, -0.4, 3], [18, -36, 0x9fd8ff, 0xffd54a, 0.45, 4], [36, -43, 0xc9a0ff, 0x3bb84a, -0.5, 5]];
-  for (const [x, z, wall, roofColor, lean, seed] of huts) {
-    const h = hut({ w: 3.2, h: 3.0, d: 3.0, lean, wall, roofColor, seed });
-    h.position.set(x, 0, z);
-    h.rotation.y = (seed - 3) * 0.3;
-    h.scale.setScalar(buildingScale('hut'));
-    g.add(h);
-  }
+  // Dorf „Krummgassen“ nördlich der Hecke (eigenes Modul): Häuser, Gassen, Wäscheleinen, Collider inkl. Heckenrand
+  const dorf = buildDorf(g, colliders);
 
   // Promenade: gepflasterter Weg am Nordrand des Strands, mit Laternen
   g.add(stripMesh((x) => -12.2 + 0.4 * Math.sin(x / 5), (x) => -9.4 + 0.4 * Math.sin(x / 5 + 1), 0xd9c4a3, 0.03, { x0: -64, x1: 66, step: 2 }));
@@ -90,7 +84,6 @@ export function buildWorld() {
   // Hecke als Nordrand (mit Lücke für die Wäschegasse)
   g.add(hedge(-66, 66, -25.5, { gapFrom: -4, gapTo: 4, seed: 3 }));
   // Absperrungen an den drei Ausgängen (Wege enden hier erstmal)
-  const bN = barrier('KRUMMGASSEN – Wäsche hängt'); bN.position.set(0, 0, -23.5); bN.scale.setScalar(1.3); g.add(bN); rect(0, -23.5, 6.5, 1.5);
   const bW = barrier('SURFER-BUCHT – bald'); bW.position.set(-64.5, 0, -2); bW.rotation.y = Math.PI / 2; bW.scale.setScalar(1.3); g.add(bW); rect(-64.5, -2, 1.5, 6.5);
   const bE = barrier('PROMENADE – im Bau'); bE.position.set(64.5, 0, -10.8); bE.rotation.y = -Math.PI / 2; bE.scale.setScalar(1.3); g.add(bE); rect(64.5, -10.8, 1.5, 6.5);
 
@@ -255,7 +248,7 @@ export function buildWorld() {
     hotel: { x: 20, z: -4, yaw: 1.3 },
     verleih: { x: -45, z: 3, yaw: 0.3 },
     ost: { x: 58, z: -2, yaw: Math.PI / 2 },
-    nord: { x: 8, z: -17, yaw: 0.3 },
+    hecke: { x: 8, z: -17, yaw: 0.3 }, // Strandseite vor der Heckenlücke („nord“ gehört dem Dorf)
   };
-  return { group: g, colliders, spots };
+  return { group: g, colliders, spots: { ...spots, ...dorf.spots }, hideouts: dorf.hideouts, dorf };
 }

@@ -27,8 +27,8 @@ Dann `http://localhost:8000/` öffnen.
 - **F** in Kundennähe – genau hinschauen: die Kamera fährt vor die Figur, Füße bis Kopf, der Spieler wird dabei
   ausgeblendet. Nochmal F, Esc oder Weggehen beendet es. Das ist der Kern: Schuhe, Hemd und Accessoire muss man SEHEN.
   Die Tastenbelegung sind Konstanten am Anfang von `js/main.js`.
-- Bis knöcheltief ins Wasser geht es, dann ist Schluss. Die drei Ausgänge (Surfer-Bucht, Krummgassen, Promenade)
-  enden an Absperrungen.
+- Bis knöcheltief ins Wasser geht es, dann ist Schluss. Durch die Heckenlücke geht es nach Norden ins Dorf
+  Krummgassen; die übrigen Ausgänge (Surfer-Bucht, Promenade, Dorf-Nordende) enden an Absperrungen.
 
 ## Mechanik v0 (Kern: Leute lesen)
 - **Kundschaft** aus `data/kunden.json`, zur Laufzeit per `fetch` geladen; aus dem Katalog kommen 7 pro Tag an den
@@ -56,7 +56,7 @@ Dann `http://localhost:8000/` öffnen.
 - Standbilder: `?snap=1&scene=dialog` (Sprechblase in der Wahl-Phase), `?snap=1&scene=inspect` (Hinschau-Kamera auf
   den Zivi) und `?snap=1&scene=lineup` (alle Kunden in einer Reihe).
 
-URL-Parameter: `?at=start|bar|pier|mitte|hotel|verleih|ost|nord|overview` setzt den Startpunkt, `?cy=-90` dreht die
+URL-Parameter: `?at=start|bar|pier|mitte|hotel|verleih|ost|hecke|overview|dorf|platz|waesche|hunde|nord` setzt den Startpunkt, `?cy=-90` dreht die
 Kamera (Grad, relativ zum Standard), `?stats=1` zeigt Draw-Calls/Dreiecke/FPS, `?snap=1` rendert ein einzelnes
 Standbild (für die PNGs in `shots/`).
 
@@ -66,6 +66,8 @@ Standbild (für die PNGs in `shots/`).
   Anlauf/Bremsen, Kollision (Kreise + Rechtecke, Rausdrücken in zwei Durchgängen), Uferlinie als Funktion,
   Welt-Grenzen, Folge-Kamera, Watschel-Pose, NPC-Kopfdrehung, Klick-Ziel.
 - `test/logic.test.js` – Tests dazu (`npm test` bzw. `node --test "test/**/*.test.js"`), kein Browser nötig.
+- `js/zone-dorf.js` + `js/zone-dorf-layout.js` – Zone „Krummgassen“ nördlich der Hecke (eigenes Modul, wird aus
+  `world.js` mit `buildDorf()` eingehängt; liefert Startpunkte, Bettlaken-Verstecke und die Rand-Collider).
 - `js/world.js` – die Zone: Sand, Sichelbucht (Wasser, nasser Sand, Schaum), Gras und Hügel im Norden, Promenade
   mit Laternen, Hecke mit Lücke, Absperrungen, Bangi Bar, Steg + Boot, Verleih mit Surfbrettern und schlafendem
   Surfer, Hotel mit Pool und Rutsche, Liegen, Hängematte, Wegweiser, Sandburgen, Muscheln, Seesterne, Krabben,

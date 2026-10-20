@@ -236,3 +236,10 @@ test('isOccluder: Palmenkrone neben der Sichtlinie — Kugel mit Blattlängen-Ra
   // weit abseits bleibt sie unsichtbar für die Regel
   assert.equal(isOccluder(cam, head, { ...crown, x: 20 }, { margin: 0.4 }), false);
 });
+
+// ---------- Welt-Grenze gegen das Dorf-Layout ----------
+import { DORF } from '../js/zone-dorf-layout.js';
+test('WORLD.minZ reicht bis zum Nordrand des Dorfs (Layout-Daten)', () => {
+  assert.ok(WORLD.minZ <= DORF.minZ, `WORLD.minZ ${WORLD.minZ} muss ≤ DORF.minZ ${DORF.minZ} sein`);
+  assert.ok(WORLD.minZ >= DORF.minZ - 2, 'aber nicht weit darüber hinaus (sonst läuft man ins Leere)');
+});

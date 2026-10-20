@@ -9,7 +9,9 @@ export const TURN_RATE = 10;        // rad/s Richtung Zielwinkel (exponentiell)
 export const WADE_DEPTH = 1.6;      // so weit darf er ins Wasser (knöcheltief)
 
 // Spielfläche der Zone (Bühne). Nord = -z (Hügel), Süd = +z (Meer).
-export const WORLD = { minX: -66, maxX: 66, minZ: -24 };
+// Nordgrenze = Nordrand des Dorfs Krummgassen (zone-dorf-layout.js: DORF.minZ, Test sichert die Übereinstimmung)
+export const WORLD_MIN_Z = -74;
+export const WORLD = { minX: -66, maxX: 66, minZ: WORLD_MIN_Z };
 
 // Uferlinie: Sichelbucht, in der Mitte reicht das Meer am weitesten ins Land.
 export function shoreZ(x) {
