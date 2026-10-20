@@ -211,9 +211,16 @@ export function buildWorld() {
   g.add(footprints('sneaker', new THREE.Vector3(22, 0, 10), new THREE.Vector3(14, 0, 2), 6));
 
   // Himmel: Sonne (stoned) und Wolken weit weg
-  const s = sun(); s.position.set(70, 48, -170); s.scale.setScalar(5); s.userData.noFade = true; g.add(s);
+  // Himmelsobjekte: nicht faden und nicht im Nebel verblassen (eigene Materialkopien ohne fog)
+  const noFog = (o) => o.traverse((m) => {
+    if (!m.isMesh) return;
+    const mats = Array.isArray(m.material) ? m.material : [m.material];
+    const copies = mats.map((mat) => { if (mat.isShaderMaterial) return mat; const c = mat.clone(); c.fog = false; return c; });
+    m.material = Array.isArray(m.material) ? copies : copies[0];
+  });
+  const s = sun(); s.position.set(70, 48, -170); s.scale.setScalar(5); s.userData.noFade = true; noFog(s); g.add(s);
   for (const [x, y, z, k] of [[-120, 42, -180, 1], [-20, 50, -200, 2], [140, 38, -150, 3], [-200, 30, -60, 4], [220, 34, -20, 5]]) {
-    const c = cloud(k); c.position.set(x, y, z); c.scale.setScalar(4); c.userData.noFade = true; g.add(c);
+    const c = cloud(k); c.position.set(x, y, z); c.scale.setScalar(4); c.userData.noFade = true; noFog(c); g.add(c);
   }
 
   // Hingucker: in jedem Kamerablick sollen 2–3 kleine Dinge liegen

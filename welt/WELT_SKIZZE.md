@@ -135,6 +135,36 @@ Das trifft die Vorgabe „2–3 Minuten einmal durch“. Die Welt ist ca. 300 m 
 Reisfeld mit Bauer Nok (zwischen Kuppe und Posten; später Kunde mit eigenem Gag), Kokoshain östlich vom Markt
 (Andockfläche für mehr Dorf).
 
+## 3b. Kundschaft lesen: die Tells
+
+Regel: **Schuhe zuerst, dann Hemd, dann Accessoire.** Kein Merkmal allein reicht; die Kombination entscheidet.
+Katalog mit Sätzen und Mimik-Wünschen: `spiel/data/kunden.json`.
+
+| Merkmal | Bedeutung | Risiko |
+|---|---|---|
+| Sandalen, abgelaufen | Einheimischer oder Dauergast, kann nicht rennen | niedrig |
+| Sandalen + Socken + Strohhut | Rentner, sucht eigentlich das Hotel | niedrig, zahlt in Kleingeld |
+| Sandalen + Ohrknopf | **Zivi in Verkleidung** (die Schuhe lügen, das Ohr nicht) | hoch |
+| Barfuß, nass | Surfer, kommt gerade aus dem Wasser | niedrig |
+| Barfuß + Hund mit Halstuch | **Hundeführer**, der Hund ist der Beamte | hoch |
+| Flip-Flops | stolpert bei jeder Flucht, also harmlos, aber laut | mittel (zieht Blicke) |
+| Turnschuhe + Polo mit Bügelfalte | **Zivi**, Lehrbuch-Ausgabe | hoch |
+| Turnschuhe + Stirnband + Pulsuhr | Jogger, nur fit, kein Bulle | mittel (plaudert bei der Polizei) |
+| Hawaiihemd nagelneu, Preisschild dran | Verkleidung, gestern gekauft | hoch |
+| Hawaiihemd mit Fleck | echter Schluffi | niedrig |
+| Polo sauber, aber Socken in Sandalen | Rentner, kein Zivi (die Falle für Anfänger) | niedrig |
+| Rucksack größer als die Person | Backpacker, frisch von der Fähre | niedrig |
+| Kittel + Rollator + Gehstock | Oma, beste Kundin, kennt jeden Polizisten | niedrig, aber handelt hart |
+| Handy mit Taschenlampe, tagsüber | nervöser Erstkäufer, redet zu laut | mittel |
+| Ohrknopf | Funk. Immer Zivi. | hoch |
+| Notizblock | schreibt mit. Immer Zivi. | hoch |
+| Funkgerät „als Flaschenöffner“ | Zivi, der sich Mühe gibt | hoch |
+| Schaut alle zwei Sekunden über die Schulter | nervös, nicht gefährlich, aber auffällig | mittel |
+
+Schwierigkeitskurve: Die ersten Kunden sind eindeutig (Walross-Typ, Kommissar Polo). Danach kommen die
+Fallen, in beide Richtungen: der harmlose Rentner mit sauberem Polo, der Jogger in Turnschuhen, und auf der
+anderen Seite der Zivi in Sandalen und der Hundeführer barfuß. Wer nur auf Schuhe schaut, verliert ab Tag 2.
+
 ## 4. Kundschaft und Polizei (Spawns)
 
 | Spawn | Wo | Wer | Risiko |

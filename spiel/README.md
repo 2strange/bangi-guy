@@ -20,10 +20,41 @@ Dann `http://localhost:8000/` öffnen.
 ## Steuerung
 - **WASD / Pfeiltasten** – gehen, relativ zur Kamera (Standard: oben im Bild = Richtung Meer)
 - **Shift** – „rennen“ (Sandalen: nur ein bisschen schneller, dafür mehr Gewackel)
-- **Q / E** – Kamera um den Spieler drehen
+- **Q / R** – Kamera um den Spieler drehen
 - **Klick auf den Boden** – hinlaufen
+- **E** – ansprechen (nur mit Kunde in Reichweite). In der Sprechblase: **1 / 2** oder Pfeile + **Enter**
+  wählen (Verkaufen / Lieber nicht), **Esc** bricht ab.
+- **F** in Kundennähe – genau hinschauen: die Kamera fährt vor die Figur, Füße bis Kopf, der Spieler wird dabei
+  ausgeblendet. Nochmal F, Esc oder Weggehen beendet es. Das ist der Kern: Schuhe, Hemd und Accessoire muss man SEHEN.
+  Die Tastenbelegung sind Konstanten am Anfang von `js/main.js`.
 - Bis knöcheltief ins Wasser geht es, dann ist Schluss. Die drei Ausgänge (Surfer-Bucht, Krummgassen, Promenade)
   enden an Absperrungen.
+
+## Mechanik v0 (Kern: Leute lesen)
+- **Kundschaft** aus `data/kunden.json`, zur Laufzeit per `fetch` geladen; aus dem Katalog kommen 7 pro Tag an den
+  Strand, davon 2 Zivis, die pro Tag rotieren (so sieht man über die Tage alle Fallen). Fehlende oder kaputte Felder bekommen Defaults, fehlt die Datei ganz, gibt es zwei
+  Ersatzkunden. Figuren werden aus Teilen gebaut: Schuhe (Sandale, Flip-Flop, Turnschuh, barfuß, Gummistiefel),
+  Hemd (Hawaii, Hawaii neu mit Bügelfalte, sauberes Polo, Tanktop, ohne, versteckte Uniform mit Dienstmarke, Kittel,
+  Trikot), Hose (Shorts, Badehose, Chino, Jogginghose, Rock, lang), Haare (kurz, lang, lockig, Dutt, weiß, Glatze),
+  Bart (Stoppeln und Vollbart gemalt, Schnauzer 3D), Brille (Lesebrille gemalt, Sonnen- und Sportbrille 3D),
+  Accessoire (Cap, Ohrknopf mit Kabel, Hund an der Leine, Rucksack, Sonnenbrille, Kamera, Surfbrett, Gehstock, Handy,
+  Kopfhörer) und Extras (Socken, Preisschild, Stirnband, Hundehalstuch, Funkgerät, Strohhut, Cocktail, Einkaufskorb,
+  Bändchen). Die Fallen (Socken in Sandalen, Preisschild, Ohrknopf, Hund) sind bewusst groß. Hautton, Bart, Brille,
+  Falten und Start-Stimmung gehen in die gemalten Gesichter (`face(kind, mood, opts)` aus `faces.js`). Tempo und
+  Spawn-Code (K1–K6) steuern Schlendern und Startplatz. Noch nicht dargestellt: Rollator, Pulsuhr, Notizblock,
+  „nass“, „schwitzt“, die Mimik-Beschreibungen und Tells (nur Text). Sie schlendern zwischen 2–3 Punkten, pausieren
+  und schauen dem Spieler nach.
+- **Ansprechen (E):** Sprechblase im Comic-Look über dem Kopf: Gruß → Wahl **Verkaufen / Lieber nicht** → Ergebnis.
+- **Ergebnis:** Unbedenklicher → +Geld, Ware −1, Kunde zufrieden. Zivi → Heat +1…3, Reveal-Satz, Kunde misstrauisch
+  und setzt die Polizeimütze auf. Ablehnen → kleiner Satz. Jeder Kunde nur einmal pro Tag.
+- **HUD:** Tag, 💰 Geld, 🌿 Ware (Start 5), Heat als Sirenen 🚨 (0–3). Heat 3 → „VERHAFTET. Tag verloren. Geld
+  bleibt.“ → Enter startet den nächsten Tag (Ware voll, Heat 0, Kunden wieder neutral).
+- **Mimik:** `setMood(figur, stimmung)` tauscht nur die Gesichtstextur; sobald `faces.js` eine Funktion
+  `face(kind, mood)` exportiert, wird sie automatisch benutzt, bis dahin bleiben die vorhandenen Gesichter.
+- **Logik rein und getestet:** `js/game.js` (Zustand, Verkauf/Heat/Ware, Verhaftung + neuer Tag, Gesprächs-
+  Zustandsautomat, nächster Kunde, Schlendern, Hinschau-Kamera) mit `test/game.test.js`.
+- Standbilder: `?snap=1&scene=dialog` (Sprechblase in der Wahl-Phase), `?snap=1&scene=inspect` (Hinschau-Kamera auf
+  den Zivi) und `?snap=1&scene=lineup` (alle Kunden in einer Reihe).
 
 URL-Parameter: `?at=start|bar|pier|mitte|hotel|verleih|ost|nord|overview` setzt den Startpunkt, `?cy=-90` dreht die
 Kamera (Grad, relativ zum Standard), `?stats=1` zeigt Draw-Calls/Dreiecke/FPS, `?snap=1` rendert ein einzelnes
@@ -42,7 +73,11 @@ Standbild (für die PNGs in `shots/`).
 - `js/figures.js` – Schluffi (Spieler) und Turnschuh-Typ (NPC) mit Pivot-Gruppen statt Rig.
 - `js/props.js`, `js/faces.js`, `js/toon.js` – Bauteile, gemalte Gesichter, Toon-Material + Konturen
   (Material-Cache pro Farbe).
-- `js/main.js` – Szene, Licht, Eingabe, Spielschleife, Standbild-Modus.
+- `js/game.js` – **reine Mechanik** (Geld/Ware/Heat, Kunden-Normalisierung, Gespräch, Schlendern), getestet.
+- `js/kunden.js` – Kundenfiguren aus Teilen, `setMood()`.
+- `js/ui.js` – HUD, Sprechblase, Verhaftet-Bildschirm (HTML-Overlay).
+- `data/kunden.json` – Kundschaft-Katalog (Inhalt).
+- `js/main.js` – Szene, Licht, Eingabe, Spielschleife, Kundschaft, Standbild-Modus.
 
 ## Technik
 - **Koordinaten:** x nach Osten, z nach Süden (zum Meer). 1 Laufsekunde ≈ 4 Einheiten, Figur ≈ 2.75 hoch,

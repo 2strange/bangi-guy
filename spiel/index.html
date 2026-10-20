@@ -8,6 +8,26 @@
   html, body { margin: 0; height: 100%; overflow: hidden; background: #8fe0ff; }
   canvas { display: block; }
   #hint { position: fixed; left: 12px; bottom: 10px; font: 13px/1.3 sans-serif; color: #123; background: rgba(255,255,255,.65); padding: 5px 9px; border-radius: 6px; pointer-events: none; }
+  /* Comic-Overlay */
+  :root { --ink: #111; --paper: #fff8e6; }
+  .comic { font-family: "Comic Sans MS", "Chalkboard SE", "Marker Felt", "Segoe Print", sans-serif; color: var(--ink); }
+  #hud { position: fixed; left: 12px; top: 10px; display: flex; gap: 10px; pointer-events: none; }
+  .hud-item { background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: 4px 12px; font-size: 18px; box-shadow: 3px 3px 0 var(--ink); }
+  .hud-item.heat-2 { background: #ffd54a; } .hud-item.heat-3 { background: #e8463a; color: #fff; }
+  #prompt { position: fixed; left: 50%; bottom: 46px; transform: translateX(-50%); display: none; background: var(--paper); border: 3px solid var(--ink); border-radius: 14px; padding: 6px 16px; font-size: 18px; box-shadow: 3px 3px 0 var(--ink); pointer-events: none; }
+  #bubble { position: fixed; display: none; max-width: 380px; background: #fff; border: 4px solid var(--ink); border-radius: 22px; padding: 12px 16px 10px; font-size: 19px; box-shadow: 5px 5px 0 var(--ink); z-index: 5; }
+  #bubble::after { content: ""; position: absolute; left: 50%; bottom: -26px; width: 0; height: 0; border: 14px solid transparent; border-top: 18px solid var(--ink); transform: translateX(-50%); }
+  #bubble::before { content: ""; position: absolute; left: 50%; bottom: -17px; width: 0; height: 0; border: 11px solid transparent; border-top: 14px solid #fff; transform: translateX(-50%); z-index: 1; }
+  #bubble .who { font-size: 13px; font-weight: bold; letter-spacing: .5px; color: #555; text-transform: uppercase; margin-bottom: 2px; }
+  #bubble .say { margin-bottom: 8px; }
+  .opts { display: flex; gap: 8px; flex-wrap: wrap; }
+  button.opt { font: inherit; font-size: 16px; background: var(--paper); border: 3px solid var(--ink); border-radius: 10px; padding: 4px 10px; cursor: pointer; box-shadow: 2px 2px 0 var(--ink); }
+  button.opt.sel { background: #ffd54a; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+  button.opt .key { display: inline-block; min-width: 18px; padding: 0 4px; margin-right: 4px; border: 2px solid var(--ink); border-radius: 6px; background: #fff; font-size: 13px; text-align: center; }
+  #arrest { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(20, 30, 60, .55); z-index: 6; }
+  #arrest .card { background: var(--paper); border: 5px solid var(--ink); border-radius: 24px; padding: 24px 36px; text-align: center; box-shadow: 8px 8px 0 var(--ink); max-width: 520px; }
+  #arrest h1 { margin: 0 0 10px; font-size: 44px; color: #e8463a; letter-spacing: 2px; }
+  #arrest p { font-size: 20px; margin: 6px 0 14px; } #arrest .small { font-size: 15px; color: #555; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -17,7 +37,11 @@
 </script>
 </head>
 <body>
-<div id="hint">WASD / Pfeile = gehen · Shift = „rennen“ · Q/E = Kamera drehen · Klick = hinlaufen</div>
+<div id="hint">WASD / Pfeile = gehen · Shift = „rennen“ · Q/R = Kamera drehen · Klick = hinlaufen · E = ansprechen · F = genau hinschauen</div>
+<div id="hud" class="comic"></div>
+<div id="prompt" class="comic"></div>
+<div id="bubble" class="comic"></div>
+<div id="arrest" class="comic"></div>
 <pre id="err" style="position:fixed;top:0;left:0;margin:0;padding:8px;background:#fff;color:#c00;font:14px monospace;white-space:pre-wrap;display:none;z-index:9"></pre>
 <script>
   // Laufzeitfehler sichtbar machen (auch im Screenshot-Modus): Text-Overlay statt leerem Bild

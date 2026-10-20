@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bangi – Mimik</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #8fe0ff; font: 14px/1.3 sans-serif; color: #123; }
+  table { border-collapse: collapse; margin: 6px auto; }
+  th { font-weight: bold; padding: 2px 4px; text-align: center; }
+  th.row { text-align: right; padding-right: 10px; white-space: nowrap; }
+  td { padding: 2px; }
+  canvas { display: block; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<pre id="err" style="position:fixed;top:0;left:0;margin:0;padding:8px;background:#fff;color:#c00;font:14px monospace;white-space:pre-wrap;display:none;z-index:9"></pre>
+<script>
+  window.showErr = (m) => { const e = document.getElementById('err'); e.style.display = 'block'; e.textContent += m + '\n'; };
+  window.addEventListener('error', (e) => showErr((e.message || e.type) + ' @ ' + (e.filename || '') + ':' + (e.lineno || '')));
+  window.addEventListener('unhandledrejection', (e) => showErr('rejection: ' + (e.reason && (e.reason.stack || e.reason))));
+</script>
+<table id="grid"></table>
+<script type="module">
+// Vorschau aller Gesichter × Stimmungen als reines 2D-Raster: Kopf = Scheibe in Hautfarbe, Gesicht als Decal drüber.
+import('./js/faces.js').then(({ faceCanvas, FACE_MOODS }) => {
+  const rows = [
+    ['Schluffi', 'schluffi', { skin: '#f0b98a' }],
+    ['Turnschuh-Typ', 'runner', { skin: '#e8a773' }],
+    ['Sonne', 'sun', { skin: '#ffd93b' }],
+    ['Kunde, Stoppeln', 'kunde', { skin: '#f5c9a0', beard: 'stoppeln', seed: 1 }],
+    ['Kunde, Brille', 'kunde', { skin: '#8d5a3a', glasses: true, seed: 2 }],
+    ['Oma', 'kunde', { skin: '#f2c7a8', glasses: true, wrinkles: true, seed: 3 }],
+    ['Kunde, Vollbart', 'kunde', { skin: '#c98a5a', beard: true, seed: 4 }],
+  ];
+  const W = window.innerWidth, H = window.innerHeight;
+  const cell = Math.floor(Math.min((W - 170) / FACE_MOODS.length, (H - 40) / rows.length) - 6);
+  const table = document.getElementById('grid');
+  const head = table.insertRow();
+  head.insertCell();
+  for (const mood of FACE_MOODS) { const th = document.createElement('th'); th.textContent = mood; head.appendChild(th); }
+  for (const [label, kind, opts] of rows) {
+    const tr = table.insertRow();
+    const th = document.createElement('th'); th.className = 'row'; th.textContent = label; tr.appendChild(th);
+    for (const mood of FACE_MOODS) {
+      const c = document.createElement('canvas');
+      c.width = cell; c.height = cell;
+      const ctx = c.getContext('2d');
+      const r = cell * 0.47;
+      ctx.fillStyle = opts.skin; ctx.strokeStyle = '#111'; ctx.lineWidth = Math.max(3, cell * 0.03);
+      ctx.beginPath(); ctx.arc(cell / 2, cell / 2, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      // das Decal deckt nur das vordere Kugelsegment ab: etwas kleiner als die Scheibe zeichnen
+      const s = r * 1.7;
+      ctx.drawImage(faceCanvas(kind, mood, opts), cell / 2 - s / 2, cell / 2 - s / 2 + r * 0.05, s, s);
+      tr.insertCell().appendChild(c);
+    }
+  }
+}).catch((e) => showErr('import: ' + (e.stack || e)));
+</script>
+</body>
+</html>

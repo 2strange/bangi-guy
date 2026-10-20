@@ -83,13 +83,13 @@ export function sneaker(color = 0xe8463a) {
 }
 
 // Hawaiihemd-Textur (Canvas)
-function hawaiiTexture() {
+export function hawaiiTexture(base = '#ff7f3f', petals = ['#ffe14a', '#3bb84a']) {
   const c = document.createElement('canvas'); c.width = 256; c.height = 256;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#ff7f3f'; ctx.fillRect(0, 0, 256, 256);
+  ctx.fillStyle = base; ctx.fillRect(0, 0, 256, 256);
   for (let i = 0; i < 14; i++) {
     const x = (i * 97) % 256, y = (i * 61 + 30) % 256;
-    ctx.fillStyle = i % 2 ? '#ffe14a' : '#3bb84a';
+    ctx.fillStyle = petals[i % petals.length];
     for (let k = 0; k < 5; k++) { ctx.beginPath(); ctx.arc(x + Math.cos(k * 1.26) * 16, y + Math.sin(k * 1.26) * 16, 11, 0, 7); ctx.fill(); }
     ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y, 7, 0, 7); ctx.fill();
   }

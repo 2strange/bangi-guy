@@ -1,0 +1,165 @@
+{
+  "_schema": "Kundschaft für Bangi Beach. Eigentümer: Content. PFLICHT (aus dem Stub): id, typ, schuhe (sandale|flipflop|turnschuh|barfuss|gummistiefel), hemd (hawaii|polo_sauber|tanktop|ohne|uniform_versteckt|hawaii_neu|kittel|trikot), accessoire (null|cap|ohrknopf|hund|rucksack|sonnenbrille|kamera|surfbrett|gehstock|handy|kopfhoerer), zivi (bool), zahlt (Münzen), heat (Heat bei Verkauf, 0–3), saetze {gruss[], kauf[], ablehnung[], reveal[]}. OPTIONAL (Content-Erweiterung, alles darf fehlen): name (Spitzname für die Sprechblase), hose (shorts|badehose|chino|jogginghose|rock|lang), hautton (hell|mittel|dunkel|sonnenbrand), bart (keiner|stoppel|vollbart|schnauzer), brille (keine|sonnenbrille|lesebrille|sportbrille), haare (kurz|lang|glatze|dutt|weiss|lockig), extras (Liste kleiner Zweitmerkmale: socken, hut, preisschild, buegelfalte, stirnband, halstuch_hund, funkgeraet, notizblock, nass, strohhut, rollator), stimmung_start (neutral|misstrauisch|erschrocken|zufrieden – Mimik-API), mimik (Freitext-Wunsch an die Gesichter: was Augen/Mund im Normalzustand, beim Kauf und bei Ablehnung tun), tells (Liste der sichtbaren Hinweise, für Hilfe-Modus und Designer-Doku), tempo (Laufgeschwindigkeit relativ zum Spieler bei der Flucht: 1.0 = gleich schnell), spawn (Spawn-Punkt K1–K6 der Welt-Skizze). Regel fürs Lesen: Schuhe zuerst, dann Hemd, dann Accessoire/Extras. Kein einzelnes Merkmal reicht – die Kombination zählt.",
+  "kunden": [
+    {
+      "id": "stammkunde_1", "typ": "Stammkunden-Schluffi", "name": "Der Walross-Typ",
+      "schuhe": "sandale", "hemd": "hawaii", "hose": "badehose", "accessoire": "sonnenbrille",
+      "hautton": "sonnenbrand", "bart": "stoppel", "brille": "sonnenbrille", "haare": "lockig",
+      "extras": ["cocktail"],
+      "zivi": false, "zahlt": 20, "heat": 0, "tempo": 0.5, "spawn": "K3",
+      "stimmung_start": "zufrieden",
+      "mimik": "Augen halb zu, Mund leicht offen, immer ein bisschen am Grinsen. Beim Kauf: beide Augenbrauen hoch, als wäre Weihnachten. Bei Ablehnung: zuckt nur mit den Schultern.",
+      "tells": ["Sandalen, abgelaufen", "Hawaiihemd mit Fleck", "Sonnenbrand", "steht seit Stunden am selben Fleck"],
+      "saetze": {
+        "gruss": ["Duuude.", "Du bist ja immer noch da. Ich auch.", "Hab gerade über Wolken nachgedacht."],
+        "kauf": ["Du bist ein Heiliger, Mann.", "Das hält den Nachmittag zusammen.", "Ich schulde dir was. Also, noch mehr."],
+        "ablehnung": ["Auch okay. Alles okay.", "Dann… guck ich weiter aufs Meer.", "Kein Stress. Ich bin eh Stress-frei."],
+        "reveal": []
+      }
+    },
+    {
+      "id": "surfer_1", "typ": "Surfer", "name": "Kai",
+      "schuhe": "barfuss", "hemd": "tanktop", "hose": "badehose", "accessoire": "surfbrett",
+      "hautton": "dunkel", "bart": "keiner", "brille": "keine", "haare": "lang",
+      "extras": ["nass"],
+      "zivi": false, "zahlt": 15, "heat": 0, "tempo": 0.8, "spawn": "K2",
+      "stimmung_start": "zufrieden",
+      "mimik": "Schläfrig-fröhlich, Augen fast zu, Salzwasser-Haare im Gesicht. Beim Kauf: Zunge raus, Hang-loose-Hand. Bei Ablehnung: gähnt.",
+      "tells": ["barfuß, nasse Fußabdrücke", "Tanktop, Brett unterm Arm", "kann nicht rennen, will auch nicht"],
+      "saetze": {
+        "gruss": ["Bro. Die Welle war… ja.", "Kennst du den Trick, wo man einfach liegen bleibt?", "Bin gleich wieder im Wasser. Oder später. Oder so."],
+        "kauf": ["Bro. Bro. Bro.", "Das nehm ich mit raus. Nicht ins Wasser. Aber raus.", "Beste Welle des Tages, und ich steh an Land."],
+        "ablehnung": ["Alles gut, das Meer ist auch noch da.", "Dann morgen. Oder übermorgen. Zeit ist Wasser.", "Chill. Ich chill."],
+        "reveal": []
+      }
+    },
+    {
+      "id": "backpacker_1", "typ": "Backpacker", "name": "Jonas aus Bielefeld",
+      "schuhe": "sandale", "hemd": "tanktop", "hose": "shorts", "accessoire": "rucksack",
+      "hautton": "hell", "bart": "vollbart", "brille": "keine", "haare": "dutt",
+      "extras": ["bändchen"],
+      "zivi": false, "zahlt": 30, "heat": 0, "tempo": 0.9, "spawn": "K1",
+      "stimmung_start": "neutral",
+      "mimik": "Neugierig, Augen groß, Brauen hoch, Mund halb lächelnd. Beim Kauf: Augen zu, Hand aufs Herz, 'endlich'. Bei Ablehnung: Mundwinkel runter, aber Nicken.",
+      "tells": ["Trekkingsandalen, Staub drauf", "Rucksack größer als er", "Festival-Bändchen", "zu viel Dutt"],
+      "saetze": {
+        "gruss": ["Hi! Ich hab 14 Monate gespart, um hier genau nichts zu tun.", "Ich bin gestern angekommen und schon total angekommen.", "Hey, kennst du einen guten… Ort? Für Dinge?"],
+        "kauf": ["Das geht in den Reiseblog. Also nicht. Aber innerlich.", "Mein Hostel-Bett hat einen Namen. Jetzt hat es auch einen Grund.", "Du bist der erste Mensch hier, der mich nicht nach dem WLAN fragt."],
+        "ablehnung": ["Okay, kein Problem, ich wollte eh nur reden.", "Verstehe. Ich seh wahrscheinlich noch zu neu aus.", "Alles klar. Dann geh ich… mich irgendwo finden."],
+        "reveal": []
+      }
+    },
+    {
+      "id": "rentner_1", "typ": "Rentner-Tourist", "name": "Herr Pfeiffer",
+      "schuhe": "sandale", "hemd": "polo_sauber", "hose": "shorts", "accessoire": "kamera",
+      "hautton": "hell", "bart": "schnauzer", "brille": "lesebrille", "haare": "weiss",
+      "extras": ["socken", "strohhut"],
+      "zivi": false, "zahlt": 10, "heat": 0, "tempo": 0.4, "spawn": "K6",
+      "stimmung_start": "neutral",
+      "mimik": "Freundlich-verwirrt, Brauen in verschiedener Höhe, Mund wie ein kleines 'o'. Beim Kauf: strahlt wie ein Kind beim Eiswagen. Bei Ablehnung: zieht die Brille ab und putzt sie.",
+      "tells": ["SOCKEN in Sandalen (sauberes Polo ist hier KEIN Zivi-Zeichen)", "Strohhut, Kamera", "hat nur Kleingeld", "sucht eigentlich das Hotel"],
+      "saetze": {
+        "gruss": ["Junger Mann, ist das hier noch das Hotel?", "Meine Frau sagt, ich soll mal was Verrücktes machen.", "Entschuldigung, verkaufen Sie auch Postkarten?"],
+        "kauf": ["Das kam in den Sechzigern auch schon mal vor.", "Sagen Sie's nicht Hannelore.", "Ich zahle in Münzen, das Papiergeld hat die Frau."],
+        "ablehnung": ["Na gut, dann Postkarten.", "Schon recht, ich hab ja das Hotel.", "Hannelore hätte es eh nicht erlaubt."],
+        "reveal": []
+      }
+    },
+    {
+      "id": "oma_1", "typ": "Oma (Großkundin)", "name": "Oma Lek",
+      "schuhe": "flipflop", "hemd": "kittel", "hose": "rock", "accessoire": "gehstock",
+      "hautton": "mittel", "bart": "keiner", "brille": "lesebrille", "haare": "weiss",
+      "extras": ["rollator", "einkaufskorb"],
+      "zivi": false, "zahlt": 60, "heat": 0, "tempo": 0.3, "spawn": "K4",
+      "stimmung_start": "misstrauisch",
+      "mimik": "Zusammengekniffene Augen, prüfender Blick über den Brillenrand, Mund ein schmaler Strich. Beim Kauf: ein winziges, zahnloses Grinsen. Bei Ablehnung: Augenrollen, Stock-Klopfen.",
+      "tells": ["Flip-Flops, Kittel, Rollator", "handelt immer um den Preis", "kennt jeden Polizisten beim Vornamen", "beste Kundin, zahlt am meisten"],
+      "saetze": {
+        "gruss": ["Du siehst dünn aus. Hast du gegessen?", "Für meine Knie, verstehst du.", "Psst. Nicht so laut. Ich bin hier bekannt."],
+        "kauf": ["Mein Enkel sagt, das sei Medizin. Mein Enkel ist Arzt. Also fast.", "Gib her, und vergiss das Wechselgeld nicht.", "Pong fragt nie bei mir nach. Ich hab ihn gewickelt."],
+        "ablehnung": ["Dann frag ich halt die Bar.", "Zu teuer. Zu wenig. Zu jung.", "Mein Mann war netter. Gott hab ihn selig, der Schlawiner."],
+        "reveal": []
+      }
+    },
+    {
+      "id": "erstkaeufer_1", "typ": "Nervöser Erstkäufer", "name": "Timo",
+      "schuhe": "flipflop", "hemd": "tanktop", "hose": "shorts", "accessoire": "handy",
+      "hautton": "hell", "bart": "keiner", "brille": "keine", "haare": "kurz",
+      "extras": ["schwitzt"],
+      "zivi": false, "zahlt": 25, "heat": 1, "tempo": 0.7, "spawn": "K5",
+      "stimmung_start": "erschrocken",
+      "mimik": "Augen zu weit offen, Pupillen klein, Mund zittert, schaut ständig über die Schulter. Beim Kauf: kurz erleichtert, dann sofort wieder Panik. Bei Ablehnung: fast erleichtert.",
+      "tells": ["Flip-Flops (stolpert beim Rennen)", "schaut sich alle 2 Sekunden um", "spricht VIEL zu laut", "Handy in der Hand, Taschenlampe an, tagsüber"],
+      "saetze": {
+        "gruss": ["HALLO. ICH BIN GANZ NORMAL HIER.", "Ist das… also… machst du… du weißt schon?", "Ich hab das noch nie gemacht. Also DAS. Das hier. Kaufen."],
+        "kauf": ["DANKE. Also, leise danke. DANKE.", "Wo tu ich das jetzt hin? In die Hand? Ist die Hand okay?", "Ich lauf jetzt normal weg. Ganz normal. Normal."],
+        "ablehnung": ["Okay. Okay. Okay. War eh nur Spaß.", "Gut, ich wollte auch nichts. Wer bist du?", "ICH HAB NICHTS GESAGT."],
+        "reveal": []
+      }
+    },
+    {
+      "id": "jogger_1", "typ": "Harmloser Jogger", "name": "Sven, läuft immer",
+      "schuhe": "turnschuh", "hemd": "trikot", "hose": "jogginghose", "accessoire": "kopfhoerer",
+      "hautton": "mittel", "bart": "keiner", "brille": "sportbrille", "haare": "kurz",
+      "extras": ["stirnband", "pulsuhr"],
+      "zivi": false, "zahlt": 25, "heat": 1, "tempo": 1.5, "spawn": "K6",
+      "stimmung_start": "neutral",
+      "mimik": "Konzentriert, Brauen zusammen, läuft auf der Stelle. Beim Kauf: lächelt breit, Daumen hoch. Bei Ablehnung: Schulterzucken, läuft weiter, ohne anzuhalten.",
+      "tells": ["TURNSCHUHE, aber: Stirnband, Pulsuhr, Trikot = Sportler, kein Zivi", "läuft auf der Stelle", "zahlt gern, erzählt aber danach dem nächsten Polizisten davon (Heat 1)"],
+      "saetze": {
+        "gruss": ["Kurz Pause. Puls. Hi.", "Kilometer zwölf. Ich belohne mich.", "Ich lauf hier jeden Tag vorbei, und jeden Tag denk ich: heute."],
+        "kauf": ["Perfekt für die Regeneration.", "Das zählt als Elektrolyte, oder?", "Danke! Ich sag's niemandem. Außer vielleicht meinem Laufclub."],
+        "ablehnung": ["Kein Ding, ich lauf weiter.", "Verstehe, du hältst mich für einen Bullen. Ich bin nur fit.", "Morgen wieder, gleiche Zeit, gleiche Pace."],
+        "reveal": []
+      }
+    },
+    {
+      "id": "zivi_1", "typ": "Zu sauberer Tourist", "name": "Kommissar Polo",
+      "schuhe": "turnschuh", "hemd": "polo_sauber", "hose": "chino", "accessoire": "ohrknopf",
+      "hautton": "hell", "bart": "keiner", "brille": "keine", "haare": "kurz",
+      "extras": ["buegelfalte"],
+      "zivi": true, "zahlt": 50, "heat": 2, "tempo": 1.6, "spawn": "K1",
+      "stimmung_start": "misstrauisch",
+      "mimik": "Starrer Blick, kein Blinzeln, Lächeln nur mit dem Mund, nicht mit den Augen. Beim Kauf: ein Mundwinkel geht hoch. Beim Reveal: Augen werden schmal, Hand ans Ohr.",
+      "tells": ["Turnschuhe blütenweiß", "Polo mit Bügelfalte", "Ohrknopf", "sagt 'ganz normal' auffällig oft"],
+      "saetze": {
+        "gruss": ["Hallo! Ich bin ein ganz normaler Tourist.", "Schöner Strand. Für ganz normale Aktivitäten.", "Ich hätte gern das, was alle hier haben. Das Übliche."],
+        "kauf": ["Interessant. Sehr interessant.", "Danke. Das wird… vermerkt. Ich meine: genossen.", "Könnten Sie das noch einmal wiederholen, etwas lauter?"],
+        "ablehnung": ["Schade. Für Sie.", "Verstehe. Dann morgen, gleiche Stelle?", "Kein Problem. Ich bin ja auch nur zum Spaß hier. Dienstlich."],
+        "reveal": ["Zentrale, Zielperson hat angebissen.", "Ganz normaler Tourist. Mit Handschellen.", "Sie haben das Recht zu schweigen. Nutzen Sie es, bitte, ich bin müde."]
+      }
+    },
+    {
+      "id": "zivi_2", "typ": "Der Verkleidete", "name": "Hemd mit Preisschild",
+      "schuhe": "sandale", "hemd": "hawaii_neu", "hose": "shorts", "accessoire": "ohrknopf",
+      "hautton": "hell", "bart": "schnauzer", "brille": "sonnenbrille", "haare": "kurz",
+      "extras": ["preisschild", "socken", "notizblock"],
+      "zivi": true, "zahlt": 70, "heat": 3, "tempo": 1.0, "spawn": "K3",
+      "stimmung_start": "zufrieden",
+      "mimik": "Übertrieben entspannt: Lächeln zu breit, Augen hinter der Sonnenbrille hellwach. Beim Kauf: Sonnenbrille rutscht, darunter Polizistenaugen. Beim Reveal: Lächeln bleibt, nur die Brauen fallen.",
+      "tells": ["SANDALEN, trotzdem Zivi: Ohrknopf", "Hawaiihemd nagelneu, Preisschild hängt noch", "Socken in Sandalen (wie ein Rentner, aber 30 Jahre zu jung)", "schreibt heimlich mit"],
+      "saetze": {
+        "gruss": ["Yo, Dude. Bro. Alter. Habe ich was vergessen?", "Ich bin total entspannt. Schau, Hawaiihemd.", "Was kostet denn so… die Ware, Bruder?"],
+        "kauf": ["Nice. Groovy. Weitere Jugendworte.", "Darf ich kurz notieren… ich meine, genießen?", "Das ist exakt die Menge, die ich gebraucht habe. Für die Akte. Für mich!"],
+        "ablehnung": ["Uncool, Mann. Sehr unc… sehr schade.", "Dann frage ich eben entspannt woanders. Entspannt.", "Kein Ding, Digga. Habe ich das richtig verwendet?"],
+        "reveal": ["Das Hemd war Dienstkleidung. Die Socken auch.", "Zentrale? Ja, der Preisschild-Trick hat funktioniert. Nein, keine Ahnung, wieso.", "Sie sind verhaftet. Und mein Hemd ist jetzt steuerlich absetzbar."]
+      }
+    },
+    {
+      "id": "zivi_3", "typ": "Hundeführer", "name": "Der Typ mit Rex",
+      "schuhe": "barfuss", "hemd": "tanktop", "hose": "shorts", "accessoire": "hund",
+      "hautton": "dunkel", "bart": "stoppel", "brille": "keine", "haare": "glatze",
+      "extras": ["halstuch_hund", "funkgeraet"],
+      "zivi": true, "zahlt": 40, "heat": 2, "tempo": 1.2, "spawn": "K2",
+      "stimmung_start": "neutral",
+      "mimik": "Er selbst: gelangweilt, halb geschlossene Augen, Kaugummi. Der Hund: hellwach, Ohren oben, Nase arbeitet. Beim Kauf: der Hund setzt sich, der Mann lächelt zum ersten Mal. Beim Reveal: Hund bellt, Mann zuckt nicht.",
+      "tells": ["BARFUSS und Tanktop sehen harmlos aus, aber:", "Schäferhund mit blauem Halstuch (die Hunde am Strand haben keine Halstücher)", "Funkgerät am Gürtel, als 'Flaschenöffner' getarnt", "der Hund schnüffelt an deiner Tasche"],
+      "saetze": {
+        "gruss": ["Rex ist nur ein ganz normaler Strandhund.", "Sitz, Rex. Nein, nicht du. Ich meinte den Hund.", "Schöner Tag für… was auch immer du dabeihast."],
+        "kauf": ["Rex, markieren. Äh, ich meine: Rex, Sitz.", "Danke. Rex hat sich jedenfalls schon entschieden.", "Das riecht ja… interessant. Sagt Rex."],
+        "ablehnung": ["Kluger Junge. Rex, wir gehen.", "Rex ist enttäuscht. Rex hat ein Gedächtnis.", "Okay. Wir sind morgen wieder hier. Rex und ich. Zufällig."],
+        "reveal": ["Rex, fass. Nein, Rex. FASS. Rex!", "Zentrale, der Hund hat's gefunden. Ich hab nur geguckt.", "Rex ist Beamter. Du bist verhaftet. Beide."]
+      }
+    }
+  ]
+}
