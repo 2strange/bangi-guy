@@ -19,7 +19,7 @@ export const EXTRAS = ['socken', 'preisschild', 'stirnband', 'halstuch_hund', 'f
 export const SPAWNS = ['K1', 'K2', 'K3', 'K4', 'K5', 'K6'];
 
 export function initialState() {
-  return { geld: 0, ware: START_WARE, heat: 0, tag: 1, status: {}, verhaftet: false };
+  return { geld: 0, ware: START_WARE, heat: 0, tag: 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0 };
 }
 
 // ---------- Kundschaft: fehlende/kaputte Felder robust auffüllen ----------
@@ -84,7 +84,7 @@ export function kundeStatus(state, id) { return state.status[id] || 'neutral'; }
 export function sell(state, kunde, lineIdx = 0) {
   if (state.verhaftet) return { state, result: 'verhaftet', text: '' };
   if (kundeStatus(state, kunde.id) !== 'neutral') return { state, result: 'schon_erledigt', text: '' };
-  if (state.ware <= 0) return { state, result: 'keine_ware', text: 'Alles leer, Mann. Morgen wieder.' };
+  if (state.ware <= 0) return { state, result: 'keine_ware', text: pickLine(state.texte?.ausverkauft_kunde, lineIdx) || 'Alles leer, Mann. Morgen wieder.' };
   if (kunde.zivi) {
     const heat = Math.min(MAX_HEAT, state.heat + Math.max(1, kunde.heat));
     const next = { ...state, heat, status: { ...state.status, [kunde.id]: 'misstrauisch' }, verhaftet: heat >= MAX_HEAT };
@@ -92,6 +92,7 @@ export function sell(state, kunde, lineIdx = 0) {
   }
   const next = {
     ...state, geld: state.geld + kunde.zahlt, ware: state.ware - 1,
+    verkauftHeute: (state.verkauftHeute || 0) + 1, geldHeute: (state.geldHeute || 0) + kunde.zahlt,
     status: { ...state.status, [kunde.id]: 'zufrieden' },
   };
   return { state: next, result: 'kauf', text: pickLine(kunde.saetze.kauf, lineIdx), geldPlus: kunde.zahlt };
@@ -107,7 +108,7 @@ export const isArrested = (state) => state.heat >= MAX_HEAT || state.verhaftet;
 
 // Verhaftung mild: Tag verloren, Ware weg, Geld bleibt, alle Kunden wieder neutral
 export function newDay(state) {
-  return { geld: state.geld, ware: START_WARE, heat: 0, tag: state.tag + 1, status: {}, verhaftet: false };
+  return { ...state, geld: state.geld, ware: START_WARE, heat: 0, tag: state.tag + 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0 };
 }
 
 // Heat als Text/Icons für das HUD
@@ -214,3 +215,107 @@ export function idSeed(id) {
   for (const ch of String(id)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
   return (h % 100000) + 1;
 }
+
+// ---------- Texte (data/texte.json, robust mit Platzhaltern) ----------
+// Schema der Datei: ausverkauft[] · tagesende{gut[], heat[], nichts[], verhaftet[]} (Bilanz-Spruch nach Lage) ·
+// reveal_gags[] und mentor[] (hier noch nicht genutzt). Alles optional, Unbekanntes fällt auf Standardtexte zurück.
+export const LAGEN = ['gut', 'heat', 'nichts', 'verhaftet'];
+export const DEFAULT_TEXTE = {
+  ausverkauft: ['Ausverkauft! Ab zum Mentor auf die Kuppe – oder Feierabend an der Bar.'],
+  ausverkauft_kunde: ['Alles leer, Mann. Morgen wieder.'],
+  tagesende: {
+    gut: ['Guter Tag. Kasse voll, Heat kalt.'],
+    heat: ['Tag überstanden. Aber die Streife kennt jetzt deine Sandalen.'],
+    nichts: ['Null verkauft. Immerhin: null verhaftet.'],
+    verhaftet: ['Tag verloren. Die Ware ist weg, das Geld bleibt.'],
+  },
+  bilanz: ['Tag {tag}: {verkauft} Beutel verkauft, {geldHeute} Münzen dazu.', 'Kasse: {geld} · Heat: {heatLabel}'],
+  titel: { feierabend: 'Feierabend.', verhaftet: 'VERHAFTET.' },
+  optionen: { tag_beenden: 'Tag beenden', weiter: 'Weiterbummeln', neuer_tag: 'Neuer Tag' },
+};
+const strList = (v, fallback) => (Array.isArray(v) && v.length && v.every((x) => typeof x === 'string' && x.trim()) ? v : fallback);
+const str = (v, fallback) => (typeof v === 'string' && v.trim() ? v : fallback);
+export function normalizeTexte(json) {
+  const t = json && typeof json === 'object' ? json : {};
+  const te = t.tagesende && typeof t.tagesende === 'object' ? t.tagesende : {};
+  const op = t.optionen && typeof t.optionen === 'object' ? t.optionen : {};
+  const ti = t.titel && typeof t.titel === 'object' ? t.titel : {};
+  const tagesende = {};
+  for (const l of LAGEN) tagesende[l] = strList(te[l], DEFAULT_TEXTE.tagesende[l]);
+  return {
+    ausverkauft: strList(t.ausverkauft, DEFAULT_TEXTE.ausverkauft),
+    ausverkauft_kunde: strList(t.ausverkauft_kunde, DEFAULT_TEXTE.ausverkauft_kunde),
+    tagesende,
+    bilanz: strList(t.bilanz, DEFAULT_TEXTE.bilanz),
+    titel: { feierabend: str(ti.feierabend, DEFAULT_TEXTE.titel.feierabend), verhaftet: str(ti.verhaftet, DEFAULT_TEXTE.titel.verhaftet) },
+    optionen: {
+      tag_beenden: str(op.tag_beenden, DEFAULT_TEXTE.optionen.tag_beenden),
+      weiter: str(op.weiter, DEFAULT_TEXTE.optionen.weiter),
+      neuer_tag: str(op.neuer_tag, DEFAULT_TEXTE.optionen.neuer_tag),
+    },
+  };
+}
+// Platzhalter {name} füllen; unbekannte bleiben stehen
+export function fillText(tpl, vars) {
+  return String(tpl).replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? String(vars[k]) : m));
+}
+// Tagesbilanz als Variablen für die Texte
+export function dayReport(state) {
+  return { tag: state.tag, verkauft: state.verkauftHeute || 0, geldHeute: state.geldHeute || 0, geld: state.geld, heat: state.heat, heatLabel: heatLabel(state.heat), verhaftet: isArrested(state) };
+}
+// Lage für den Bilanz-Spruch: verhaftet > nichts verkauft > Heat 2+ > gut
+export function lageFor(report) {
+  if (report.verhaftet) return 'verhaftet';
+  if (!report.verkauft) return 'nichts';
+  if (report.heat >= 2) return 'heat';
+  return 'gut';
+}
+// Fertige Tagesend-Karte: Titel, Lage-Spruch, Bilanzzeilen, Button
+export function dayEndCard(state, texte, lineIdx = 0) {
+  const t = texte || DEFAULT_TEXTE;
+  const vars = dayReport(state);
+  const lage = lageFor(vars);
+  return {
+    titel: lage === 'verhaftet' ? t.titel.verhaftet : t.titel.feierabend,
+    spruch: fillText(pickLine(t.tagesende[lage], lineIdx), vars),
+    zeilen: t.bilanz.map((z) => fillText(z, vars)),
+    button: t.optionen.neuer_tag,
+    lage,
+  };
+}
+// Ausverkauft-Dialog (Sprechblase des Spielers selbst): Tag beenden oder weiterbummeln
+export function soldOutDialog(texte, lineIdx = 0) {
+  const t = texte || DEFAULT_TEXTE;
+  return { kundeId: null, phase: 'ausverkauft', text: pickLine(t.ausverkauft, lineIdx), options: [t.optionen.tag_beenden, t.optionen.weiter] };
+}
+export const isSoldOut = (state) => state.ware <= 0;
+
+// ---------- Outfits ohne Wiederholung pro Tag ----------
+export const SHIRT_PATTERNS = ['blumen', 'streifen', 'punkte', 'palmen'];
+export const SHIRT_COLORS = ['#3a7bd5', '#3bb84a', '#9b59b6', '#e8463a', '#ffd54a', '#3dd6e0'];
+// Zahl der Varianten je Hemd-Typ (Muster × Farbe bzw. nur Farbe)
+export function variantCount(hemd) {
+  return hemd === 'hawaii' || hemd === 'hawaii_neu' ? SHIRT_PATTERNS.length * SHIRT_COLORS.length : SHIRT_COLORS.length;
+}
+export function variantOf(hemd, idx) {
+  const n = variantCount(hemd);
+  const i = ((idx % n) + n) % n;
+  if (hemd === 'hawaii' || hemd === 'hawaii_neu') return { pattern: SHIRT_PATTERNS[i % SHIRT_PATTERNS.length], color: SHIRT_COLORS[Math.floor(i / SHIRT_PATTERNS.length)] };
+  return { pattern: 'uni', color: SHIRT_COLORS[i] };
+}
+/** Weist den Kunden eines Tages Varianten zu: gleicher Hemd-Typ → verschiedene Varianten (solange es genug gibt). */
+export function assignOutfits(kunden, day = 1) {
+  const used = {}; // hemd -> Set(idx)
+  const out = {};
+  for (const k of kunden) {
+    const n = variantCount(k.hemd);
+    const taken = used[k.hemd] || (used[k.hemd] = new Set());
+    let idx = (idSeed(k.id) + day * 7) % n;
+    for (let tries = 0; tries < n && taken.has(idx); tries++) idx = (idx + 1) % n;
+    taken.add(idx);
+    out[k.id] = { idx, ...variantOf(k.hemd, idx) };
+  }
+  return out;
+}
+// Schlüssel „Hemd-Typ + Farbe/Muster + Accessoire“ — pro Tag eindeutig
+export const outfitKey = (k, o) => `${k.hemd}|${o.pattern}|${o.color}|${k.accessoire}`;

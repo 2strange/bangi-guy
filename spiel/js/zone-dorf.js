@@ -549,7 +549,7 @@ function laundry(a, b, items, { sag = 0.7, seed = 1 } = {}) {
       }
       case 'sneakers': { // Turnschuhe an den Schnürsenkeln über die Leine geworfen
         for (const s of [-1, 1]) {
-          const sh = sneaker(it.color ?? 0xe8463a);
+          const sh = sneaker(it.color ?? 0xe8463a, s < 0 ? 'L' : 'R');
           sh.scale.setScalar(0.85);
           sh.position.set(s * 0.22, -0.95, s * 0.08);
           sh.rotation.set(Math.PI + s * 0.3, s * 0.5, 0.2);

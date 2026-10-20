@@ -610,18 +610,27 @@ export function hotel() {
   rim.geometry.scale(1.3, 1, 1); rim.position.y = 0.17; pool.add(rim);
   const water = toonMesh(new THREE.CylinderGeometry(3.7, 3.7, 0.2, 20), 0x3dd6e0, { outline: 0 });
   water.geometry.scale(1.3, 1, 1); water.position.y = 0.3; pool.add(water);
-  // Rutsche: gebogene Röhre vom Pool über den Strand
+  // Rutsche: Leiter und Plattform außen am Ostrand des Beckens (Beckenrand reicht bis x ≈ 5.5),
+  // die Röhre läuft von der Plattform ins Becken und endet über dem Wasser
+  const platform = toonMesh(new THREE.BoxGeometry(1.5, 0.14, 1.4), 0xeeeeee, { outline: 0.04 });
+  platform.position.set(7.3, 3.0, 0); platform.rotation.z = 0.02; pool.add(platform);
+  for (const [x, z] of [[6.7, -0.55], [6.7, 0.55], [7.9, -0.55], [7.9, 0.55]]) {
+    pool.add(limb(new THREE.Vector3(x, 0, z), new THREE.Vector3(x + 0.03, 2.95, z), 0.12, 0xeeeeee, { outline: 0.035 }));
+  }
+  const rail = toonMesh(new THREE.BoxGeometry(0.08, 0.7, 1.4), 0xeeeeee, { outline: 0.03 });
+  rail.position.set(8.0, 3.4, 0); pool.add(rail);
   const curve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(3.5, 3.2, 0), new THREE.Vector3(5.5, 2.6, 1.5), new THREE.Vector3(7, 1.4, 4.5), new THREE.Vector3(8.5, 0.6, 8),
+    new THREE.Vector3(6.6, 3.0, 0), new THREE.Vector3(5.2, 2.5, 0.4), new THREE.Vector3(3.2, 1.5, 0.9), new THREE.Vector3(1.4, 0.95, 1.1),
   ]);
   const slide = toonMesh(new THREE.TubeGeometry(curve, 24, 0.55, 8, false), 0xffd54a, { outline: 0.05 });
   pool.add(slide);
-  pool.add(limb(new THREE.Vector3(3.5, 0, 0), new THREE.Vector3(3.5, 3.0, 0), 0.15, 0xeeeeee, { outline: 0.04 }));
-  pool.add(limb(new THREE.Vector3(6.2, 0, 2.5), new THREE.Vector3(6.2, 2.1, 2.5), 0.15, 0xeeeeee, { outline: 0.04 }));
-  // Leiter zur Rutsche
+  pool.add(limb(new THREE.Vector3(5.3, 0.3, 0.4), new THREE.Vector3(5.3, 2.0, 0.4), 0.15, 0xeeeeee, { outline: 0.04 })); // Stütze auf dem Beckenrand
+  // Leiter außen an der Plattform, vom Sand hoch
+  const lx = 8.6;
+  for (const s of [-1, 1]) pool.add(limb(new THREE.Vector3(lx, 0, s * 0.35), new THREE.Vector3(lx - 0.5, 3.1, s * 0.35), 0.07, 0xeeeeee, { outline: 0.03 }));
   for (let i = 0; i < 4; i++) {
-    const rung = toonMesh(new THREE.BoxGeometry(0.7, 0.08, 0.08), 0xeeeeee, { outline: 0.03 });
-    rung.position.set(3.5, 0.6 + i * 0.7, -0.5); pool.add(rung);
+    const rung = toonMesh(new THREE.BoxGeometry(0.08, 0.08, 0.7), 0xeeeeee, { outline: 0.03 });
+    rung.position.set(lx - 0.5 * (0.6 + i * 0.7) / 3.1, 0.6 + i * 0.7, 0); pool.add(rung);
   }
   g.add(pool);
   g.userData.pool = pool;

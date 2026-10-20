@@ -19,7 +19,7 @@ const S = 1024;
 const INK = '#111111';
 
 export const FACE_KINDS = ['schluffi', 'runner', 'sun', 'kunde'];
-export const FACE_MOODS = ['neutral', 'misstrauisch', 'erschrocken', 'zufrieden', 'selig'];
+export const FACE_MOODS = ['neutral', 'misstrauisch', 'erschrocken', 'zufrieden', 'selig', 'reveal'];
 
 // ---------- Grundformen ----------
 function eye(ctx, cx, cy, r, { lid = 0, lidTilt = 0, lidColor = '#f0b98a', pupil = 24, px = 0, py = 0, veins = 0, bag = false, seed = 1, stroke = 16 }) {
@@ -128,6 +128,8 @@ const MOODS = {
   erschrocken:  { lid: 0,    tilt: 0,     pupil: 0.55, px: 0,         py: -4, eyeScale: 1.08 },
   zufrieden:    { lid: 0.3,  tilt: -0.12, pupil: 1,    px: 0,         py: 8 },
   selig:        { lid: 0.5,  tilt: -0.06, pupil: 1,    px: [-26, 34], py: [30, 22], veins: 3 },
+  // Reveal: kalte Polizistenaugen (schmal, kleine Pupillen, harte Brauen), der Mund lächelt weiter
+  reveal:       { lid: 0.42, tilt: 0.1,   pupil: 0.6,  px: 0,         py: 2 },
 };
 
 // ---------- Figurentypen: Augenlayout, Mundanker (y = Lippenlinie, grinY = Oberkante des offenen Grinsens),
@@ -171,6 +173,9 @@ function browsWith(ctx, mood, eyes, r, width, strokePath) {
     switch (mood) {
       case 'misstrauisch': // V-Brauen, innen tief
         strokePath(ctx, [[outer(0.95), ey - 1.5 * r], [inner(0.87), ey - 1.0 * r]], width + 2);
+        break;
+      case 'reveal': // harte, flache Brauen knapp über dem Auge
+        strokePath(ctx, [[outer(0.95), ey - 1.3 * r], [inner(0.9), ey - 1.15 * r]], width + 4);
         break;
       case 'erschrocken': // hoch gerissen
         strokePath(ctx, [[outer(0.9), ey - 1.85 * r], [ex, ey - 2.25 * r, inner(0.9), ey - 1.9 * r]], width);
@@ -232,6 +237,7 @@ function mouth(ctx, kind, mood, m, line) {
     case 'erschrocken':
       gasp(ctx, x, y + 20, w * 0.28, w * 0.3, line - 2);
       break;
+    case 'reveal': // das Touristen-Lächeln bleibt — nur zu breit
     case 'zufrieden': // breites, geschlossenes Lächeln mit Grübchen
       strokePath(ctx, [[x - w * 0.55, y - 20], [x, y + 60, x + w * 0.55, y - 20]], line + 2);
       strokePath(ctx, [[x - w * 0.55, y - 20], [x - w * 0.62, y - 48]], line - 4);

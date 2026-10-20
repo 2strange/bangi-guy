@@ -243,3 +243,53 @@ test('WORLD.minZ reicht bis zum Nordrand des Dorfs (Layout-Daten)', () => {
   assert.ok(WORLD.minZ <= DORF.minZ, `WORLD.minZ ${WORLD.minZ} muss ≤ DORF.minZ ${DORF.minZ} sein`);
   assert.ok(WORLD.minZ >= DORF.minZ - 2, 'aber nicht weit darüber hinaus (sonst läuft man ins Leere)');
 });
+
+// ---------- Gebäude vs. Promenade, Joystick ----------
+import { PROMENADE, BUILDING_POS, buildingFootprints, rectsOverlap, joystickInput, rotateDir } from '../js/logic.js';
+
+test('kein Gebäude-Collider schneidet die Promenade', () => {
+  for (const f of buildingFootprints()) {
+    assert.equal(rectsOverlap(f, PROMENADE), false, `${f.name} liegt auf dem Weg (z ${f.z - f.d / 2}…${f.z + f.d / 2})`);
+  }
+  // Gegenprobe: der alte Verleih-Standort (z −7) hätte den Weg geschnitten
+  const alt = buildingFootprints({ ...BUILDING_POS, rental: { x: -52, z: -7 } });
+  assert.equal(rectsOverlap(alt.find((f) => f.name === 'rental'), PROMENADE), true);
+});
+
+test('rectsOverlap: Kante berührt = kein Schnitt, Überlappung = Schnitt', () => {
+  const a = { x: 0, z: 0, w: 4, d: 2 };
+  assert.equal(rectsOverlap(a, { x: 4, z: 0, w: 4, d: 2 }), false, 'nur berührt');
+  assert.equal(rectsOverlap(a, { x: 3, z: 0.5, w: 4, d: 2 }), true);
+  assert.equal(rectsOverlap(a, { minX: -10, maxX: 10, minZ: 0.9, maxZ: 3 }), true);
+  assert.equal(rectsOverlap(a, { minX: -10, maxX: 10, minZ: 1.0, maxZ: 3 }), false);
+});
+
+test('joystickInput: Totzone, Normierung, Rennen bei weiter Auslenkung, oben = vor', () => {
+  assert.deepEqual(joystickInput(3, -2), { x: 0, z: 0, mag: 0, active: false, run: false });
+  const j = joystickInput(0, -40, { radius: 60 });
+  close(j.x, 0); close(j.z, -1); close(j.mag, 40 / 60); assert.equal(j.run, false); assert.equal(j.active, true);
+  const r = joystickInput(60, 60, { radius: 60 });
+  close(Math.hypot(r.x, r.z), 1); assert.equal(r.mag, 1); assert.equal(r.run, true);
+  const d = joystickInput(30, 0, { radius: 60, runAt: 0.4 });
+  assert.equal(d.run, true);
+});
+
+test('rotateDir: entspricht inputToDir mit Kamera-Gierung', () => {
+  const r = rotateDir({ x: 0, z: -1 }, Math.PI / 2);
+  const k = inputToDir({ up: true }, Math.PI / 2);
+  close(r.x, k.x); close(r.z, k.z);
+  assert.deepEqual(rotateDir({ x: 1, z: 0 }, 0), { x: 1, z: 0 });
+});
+
+// ---------- Pool-Leiter ----------
+import { poolLadderCollider, pointInCollider, POOL_LADDER_OFFSET } from '../js/logic.js';
+test('Pool-Leiter (außen am Ostrand des Beckens) liegt in einem Collider, aber nicht auf der Promenade', () => {
+  const ladder = { x: BUILDING_POS.pool.x + 9.5, z: BUILDING_POS.pool.z }; // Leiter aus props.js: lokal +8…+10 bei Skala 1.2
+  const c = poolLadderCollider();
+  assert.ok(pointInCollider(ladder, c), 'Leiterfuß im Kreis');
+  assert.ok(pointInCollider({ x: ladder.x + 1, z: ladder.z }, c), 'Gestell (+1) noch im Kreis');
+  assert.equal(pointInCollider({ x: ladder.x + 2, z: ladder.z }, c), false);
+  // Kreis als Rechteck-Hülle gegen den Weg
+  assert.equal(rectsOverlap({ x: c.x, z: c.z, w: c.r * 2, d: c.r * 2 }, PROMENADE), false);
+  assert.equal(POOL_LADDER_OFFSET.dx, 9.5);
+});

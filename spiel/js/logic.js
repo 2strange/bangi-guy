@@ -221,3 +221,51 @@ export function scaledRect(origin, scale, dx, dz, w, d) {
 export function scaledCircle(origin, scale, dx, dz, r) {
   return { x: origin.x + dx * scale, z: origin.z + dz * scale, r: r * scale };
 }
+
+// ---------- Gebäude-Grundrisse + Promenade (reine Daten, damit ein Test Überschneidungen prüfen kann) ----------
+export const PROMENADE = { minX: -64, maxX: 66, minZ: -12.6, maxZ: -9.0 }; // Weg am Nordrand des Strands (inkl. Wellen ±0.4)
+export const BUILDING_POS = {
+  bar: { x: -28, z: -6 },
+  rental: { x: -52, z: 0 },   // Verleih südlich der Promenade (stand vorher mit z −7 auf dem Weg)
+  hotel: { x: 34, z: -19 },
+  pool: { x: 52, z: -18.5 },  // Pool nördlich der Promenade (stand vorher mit z −16 bis −10.75 auf dem Weg)
+};
+// Collider-Rechtecke der Gebäude in Weltkoordinaten (Maße/Offsets wie in world.js verwendet)
+export function buildingFootprints(pos = BUILDING_POS, scales = BUILDING_SCALES) {
+  return [
+    { name: 'bar', ...scaledRect(pos.bar, scales.bar, 0, 0.4, 5.0, 2.2) },
+    { name: 'rental', ...scaledRect(pos.rental, scales.rental, 0, 0, 4.2, 3.4) },
+    { name: 'rental_rack', ...scaledRect(pos.rental, scales.rental, 3.8, 1.0, 3.4, 1.0) },
+    { name: 'hotel', ...scaledRect(pos.hotel, scales.hotel, 0.3, 0, 15.2, 7.4) },
+    { name: 'pool', x: pos.pool.x, z: pos.pool.z, w: 13.5, d: 10.5 },
+  ];
+}
+// Rutschen-Leiter + Gestell stehen außen am Ostrand des Beckens (relativ zum Pool, Skala 1.2 → ca. +9.5 in x)
+export const POOL_LADDER_OFFSET = { dx: 9.5, dz: 0 };
+export function poolLadderCollider(pos = BUILDING_POS) {
+  return { x: pos.pool.x + POOL_LADDER_OFFSET.dx, z: pos.pool.z + POOL_LADDER_OFFSET.dz, r: 1.2 };
+}
+export function pointInCollider(p, c) {
+  if (c.r !== undefined) return Math.hypot(p.x - c.x, p.z - c.z) <= c.r;
+  return Math.abs(p.x - c.x) <= c.w / 2 && Math.abs(p.z - c.z) <= c.d / 2;
+}
+export function rectsOverlap(a, b) {
+  const ax0 = a.x - a.w / 2, ax1 = a.x + a.w / 2, az0 = a.z - a.d / 2, az1 = a.z + a.d / 2;
+  const bx0 = b.minX ?? b.x - b.w / 2, bx1 = b.maxX ?? b.x + b.w / 2, bz0 = b.minZ ?? b.z - b.d / 2, bz1 = b.maxZ ?? b.z + b.d / 2;
+  return ax0 < bx1 && ax1 > bx0 && az0 < bz1 && az1 > bz0;
+}
+
+// ---------- Virtueller Joystick (Touch): Auslenkung in Pixeln → Richtung, Rennen bei weiter Auslenkung ----------
+export function joystickInput(dx, dy, { radius = 60, dead = 0.15, runAt = 0.8 } = {}) {
+  const mag = Math.min(1, Math.hypot(dx, dy) / radius);
+  if (mag < dead) return { x: 0, z: 0, mag: 0, active: false, run: false };
+  const len = Math.hypot(dx, dy) || 1;
+  // Bildschirm oben (dy < 0) = „vor“ (z −1), wie die W-Taste
+  return { x: dx / len, z: dy / len, mag, active: true, run: mag >= runAt };
+}
+// Richtung um die Kamera-Gierung drehen (dieselbe Drehung wie in inputToDir)
+export function rotateDir(dir, camYaw = 0) {
+  if (!camYaw) return { x: dir.x, z: dir.z };
+  const c = Math.cos(camYaw), s = Math.sin(camYaw);
+  return { x: dir.x * c + dir.z * s, z: -dir.x * s + dir.z * c };
+}

@@ -21,7 +21,9 @@ Dann `http://localhost:8000/` öffnen.
 - **WASD / Pfeiltasten** – gehen, relativ zur Kamera (Standard: oben im Bild = Richtung Meer)
 - **Shift** – „rennen“ (Sandalen: nur ein bisschen schneller, dafür mehr Gewackel)
 - **Q / R** – Kamera um den Spieler drehen
-- **Klick auf den Boden** – hinlaufen
+- **Klick / Tippen auf den Boden** – hinlaufen
+- **Touch-Geräte** (automatisch, oder `?touch=1`): Joystick links (weit ausgelenkt = rennen), rechts große Buttons
+  **Reden** und **Schauen**, darüber ↺ ↻ für die Kamera. Die Seite scrollt und zoomt nicht (`touch-action: none`).
 - **E** – ansprechen (nur mit Kunde in Reichweite). In der Sprechblase: **1 / 2** oder Pfeile + **Enter**
   wählen (Verkaufen / Lieber nicht), **Esc** bricht ab.
 - **F** in Kundennähe – genau hinschauen: die Kamera fährt vor die Figur, Füße bis Kopf, der Spieler wird dabei
@@ -49,12 +51,20 @@ Dann `http://localhost:8000/` öffnen.
   und setzt die Polizeimütze auf. Ablehnen → kleiner Satz. Jeder Kunde nur einmal pro Tag.
 - **HUD:** Tag, 💰 Geld, 🌿 Ware (Start 5), Heat als Sirenen 🚨 (0–3). Heat 3 → „VERHAFTET. Tag verloren. Geld
   bleibt.“ → Enter startet den nächsten Tag (Ware voll, Heat 0, Kunden wieder neutral).
+- **Ausverkauft:** Bei Ware 0 meldet sich der Schluffi selbst in einer Sprechblase: **Tag beenden** zeigt die
+  Tagesbilanz (verkauft, Geld, Heat) und startet den nächsten Tag; **Weiterbummeln** lässt einen die Leute weiter
+  lesen. Die Bilanz-Karte wählt einen Spruch nach Lage (gut / heat / nichts / verhaftet) aus `data/texte.json`
+  (robust, Platzhalter `{tag}`, `{verkauft}`, `{geldHeute}`, `{geld}`, `{heatLabel}`); fehlt die Datei, gibt es
+  Standardtexte. `?snap=1&scene=bilanz` zeigt die Karte.
+- **Outfits ohne Doppel:** Pro Tag bekommt jeder Kunde eine Hemd-Variante (Hawaii: Muster blumen/streifen/punkte/
+  palmen × 6 Farben als Canvas; andere Hemden: 6 Farben), gleiche Hemd-Typen am selben Tag nie dieselbe Variante
+  (`assignOutfits`, getestet). Orange bleibt dem Spieler.
 - **Mimik:** `setMood(figur, stimmung)` tauscht nur die Gesichtstextur; sobald `faces.js` eine Funktion
   `face(kind, mood)` exportiert, wird sie automatisch benutzt, bis dahin bleiben die vorhandenen Gesichter.
 - **Logik rein und getestet:** `js/game.js` (Zustand, Verkauf/Heat/Ware, Verhaftung + neuer Tag, Gesprächs-
   Zustandsautomat, nächster Kunde, Schlendern, Hinschau-Kamera) mit `test/game.test.js`.
 - Standbilder: `?snap=1&scene=dialog` (Sprechblase in der Wahl-Phase), `?snap=1&scene=inspect` (Hinschau-Kamera auf
-  den Zivi) und `?snap=1&scene=lineup` (alle Kunden in einer Reihe).
+  den Zivi), `?snap=1&scene=lineup` (alle Kunden in einer Reihe), `?snap=1&scene=ausverkauft` (Ausverkauft-Meldung).
 
 URL-Parameter: `?at=start|bar|pier|mitte|hotel|verleih|ost|hecke|overview|dorf|platz|waesche|hunde|nord` setzt den Startpunkt, `?cy=-90` dreht die
 Kamera (Grad, relativ zum Standard), `?stats=1` zeigt Draw-Calls/Dreiecke/FPS, `?snap=1` rendert ein einzelnes
@@ -92,6 +102,8 @@ Standbild (für die PNGs in `shots/`).
 - **Bewegung:** Richtung aus Tasten relativ zur Kamera; Tempo läuft weich an und aus; die Figur dreht sich
   exponentiell in Laufrichtung. Die Watschel-Phase wächst mit der tatsächlich zurückgelegten Strecke, also bleibt
   die Animation vor einer Wand stehen.
+- **Gebäude-Positionen und -Grundrisse** stehen als Daten in `js/logic.js` (`BUILDING_POS`, `buildingFootprints()`);
+  ein Test prüft, dass kein Gebäude-Collider den Promenadenweg schneidet.
 - **Kollision:** Spieler = Kreis (r 0.6). Stämme, Pfosten, Hocker, NPC = Kreise; Gebäude, Theke, Steg, Liegen,
   Absperrungen = achsenparallele Rechtecke (etwas größer als das sichtbare Objekt). Rausdrücken zum nächsten Punkt
   auf dem Rand, zwei Durchgänge für Ecken. Danach Welt-Grenzen und Ufer: `shoreZ(x)` + knöcheltiefe Zugabe.

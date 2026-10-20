@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { toonMesh, toon, basicMat, deform, rng } from './toon.js';
 import { palm, beachBar, pier, boat, signpost, hammock, parasol, beachBall, coconut, crab, cloud, sun, footprints, limb, hut, mailbox, hotel, lounger, rental, sleepingSurfer, barrier, lamp, hedge, shell, starfish, sandcastle, driftwood } from './props.js';
-import { shoreZ, WORLD, buildingScale, scaledRect, scaledCircle } from './logic.js';
+import { shoreZ, WORLD, buildingScale, scaledRect, scaledCircle, BUILDING_POS, buildingFootprints, poolLadderCollider } from './logic.js';
 import { buildDorf } from './zone-dorf.js';
 
 export const WATER_Y = 0.06;
@@ -89,16 +89,17 @@ export function buildWorld() {
 
   // Hotel Palmenschatten im Osten (Kulisse), Pool, Rutsche, Liegen mit Rentnern-Handtüchern
   const ho = hotel();
-  const hoPos = { x: 34, z: -19 };
+  const hoPos = BUILDING_POS.hotel;
   ho.position.set(hoPos.x, 0, hoPos.z);
   const hs = buildingScale('hotel');
   ho.scale.setScalar(hs);
   // Pool nicht voll mitskalieren (sonst liegt er auf der Promenade): 1.2-fach, östlich neben dem Gebäude
   ho.userData.pool.scale.setScalar(1.2 / hs);
-  ho.userData.pool.position.set((52 - hoPos.x) / hs, 0, (-16 - hoPos.z) / hs);
+  ho.userData.pool.position.set((BUILDING_POS.pool.x - hoPos.x) / hs, 0, (BUILDING_POS.pool.z - hoPos.z) / hs);
   g.add(ho);
-  bRect(hoPos, hs, 0.3, 0, 15.2, 7.4);
-  rect(52, -16, 13.5, 10.5); // Pool (Rutsche hängt hoch genug)
+  // Gebäude-Collider kommen aus logic.js (dort gegen die Promenade getestet)
+  for (const f of buildingFootprints()) if (f.name === 'hotel' || f.name === 'pool') rect(f.x, f.z, f.w, f.d);
+  colliders.push(poolLadderCollider()); // Rutschen-Leiter + Gestell außen am Ostrand des Beckens (getestet in logic.test.js)
   for (let i = 0; i < 4; i++) {
     const lo = lounger(i % 2 ? ['#3a7bd5', '#ffffff'] : ['#e8463a', '#fff5e0']);
     lo.position.set(28 + i * 3.8, 0, -4 + (i % 2) * 1.4);
@@ -110,19 +111,18 @@ export function buildWorld() {
 
   // Verleih im Westen + Surfer-Siesta
   const re = rental();
-  const rePos = { x: -52, z: -7 };
+  const rePos = BUILDING_POS.rental;
   re.position.set(rePos.x, 0, rePos.z);
   re.rotation.y = 0.25;
   const rs = buildingScale('rental');
   re.scale.setScalar(rs);
   g.add(re);
-  bRect(rePos, rs, 0, 0, 4.2, 3.4);
-  bRect(rePos, rs, 3.8, 1.0, 3.4, 1.0);
+  for (const f of buildingFootprints()) if (f.name.startsWith('rental')) rect(f.x, f.z, f.w, f.d);
   const su = sleepingSurfer();
-  su.position.set(-42, 0, 7);
+  su.position.set(-40, 0, 8);
   su.rotation.y = 0.5;
   g.add(su);
-  rect(-42, 7, 1.4, 3.0);
+  rect(-40, 8, 1.4, 3.0);
 
   // Felsen an den Enden des Strands
   for (const [x, z, sc] of [[-60, 8, 1.6], [-63, 4, 1.1], [62, 6, 1.4], [65, 1, 1.0], [58, 10, 0.8]]) {
@@ -163,13 +163,13 @@ export function buildWorld() {
 
   // Bangi Bar (Westen der Mitte), davor Start
   const bar = beachBar();
-  const barPos = { x: -28, z: -6 };
+  const barPos = BUILDING_POS.bar;
   bar.position.set(barPos.x, 0, barPos.z);
   bar.rotation.y = 0.08;
   const bs = buildingScale('bar');
   bar.scale.setScalar(bs);
   g.add(bar);
-  bRect(barPos, bs, 0, 0.4, 5.0, 2.2);   // Theke + Rückwand
+  for (const f of buildingFootprints()) if (f.name === 'bar') rect(f.x, f.z, f.w, f.d); // Theke + Rückwand
   bCircle(barPos, bs, -2.1, -1.1, 0.25); bCircle(barPos, bs, 2.1, -1.1, 0.25); bCircle(barPos, bs, -1.9, 1.0, 0.25); bCircle(barPos, bs, 2.1, 1.0, 0.25);
   bCircle(barPos, bs, -1.1, 1.9, 0.4); bCircle(barPos, bs, 0.5, 1.9, 0.4); // Hocker
 
@@ -246,7 +246,7 @@ export function buildWorld() {
     pier: { x: -37, z: 9, yaw: 0.4 },
     mitte: { x: 6, z: 5, yaw: -2.4 },
     hotel: { x: 20, z: -4, yaw: 1.3 },
-    verleih: { x: -45, z: 3, yaw: 0.3 },
+    verleih: { x: -46, z: 7, yaw: 0.3 },
     ost: { x: 58, z: -2, yaw: Math.PI / 2 },
     hecke: { x: 8, z: -17, yaw: 0.3 }, // Strandseite vor der Heckenlücke („nord“ gehört dem Dorf)
   };

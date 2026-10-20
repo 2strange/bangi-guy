@@ -9,30 +9,43 @@ import { faceDecal, schluffiFace, runnerFace } from './faces.js';
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
 // ---------- Schuhe ----------
-export function sandal(skin) {
+// side: 'L' (links) | 'R' (rechts). Die Figur schaut nach +z, ihr linker Fuß steht bei -x; die Innenseite
+// des linken Fußes zeigt also nach +x. Gespiegelt wird über das Vorzeichen m (keine negative Skalierung,
+// sonst kippen die Kontur-Hüllen). Großer Zeh innen, Zehenkappe zur Innenseite gezogen, Streifen nur außen.
+const sideSign = (side) => (side === 'R' ? -1 : 1);
+
+export function sandal(skin, side = 'L') {
+  const m = sideSign(side);
   const g = new THREE.Group();
-  const sole = toonMesh(new RoundedBoxGeometry(0.54, 0.15, 1.12, 3, 0.05), 0x6e4120, { outline: 0.045 });
+  const soleGeo = new RoundedBoxGeometry(0.54, 0.15, 1.12, 3, 0.05);
+  const toeward = (v) => { if (v.z > 0.1) v.x += m * 0.06 * (v.z - 0.1) / 0.46; }; // Sohle vorn zur Innenseite
+  deform(soleGeo, toeward);
+  const sole = toonMesh(soleGeo, 0x6e4120, { outline: 0.045 });
   sole.position.y = 0.075;
   g.add(sole);
-  const sole2 = toonMesh(new RoundedBoxGeometry(0.5, 0.06, 1.06, 3, 0.03), 0xe0a86a, { outline: 0.025 });
+  const sole2Geo = new RoundedBoxGeometry(0.5, 0.06, 1.06, 3, 0.03);
+  deform(sole2Geo, toeward);
+  const sole2 = toonMesh(sole2Geo, 0xe0a86a, { outline: 0.025 });
   sole2.position.y = 0.17;
   g.add(sole2);
   const footGeo = new RoundedBoxGeometry(0.42, 0.16, 0.74, 3, 0.07);
-  deform(footGeo, (v) => { if (v.z < -0.22) v.y += 0.06; });
+  deform(footGeo, (v) => { if (v.z < -0.22) v.y += 0.06; if (v.z > 0.1) v.x += m * 0.04 * (v.z - 0.1) / 0.27; });
   const foot = toonMesh(footGeo, skin, { outline: 0.04 });
   foot.position.set(0, 0.27, -0.12);
   g.add(foot);
-  const toes = [[-0.16, 0.11], [-0.04, 0.085], [0.06, 0.075], [0.145, 0.067], [0.22, 0.06]];
+  // Zehen: der große innen (+x·m), nach außen kleiner und weiter hinten
+  const toes = [[0.16, 0.11], [0.04, 0.085], [-0.06, 0.075], [-0.145, 0.067], [-0.22, 0.06]];
   for (const [x, r] of toes) {
     const t = toonMesh(new THREE.SphereGeometry(r, 9, 7), skin, { outline: 0.03 });
-    t.position.set(x, 0.2 + r * 0.5, 0.3 + (0.11 - r) * 0.8);
+    t.position.set(m * x, 0.2 + r * 0.5, 0.3 + (0.11 - r) * 0.8);
     g.add(t);
     const nail = toonMesh(new THREE.SphereGeometry(r * 0.45, 6, 5), 0xfff0d8, { outline: 0.015 });
     nail.position.set(0, r * 0.5, r * 0.55);
     t.add(nail);
   }
   const strap1 = toonMesh(new THREE.TorusGeometry(0.24, 0.05, 6, 14, Math.PI), 0x3a1e0c, { outline: 0.03 });
-  strap1.position.set(0, 0.2, 0.1);
+  strap1.position.set(m * 0.02, 0.2, 0.1);
+  strap1.rotation.y = -m * 0.12; // Riemchen läuft schräg zum großen Zeh
   g.add(strap1);
   const strap2 = toonMesh(new THREE.TorusGeometry(0.26, 0.05, 6, 14, Math.PI), 0x3a1e0c, { outline: 0.03 });
   strap2.position.set(0, 0.22, -0.22);
@@ -41,39 +54,48 @@ export function sandal(skin) {
   return g;
 }
 
-export function sneaker(color = 0xe8463a) {
+export function sneaker(color = 0xe8463a, side = 'L') {
+  const m = sideSign(side);
   const g = new THREE.Group();
-  const sole = toonMesh(new RoundedBoxGeometry(0.54, 0.22, 1.22, 3, 0.08), 0xffffff, { outline: 0.045 });
+  const toeward = (v) => { if (v.z > 0.15) v.x += m * 0.08 * (v.z - 0.15) / 0.46; }; // Zehenkappe zur Innenseite
+  const soleGeo = new RoundedBoxGeometry(0.54, 0.22, 1.22, 3, 0.08);
+  deform(soleGeo, toeward);
+  const sole = toonMesh(soleGeo, 0xffffff, { outline: 0.045 });
   sole.position.y = 0.11;
   g.add(sole);
-  const soleLine = toonMesh(new RoundedBoxGeometry(0.57, 0.05, 1.25, 2, 0.02), 0xc9cfdc, { outline: 0.02 });
+  const soleLineGeo = new RoundedBoxGeometry(0.57, 0.05, 1.25, 2, 0.02);
+  deform(soleLineGeo, toeward);
+  const soleLine = toonMesh(soleLineGeo, 0xc9cfdc, { outline: 0.02 });
   soleLine.position.y = 0.07;
   g.add(soleLine);
   const upperGeo = new RoundedBoxGeometry(0.48, 0.36, 1.04, 3, 0.12);
   deform(upperGeo, (v) => {
     if (v.z < -0.28) v.y += 0.1;
     if (v.z > 0.25 && v.y > 0) v.y -= 0.12 * (v.z - 0.25);
+    toeward(v);
   });
   const upper = toonMesh(upperGeo, color, { outline: 0.045 });
   upper.position.set(0, 0.38, -0.06);
   g.add(upper);
   const cap = toonMesh(new RoundedBoxGeometry(0.46, 0.2, 0.36, 3, 0.1), 0xffffff, { outline: 0.035 });
-  cap.position.set(0, 0.3, 0.4);
+  cap.position.set(m * 0.05, 0.3, 0.4);
+  cap.rotation.y = -m * 0.1;
   g.add(cap);
-  for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
+  // drei Streifen nur an der Außenseite
+  for (let i = 0; i < 3; i++) {
     const stripe = toonMesh(new THREE.BoxGeometry(0.03, 0.26, 0.07), 0xffffff, { outline: 0.015 });
-    stripe.position.set(s * 0.245, 0.38, -0.02 + i * 0.14);
+    stripe.position.set(-m * 0.245, 0.38, -0.02 + i * 0.14);
     stripe.rotation.x = -0.5;
     g.add(stripe);
   }
   const tongue = toonMesh(new THREE.BoxGeometry(0.24, 0.28, 0.08), 0xb83428, { outline: 0.03 });
-  tongue.position.set(0, 0.6, -0.28);
-  tongue.rotation.x = 0.4;
+  tongue.position.set(m * 0.02, 0.6, -0.28);
+  tongue.rotation.set(0.4, 0, -m * 0.08);
   g.add(tongue);
   for (let i = 0; i < 4; i++) {
     const lace = toonMesh(new THREE.BoxGeometry(0.32, 0.055, 0.07), 0xffffff, { outline: 0.02 });
-    lace.position.set(0, 0.6 - i * 0.05, -0.16 + i * 0.11);
-    lace.rotation.x = 0.35;
+    lace.position.set(m * 0.015 * i, 0.6 - i * 0.05, -0.16 + i * 0.11);
+    lace.rotation.set(0.35, 0, -m * 0.1);
     g.add(lace);
   }
   const heel = toonMesh(new THREE.BoxGeometry(0.2, 0.16, 0.05), 0xffffff, { outline: 0.02 });
@@ -118,7 +140,7 @@ export function schluffi() {
     shorts.position.set(0, -0.15, 0);
     shorts.rotation.z = -s * 0.1;
     leg.add(shorts);
-    const shoe = sandal(skin);
+    const shoe = sandal(skin, s < 0 ? 'L' : 'R');
     shoe.position.set(footX, -hipY, 0);
     shoe.rotation.y = s * 0.75;
     leg.add(shoe);
@@ -231,7 +253,7 @@ export function runner() {
   const stance = 0.48;
   const hipY = 1.15;
   for (const s of [-1, 1]) {
-    const shoe = sneaker(0xe8463a);
+    const shoe = sneaker(0xe8463a, s < 0 ? 'L' : 'R');
     shoe.position.set(s * stance, 0, 0);
     shoe.rotation.y = s * 0.28;
     root.add(shoe);

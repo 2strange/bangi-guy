@@ -1,0 +1,128 @@
+{
+  "_schema": "Spieltexte für Bangi Beach (Sprechblasen, HUD, Tagesende). Eigentümer: Content. Alles kurz, Deutsch, Lebowski-Ton. Struktur: ausverkauft[] = Sprüche, wenn die Ware alle ist (zufällig wählen; zeigen auf Mentor/Kuppe tagsüber oder Bar abends). tagesende{lage: []} = Bilanz-Sprüche nach Lage, Schlüssel: gut (viel verkauft, Heat ≤ 1), heat (Heat 2+, Tag überstanden), nichts (kein Verkauf), verhaftet (Heat 3, Tag verloren, Geld bleibt); je Lage zufällig einen wählen. reveal_gags[] = pro Zivi bzw. Falle ein Eintrag: id (Kunde aus kunden.json), wann (kauf = beim Verkauf, ablehnung = bei Ablehnung, immer = Idle-Tick), gag (was man sieht, 1 Satz), mood (Grundgesicht der Mimik-API: neutral|misstrauisch|erschrocken|zufrieden|selig), extra (Requisit, das erscheint, als Kennwort für die Figuren-Bauer: dienstmarke|polizistenaugen|handschellen|funkgeraet|notizblock|pfeife|halstuch_marke|taschenlampe|pulsuhr|null), dauer_s (ungefähre Länge der Kleinanimation). mentor[] = Weisheiten für die Kuppe: id, titel, mechanik (welche Regel sie freischaltet), einleitung (Mentor-Gerede, 1–2 Sätze), regel (der eigentliche Merksatz, so steht er später im Hilfe-Menü), pointe (Schluss-Gag), kunden_beispiel (ids aus kunden.json, an denen man die Regel übt).",
+
+  "ausverkauft": [
+    "Alles weg. Der Mentor hockt auf der Kuppe und gießt. Hoch mit dir.",
+    "Taschen leer, Herz voll. Nachschub gibt's oben beim Gärtner.",
+    "Nichts mehr da. Ist das jetzt Feierabend oder ein Geschäftsmodell?",
+    "Ausverkauft. Die Bar hat offen. Der Mentor sitzt bestimmt schon da und tut so, als wäre er zufällig da."
+  ],
+
+  "tagesende": {
+    "gut": [
+      "Guter Tag. Die Sonne ist stoned, du bist reich, keiner hat was gemerkt.",
+      "Kasse voll, Heat kalt. Der Mentor nennt das 'Flow'. Die Polizei nennt es 'nichts'.",
+      "Alles verkauft, niemand verhaftet. Du hast heute mehr richtig gemacht als die Möwe auf dem Schild."
+    ],
+    "heat": [
+      "Geschafft. Aber Pong hat heute dreimal nach dir gefragt. Dreimal, Mann.",
+      "Tag überstanden. Die Streife kennt jetzt deine Sandalen beim Namen.",
+      "Du hast Geld. Du hast auch einen Ruf. Einer davon ist schlecht."
+    ],
+    "nichts": [
+      "Null verkauft. Immerhin: null verhaftet. Das Meer war auch schön.",
+      "Du hast heute vor allem gestanden. Sehr überzeugend gestanden.",
+      "Nichts los. Der Walross-Typ hat gefragt, ob du krank bist."
+    ],
+    "verhaftet": [
+      "Tag verloren. Pong hat dich erwischt. In Sandalen. Das muss man erst mal schaffen.",
+      "Verhaftet. Die Ware ist weg, das Geld bleibt, dein Stolz liegt irgendwo am Strand.",
+      "Der Mentor sagt: 'Gibt schlimmere Nächte als eine Nacht bei Pong. Sein Kaffee ist okay.'"
+    ]
+  },
+
+  "reveal_gags": [
+    {
+      "id": "zivi_1", "wann": "kauf",
+      "gag": "Das starre Touristen-Lächeln friert ein, die Hand geht ans Ohr, aus der Chino-Tasche klappt eine Dienstmarke, die viel zu groß für die Tasche war.",
+      "mood": "misstrauisch", "extra": "dienstmarke", "dauer_s": 1.5
+    },
+    {
+      "id": "zivi_1", "wann": "ablehnung",
+      "gag": "Ein Mundwinkel zuckt, er tippt etwas in die Luft (unsichtbares Handy) und geht genau drei Schritte weiter, bleibt stehen, schaut zurück.",
+      "mood": "misstrauisch", "extra": null, "dauer_s": 1.0
+    },
+    {
+      "id": "zivi_2", "wann": "kauf",
+      "gag": "Die Sonnenbrille rutscht bis auf die Nasenspitze, darunter kommen kalte Polizistenaugen hervor, während der Mund weiter 'Bro' lächelt; das Preisschild am Hemd wippt.",
+      "mood": "zufrieden", "extra": "polizistenaugen", "dauer_s": 1.5
+    },
+    {
+      "id": "zivi_2", "wann": "ablehnung",
+      "gag": "Er schreibt demonstrativ entspannt in einen Notizblock, der aus dem Hawaiihemd kommt, und murmelt 'uncool' beim Schreiben.",
+      "mood": "neutral", "extra": "notizblock", "dauer_s": 1.2
+    },
+    {
+      "id": "zivi_2", "wann": "immer",
+      "gag": "Alle paar Sekunden zupft er am Preisschild, als wollte er es abreißen, lässt es aber dran: Dienstkleidung, Quittung nötig.",
+      "mood": "zufrieden", "extra": null, "dauer_s": 0.8
+    },
+    {
+      "id": "zivi_3", "wann": "kauf",
+      "gag": "Rex setzt sich kerzengerade, zieht mit den Zähnen eine Dienstmarke aus dem blauen Halstuch und hält sie dem Spieler hin; der Mann kaut weiter Kaugummi.",
+      "mood": "neutral", "extra": "halstuch_marke", "dauer_s": 2.0
+    },
+    {
+      "id": "zivi_3", "wann": "ablehnung",
+      "gag": "Rex schnüffelt noch einmal lang an der Tasche des Spielers, legt die Ohren an und wirft dem Mann einen vorwurfsvollen Blick zu; der zuckt mit den Schultern.",
+      "mood": "neutral", "extra": null, "dauer_s": 1.5
+    },
+    {
+      "id": "zivi_3", "wann": "immer",
+      "gag": "Der 'Flaschenöffner' am Gürtel knackt kurz und sagt leise 'Zentrale?', der Mann hustet zur Tarnung.",
+      "mood": "neutral", "extra": "funkgeraet", "dauer_s": 1.0
+    },
+    {
+      "id": "jogger_1", "wann": "kauf",
+      "gag": "Daumen hoch, breites Grinsen, dann joggt er ohne Pause weiter, direkt auf die nächste Streife zu, und winkt ihr fröhlich (Heat +1, ohne böse Absicht).",
+      "mood": "zufrieden", "extra": "pulsuhr", "dauer_s": 2.0
+    },
+    {
+      "id": "jogger_1", "wann": "ablehnung",
+      "gag": "Er schaut auf die Pulsuhr, nickt, als hätte die Uhr ihm das Nein erklärt, und läuft auf der Stelle weiter.",
+      "mood": "neutral", "extra": "pulsuhr", "dauer_s": 1.0
+    },
+    {
+      "id": "erstkaeufer_1", "wann": "kauf",
+      "gag": "Er versteckt die Ware nacheinander in Hand, Hosentasche, Hand, hinter dem Rücken, dann ruft er laut 'ICH HAB NICHTS', und das Handy mit Taschenlampe geht an.",
+      "mood": "erschrocken", "extra": "taschenlampe", "dauer_s": 2.0
+    },
+    {
+      "id": "erstkaeufer_1", "wann": "ablehnung",
+      "gag": "Er atmet hörbar aus, lächelt zum ersten Mal, dann erschrickt er vor seinem eigenen Schatten und rennt in Flip-Flops davon (stolpert nach drei Schritten).",
+      "mood": "erschrocken", "extra": null, "dauer_s": 2.0
+    },
+    {
+      "id": "rentner_1", "wann": "kauf",
+      "gag": "Er fotografiert versehentlich sich selbst mit Blitz, zieht die Socken in den Sandalen hoch und strahlt wie am Eiswagen (zur Beruhigung: harmlos, nur peinlich).",
+      "mood": "zufrieden", "extra": null, "dauer_s": 1.5
+    }
+  ],
+
+  "mentor": [
+    {
+      "id": "weisheit_1", "titel": "Die Sandalen-Regel",
+      "mechanik": "Schuhe lesen: Sandalen/barfuß = kann nicht rennen; Turnschuhe = kann rennen oder ist Zivi; Flip-Flops = stolpert.",
+      "einleitung": "Setz dich. Nein, nicht auf die Beete. Hör zu, das hat mir damals ein Typ in Thailand erzählt, bevor er... egal, wo er jetzt ist.",
+      "regel": "Verkauf nie an Leute mit Turnschuhen. Die sind aufs Rennen vorbereitet. Sandalen-Leute können dich nicht verfolgen. Und barfuß? Barfuß ist Familie.",
+      "pointe": "Ich selbst hab seit 1994 keine Schuhe mehr an. Deswegen hab ich auch keine Vorstrafen. Oder Zehen, die noch alle in eine Richtung zeigen.",
+      "kunden_beispiel": ["stammkunde_1", "surfer_1", "zivi_1"]
+    },
+    {
+      "id": "weisheit_2", "titel": "Das zu saubere Hemd",
+      "mechanik": "Kleidung lesen: brandneues oder gebügeltes Hemd, Preisschild, Bügelfalte = Verkleidung. Hemd mit Fleck = echt. Socken in Sandalen = Rentner, kein Zivi.",
+      "einleitung": "Siehst du den da unten mit dem Hawaiihemd? Schönes Hemd. Zu schön. Niemand, der wirklich hier wohnt, hat ein Hemd ohne Geschichte.",
+      "regel": "Ein Hemd ohne Fleck ist ein Hemd ohne Vergangenheit. Wer am Strand aussieht wie frisch aus der Packung, ist aus der Packung: Preisschild, Bügelfalte, Ohrknopf. Aber Vorsicht: Socken in Sandalen sind kein Zivi, das ist nur Hannelores Mann.",
+      "pointe": "Mein Hemd hat vier Flecken. Drei davon sind Erinnerungen, einer ist Mango. Ich weiß nur nicht mehr, welcher.",
+      "kunden_beispiel": ["zivi_2", "rentner_1", "stammkunde_1"]
+    },
+    {
+      "id": "weisheit_3", "titel": "Hund dabei = Spürnase",
+      "mechanik": "Begleiter lesen: Hund mit Halstuch = Diensthund, Abstand halten; Schuhe und Hemd des Halters sind dann egal. Strandhunde ohne Halstuch sind harmlos.",
+      "einleitung": "Ein Hund lügt nie. Das ist das Problem. Der Mann daneben kann barfuß sein, Tanktop, Kaugummi, alles richtig. Der Hund arbeitet trotzdem.",
+      "regel": "Hund mit Halstuch, Ohren oben, Nase an deiner Tasche: das ist kein Haustier, das ist ein Beamter mit Fell. Abstand halten, nicht streicheln, nicht verkaufen.",
+      "pointe": "Ich hatte auch mal einen Hund. Hat mich dreimal verraten. Nicht an die Polizei, an meine Ex. Gleiche Behörde, andere Uniform.",
+      "kunden_beispiel": ["zivi_3", "surfer_1"]
+    }
+  ]
+}

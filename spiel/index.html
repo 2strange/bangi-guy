@@ -2,11 +2,11 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Bangi Beach</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #8fe0ff; }
-  canvas { display: block; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #8fe0ff; touch-action: none; overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
+  canvas { display: block; touch-action: none; }
   #hint { position: fixed; left: 12px; bottom: 10px; font: 13px/1.3 sans-serif; color: #123; background: rgba(255,255,255,.65); padding: 5px 9px; border-radius: 6px; pointer-events: none; }
   /* Comic-Overlay */
   :root { --ink: #111; --paper: #fff8e6; }
@@ -28,6 +28,21 @@
   #arrest .card { background: var(--paper); border: 5px solid var(--ink); border-radius: 24px; padding: 24px 36px; text-align: center; box-shadow: 8px 8px 0 var(--ink); max-width: 520px; }
   #arrest h1 { margin: 0 0 10px; font-size: 44px; color: #e8463a; letter-spacing: 2px; }
   #arrest p { font-size: 20px; margin: 6px 0 14px; } #arrest .small { font-size: 15px; color: #555; }
+  #arrest h1.rot { color: #e8463a; } #arrest h1 { color: #2a3f8f; }
+  .hud-item.empty { background: #e8463a; color: #fff; }
+  /* Touch-Steuerung (nur auf Touch-Geräten bzw. ?touch=1) */
+  #touch { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 4; }
+  #joy { position: absolute; left: 18px; bottom: 18px; width: 170px; height: 170px; pointer-events: auto; touch-action: none; }
+  #joy-base { position: absolute; left: 15px; top: 15px; width: 140px; height: 140px; border-radius: 50%; background: rgba(255,248,230,.55); border: 4px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+  #joy-knob { position: absolute; left: 36px; top: 36px; width: 60px; height: 60px; border-radius: 50%; background: #ffd54a; border: 4px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+  #touch-buttons { position: absolute; right: 18px; bottom: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; pointer-events: auto; }
+  .tbtn { width: 84px; height: 84px; border-radius: 50%; background: var(--paper); border: 4px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); font: inherit; font-size: 30px; line-height: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: none; }
+  .tbtn span { font-size: 13px; font-weight: bold; }
+  .tbtn.small { width: 56px; height: 56px; font-size: 26px; justify-self: center; }
+  .tbtn:active { background: #ffd54a; transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); }
+  body.touch button.opt { font-size: 20px; padding: 12px 18px; min-height: 52px; }
+  body.touch #bubble { max-width: 90vw; font-size: 21px; }
+  body.touch #prompt { bottom: 200px; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -42,6 +57,7 @@
 <div id="prompt" class="comic"></div>
 <div id="bubble" class="comic"></div>
 <div id="arrest" class="comic"></div>
+<div id="touch" class="comic"></div>
 <pre id="err" style="position:fixed;top:0;left:0;margin:0;padding:8px;background:#fff;color:#c00;font:14px monospace;white-space:pre-wrap;display:none;z-index:9"></pre>
 <script>
   // Laufzeitfehler sichtbar machen (auch im Screenshot-Modus): Text-Overlay statt leerem Bild

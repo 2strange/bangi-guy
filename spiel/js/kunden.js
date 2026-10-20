@@ -19,7 +19,10 @@ const HAIR = [0x4a2a12, 0x1a1a1a, 0xffe14a, 0xb8552a, 0x6b4423];
 const css = (hex) => '#' + hex.toString(16).padStart(6, '0');
 
 // ---------- weitere Schuhe ----------
-export function flipflop(skin, color = 0x3dd6e0) {
+// side 'L' | 'R' wie in figures.js: großer Zeh innen. Linker Fuß steht bei −x, innen ist +x → x spiegeln
+const toeSign = (side) => (side === 'L' ? -1 : 1);
+export function flipflop(skin, color = 0x3dd6e0, side = 'L') {
+  const m = toeSign(side);
   const g = new THREE.Group();
   const sole = toonMesh(new RoundedBoxGeometry(0.5, 0.08, 1.06, 3, 0.04), color, { outline: 0.035 });
   sole.position.y = 0.04; g.add(sole);
@@ -29,14 +32,15 @@ export function flipflop(skin, color = 0x3dd6e0) {
   foot.position.set(0, 0.17, -0.12); g.add(foot);
   for (const [x, r] of [[-0.16, 0.11], [-0.04, 0.085], [0.06, 0.075], [0.145, 0.067], [0.22, 0.06]]) {
     const t = toonMesh(new THREE.SphereGeometry(r, 9, 7), skin, { outline: 0.03 });
-    t.position.set(x, 0.1 + r * 0.5, 0.3 + (0.11 - r) * 0.8); g.add(t);
+    t.position.set(x * m, 0.1 + r * 0.5, 0.3 + (0.11 - r) * 0.8); g.add(t);
   }
   // Zehensteg: V-Riemen vom Spann zwischen die ersten Zehen
-  g.add(limb(V(-0.1, 0.22, 0.2), V(-0.22, 0.12, -0.1), 0.03, 0x222222, { outline: 0.015 }));
-  g.add(limb(V(-0.1, 0.22, 0.2), V(0.2, 0.12, -0.1), 0.03, 0x222222, { outline: 0.015 }));
+  g.add(limb(V(-0.1 * m, 0.22, 0.2), V(-0.22 * m, 0.12, -0.1), 0.03, 0x222222, { outline: 0.015 }));
+  g.add(limb(V(-0.1 * m, 0.22, 0.2), V(0.2 * m, 0.12, -0.1), 0.03, 0x222222, { outline: 0.015 }));
   return g;
 }
-export function barefoot(skin) {
+export function barefoot(skin, side = 'L') {
+  const m = toeSign(side);
   const g = new THREE.Group();
   const footGeo = new RoundedBoxGeometry(0.42, 0.18, 0.78, 3, 0.08);
   deform(footGeo, (v) => { if (v.z < -0.22) v.y += 0.07; });
@@ -44,7 +48,7 @@ export function barefoot(skin) {
   foot.position.set(0, 0.1, -0.1); g.add(foot);
   for (const [x, r] of [[-0.16, 0.11], [-0.04, 0.085], [0.06, 0.075], [0.145, 0.067], [0.22, 0.06]]) {
     const t = toonMesh(new THREE.SphereGeometry(r, 9, 7), skin, { outline: 0.03 });
-    t.position.set(x, r * 0.9, 0.32 + (0.11 - r) * 0.8); g.add(t);
+    t.position.set(x * m, r * 0.9, 0.32 + (0.11 - r) * 0.8); g.add(t);
   }
   const sand = toonMesh(new THREE.SphereGeometry(0.12, 6, 5), 0xe2bf6e, { outline: 0 });
   sand.position.set(0.1, 0.05, -0.45); g.add(sand);
@@ -95,11 +99,40 @@ function dog(bandana) {
   return g;
 }
 
+// ---------- Hemd-Muster (Canvas): blumen, streifen, punkte, palmen ----------
+const shirtTexCache = new Map();
+export function shirtTexture(pattern, base = '#3a7bd5') {
+  const key = pattern + '|' + base;
+  if (shirtTexCache.has(key)) return shirtTexCache.get(key);
+  let tex;
+  if (pattern === 'blumen') tex = hawaiiTexture(base, ['#ffffff', '#ffd54a']);
+  else {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 256;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = base; ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    if (pattern === 'streifen') {
+      for (let y = 0; y < 256; y += 48) ctx.fillRect(0, y, 256, 20);
+    } else if (pattern === 'punkte') {
+      for (let y = 20; y < 256; y += 44) for (let x = (y / 44) % 2 ? 22 : 0; x < 256; x += 44) { ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill(); }
+    } else { // palmen: Stamm + Blätterkranz
+      ctx.fillStyle = '#1f6e2a';
+      for (const [x, y] of [[60, 70], [190, 60], [120, 180], [40, 200], [210, 190]]) {
+        ctx.fillRect(x - 3, y, 6, 36);
+        for (let k = 0; k < 5; k++) { const a = -Math.PI + k * (Math.PI / 4); ctx.beginPath(); ctx.ellipse(x + Math.cos(a) * 14, y + Math.sin(a) * 8, 16, 5, a, 0, Math.PI * 2); ctx.fill(); }
+      }
+    }
+    tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  }
+  shirtTexCache.set(key, tex);
+  return tex;
+}
+
 /**
  * Figur für einen normalisierten Kunden (siehe game.js). Füße auf y=0, Blick nach +z.
  * userData.parts = { legs, arms, head, decal, capPolice, dog }, userData.faceOpts für setMood.
  */
-export function buildKunde(k, seed = 1) {
+export function buildKunde(k, seed = 1, outfit = null) {
   const root = new THREE.Group();
   const rand = rng(seed * 31 + 7);
   const skin = SKIN[k.hautton] || 0xe8a773;
@@ -127,11 +160,12 @@ export function buildKunde(k, seed = 1) {
     leg.position.set(s * 0.28, hipY, 0);
     const fx = s * stance - s * 0.28;
     let shoe;
-    if (k.schuhe === 'sandale') shoe = sandal(skin);
-    else if (k.schuhe === 'turnschuh') shoe = sneaker(sneakerColor);
-    else if (k.schuhe === 'flipflop') shoe = flipflop(skin, flipColor);
+    const side = s < 0 ? 'L' : 'R'; // Figur schaut nach +z, links = −x
+    if (k.schuhe === 'sandale') shoe = sandal(skin, side);
+    else if (k.schuhe === 'turnschuh') shoe = sneaker(sneakerColor, side);
+    else if (k.schuhe === 'flipflop') shoe = flipflop(skin, flipColor, side);
     else if (k.schuhe === 'gummistiefel') shoe = rubberBoot(bootColor);
-    else shoe = barefoot(skin);
+    else shoe = barefoot(skin, side);
     shoe.position.set(fx, -hipY, 0);
     shoe.rotation.y = s * 0.3;
     leg.add(shoe);
@@ -166,13 +200,12 @@ export function buildKunde(k, seed = 1) {
   const shoulderY = hipY + 0.85;
   let sleeve = skin;
   const hemd = k.hemd;
+  const shirtBase = outfit?.color || ['#3a7bd5', '#3bb84a', '#9b59b6', '#e8463a'][Math.floor(rand() * 4)];
   if (hemd === 'hawaii' || hemd === 'hawaii_neu') {
-    // andere Hemdfarben als der Spieler (orange bleibt ihm)
-    const palette = [['#3a7bd5', ['#ffffff', '#ffd54a']], ['#3bb84a', ['#ff5fa2', '#fff5e0']], ['#9b59b6', ['#ffe14a', '#3dd6e0']], ['#e8463a', ['#ffffff', '#ffd54a']]];
-    const [base, petals] = palette[Math.floor(rand() * palette.length)];
+    // Muster + Farbe aus der Tageszuteilung (keine Doppel-Outfits); orange bleibt dem Spieler
     const tg = new THREE.SphereGeometry(belly ? 0.56 : 0.46, 16, 12); tg.scale(1, belly ? 0.95 : 1.05, 0.85);
-    const t = toonMesh(tg, toon(0xffffff, { map: hawaiiTexture(base, petals) }), { outline: 0.05 });
-    t.position.set(0, hipY + 0.45, belly ? 0.08 : 0); root.add(t); sleeve = parseInt(base.slice(1), 16);
+    const t = toonMesh(tg, toon(0xffffff, { map: shirtTexture(outfit?.pattern || 'blumen', shirtBase) }), { outline: 0.05 });
+    t.position.set(0, hipY + 0.45, belly ? 0.08 : 0); root.add(t); sleeve = parseInt(shirtBase.slice(1), 16);
     if (hemd === 'hawaii_neu') {
       // frisch gebügelt: Knickfalte als heller Streifen
       const crease = toonMesh(new THREE.BoxGeometry(0.03, 0.9, 0.04), 0xfff5e0, { outline: 0.01 });
@@ -181,8 +214,10 @@ export function buildKunde(k, seed = 1) {
   } else if (hemd === 'polo_sauber' || hemd === 'uniform_versteckt') {
     const tg = new RoundedBoxGeometry(0.9, 0.95, 0.5, 3, 0.2);
     deform(tg, (v) => { if (v.y > 0) v.x *= 1.2; });
-    const t = toonMesh(tg, 0xf4f4f8, { outline: 0.05 });
-    t.position.set(0, hipY + 0.48, 0); root.add(t); sleeve = 0xf4f4f8;
+    // Polo: sehr helle Variante der Tagesfarbe, damit „zu sauber“ lesbar bleibt
+    const poloColor = new THREE.Color(shirtBase).lerp(new THREE.Color(0xffffff), 0.72).getHex();
+    const t = toonMesh(tg, poloColor, { outline: 0.05 });
+    t.position.set(0, hipY + 0.48, 0); root.add(t); sleeve = poloColor;
     const collar = toonMesh(new THREE.CylinderGeometry(0.26, 0.3, 0.14, 12), hemd === 'uniform_versteckt' ? 0x2a3f8f : 0xdfe3ee, { outline: 0.03 });
     collar.position.set(0, hipY + 0.95, 0); root.add(collar);
     if (hemd === 'uniform_versteckt') {
@@ -192,7 +227,7 @@ export function buildKunde(k, seed = 1) {
     const belt = toonMesh(new THREE.CylinderGeometry(0.42, 0.42, 0.1, 14), 0x333333, { outline: 0.03 });
     belt.position.set(0, hipY + 0.05, 0); root.add(belt);
   } else if (hemd === 'tanktop') {
-    const t = toonMesh(new THREE.CylinderGeometry(0.4, belly ? 0.56 : 0.45, 0.95, 14), [0xffffff, 0x3bb84a, 0xff5fa2][Math.floor(rand() * 3)], { outline: 0.045 });
+    const t = toonMesh(new THREE.CylinderGeometry(0.4, belly ? 0.56 : 0.45, 0.95, 14), parseInt(shirtBase.slice(1), 16), { outline: 0.045 });
     t.position.set(0, hipY + 0.48, 0); root.add(t);
     const sh = toonMesh(new THREE.SphereGeometry(0.44, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.45), skin, { outline: 0.04 });
     sh.position.set(0, hipY + 0.72, 0); root.add(sh);

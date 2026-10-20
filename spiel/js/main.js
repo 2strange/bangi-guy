@@ -4,13 +4,14 @@ import * as THREE from 'three';
 import { buildWorld } from './world.js';
 import { schluffi } from './figures.js';
 import { buildKunde, setMood, setRevealed } from './kunden.js';
-import { createUI } from './ui.js';
+import { createUI, isTouchDevice } from './ui.js';
 import {
-  inputToDir, dirToTarget, stepPlayer, followCamera, waddlePose, CAM_OFFSET, DEFAULT_CAM_YAW, isOccluder,
+  inputToDir, dirToTarget, stepPlayer, followCamera, waddlePose, CAM_OFFSET, DEFAULT_CAM_YAW, isOccluder, joystickInput, rotateDir,
 } from './logic.js';
 import {
   initialState, normalizeKatalog, pickKunden, startDialog, advanceDialog, chooseOption, isArrested, newDay, moodFor,
   kundeStatus, nearestKunde, wanderStep, inspectCamera, kundeLookYaw, TALK_DIST, idSeed,
+  normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE,
 } from './game.js';
 
 // Tastenbelegung (Konstanten, einfach umzulegen): E = immer ansprechen, F = hinschauen, Kamera Q/R
@@ -25,7 +26,8 @@ const SNAP = q('snap') === '1';
 const STATS = q('stats') === '1';
 const AT = q('at');
 const CY = q('cy'); // Kamera-Gierung in Grad relativ zum Standard, z. B. ?at=hotel&cy=-90 (Kamera im Osten, Blick nach Westen)
-const SCENE = q('scene'); // dialog | inspect | lineup (nur Snap)
+const SCENE = q('scene'); // dialog | inspect | lineup | ausverkauft (nur Snap)
+const TOUCH = q('touch') === '1' || isTouchDevice(); // Touch-Steuerung einblenden
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: SNAP });
 renderer.setPixelRatio(SNAP ? 1 : Math.min(window.devicePixelRatio, 1.5));
@@ -87,6 +89,8 @@ let talking = null;         // Kunde im Gespräch / im Blick
 let lineIdx = 0;            // Satzwahl zyklisch
 const ui = createUI();
 ui.setHud(game);
+let texte = normalizeTexte(null);
+let soldOutShown = false; // Ausverkauft-Meldung einmal pro Tag
 
 // ---------- Kundschaft ----------
 // Spawn + Schlenderpunkte am Strand (frei von Gebäuden); mehr Kunden als Plätze teilen sich Plätze
@@ -117,12 +121,13 @@ function clearKunden() {
 function spawnKunden(day = 1) {
   clearKunden();
   const list = pickKunden(katalog, undefined, 2, day);
+  const outfits = assignOutfits(list, day); // keine Doppel-Outfits pro Tag
   const used = {};
   list.forEach((def, i) => {
     const si = def.spawn && SPAWN_CODE[def.spawn] !== undefined ? SPAWN_CODE[def.spawn] : i % SPAWNS.length;
     const n = used[si] = (used[si] || 0) + 1; // mehrere Kunden am selben Platz: versetzt
     const pts = SPAWNS[si].map((p) => ({ x: p.x + (n - 1) * 2.2, z: p.z + (n - 1) * 1.3 }));
-    const group = buildKunde(def, idSeed(def.id));
+    const group = buildKunde(def, idSeed(def.id), outfits[def.id]);
     kundenGroup.add(group);
     setMood(group, def.stimmung_start || 'neutral');
     const npc = { x: pts[0].x, z: pts[0].z, yaw: Math.PI, points: pts, idx: 1, pause: 1 + i * 0.7, speed: 0.5 + def.tempo * 1.1, phase: 0 };
@@ -146,6 +151,15 @@ function applyKunde(k) {
 // Kunden-Positionen für Logik (x, z, yaw, id)
 const kundenPos = () => kunden.map((k) => ({ id: k.id, x: k.npc.x, z: k.npc.z, yaw: k.npc.yaw, ref: k }));
 
+async function loadTexte() {
+  let json = null;
+  try {
+    const res = await fetch('./data/texte.json', { cache: 'no-store' });
+    if (res.ok) json = await res.json();
+  } catch (e) { /* Datei fehlt → Platzhalter-Texte */ }
+  texte = normalizeTexte(json);
+  game = { ...game, texte };
+}
 async function loadKunden() {
   let json = null;
   try {
@@ -169,8 +183,18 @@ const KEYMAP = {
   KeyD: 'right', ArrowRight: 'right', ShiftLeft: 'run', ShiftRight: 'run', [KEY_CAM_LEFT]: 'rotL', [KEY_CAM_RIGHT]: 'rotR',
 };
 let nearK = null; // nächster Kunde in Reichweite (jeden Frame neu)
+// Touch: Joystick links (weit ausgelenkt = rennen), Buttons rechts; Mathe in logic.joystickInput
+let joy = null;
+const touch = ui.createTouchControls({
+  onJoystick: (dx, dy) => { joy = dx === null ? null : joystickInput(dx, dy, { radius: touch.radius }); if (joy) clickTarget = null; },
+  onTalk: () => { if (mode === 'dialog') confirmDialog(); else if (nearK && mode === 'free') startTalk(nearK); },
+  onLook: () => { if (nearK || mode === 'inspect') toggleInspect(); },
+  onCamLeft: (down) => { keys.rotL = down; },
+  onCamRight: (down) => { keys.rotR = down; },
+});
+if (TOUCH) touch.show();
 window.addEventListener('keydown', (e) => {
-  if (mode === 'arrest') { if (e.code === 'Enter' || e.code === 'Space') { startNewDay(); e.preventDefault(); } return; }
+  if (mode === 'arrest' || mode === 'card') { if (e.code === 'Enter' || e.code === 'Space') { startNewDay(); e.preventDefault(); } return; }
   if (mode === 'dialog') { dialogKey(e); return; }
   // E = immer ansprechen (ohne Kunden in Reichweite passiert nichts), F = hinschauen
   if (e.code === KEY_TALK) { if (nearK && mode === 'free') startTalk(nearK); e.preventDefault(); return; }
@@ -193,7 +217,7 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
   if (ray.ray.intersectPlane(groundPlane, hit)) clickTarget = { x: hit.x, z: hit.z };
 });
 ui.onOptionClick((i, where) => {
-  if (where === 'arrest') startNewDay();
+  if (where === 'card') startNewDay();
   else if (mode === 'dialog') { selected = i; confirmDialog(); }
 });
 
@@ -210,7 +234,7 @@ function startTalk(k) {
 }
 function renderBubble() {
   if (!dialog) return;
-  ui.showBubble(dialog, talking.def.name || talking.def.typ, selected);
+  ui.showBubble(dialog, talking ? (talking.def.name || talking.def.typ) : 'Schluffi', selected);
 }
 function dialogKey(e) {
   if (!dialog) return;
@@ -225,6 +249,11 @@ function dialogKey(e) {
 }
 function confirmDialog() {
   if (!dialog) return;
+  if (dialog.phase === 'ausverkauft') {
+    soldOutShown = true;
+    if (selected === 0) endDay(); else endDialog();
+    return;
+  }
   if (dialog.phase === 'wahl') {
     const r = chooseOption(game, dialog, talking.def, dialog.options[selected], lineIdx++);
     game = r.state; dialog = r.dialog;
@@ -242,12 +271,31 @@ function endDialog() {
   dialog = null;
   ui.hideBubble();
   mode = 'free';
-  if (isArrested(game)) { mode = 'arrest'; ui.showArrest(game); }
+  if (isArrested(game)) { mode = 'arrest'; const c = dayEndCard(game, texte, lineIdx++); ui.showCard({ titel: c.titel, zeilen: [c.spruch, ...c.zeilen], button: c.button, rot: true }); return; }
+  if (isSoldOut(game) && !soldOutShown) showSoldOut();
+}
+// Ausverkauft: Sprechblase des Spielers mit „Tag beenden“ / „Weiterbummeln“
+function showSoldOut() {
+  talking = null;
+  dialog = soldOutDialog(texte, lineIdx++);
+  selected = 0;
+  mode = 'dialog';
+  ui.showPrompt(null);
+  renderBubble();
+}
+// Tagesbilanz-Karte, danach neuer Tag
+function endDay() {
+  dialog = null;
+  ui.hideBubble();
+  mode = 'card';
+  const c = dayEndCard(game, texte, lineIdx++);
+  ui.showCard({ titel: c.titel, zeilen: [c.spruch, ...c.zeilen], button: c.button, rot: c.lage === 'verhaftet' });
 }
 function startNewDay() {
   game = newDay(game);
+  soldOutShown = false;
   ui.setHud(game);
-  ui.hideArrest();
+  ui.hideCard();
   spawnKunden(game.tag); // neue Kundschaft, Zivis rotieren
   state = { ...state, x: world.spots.start.x, z: world.spots.start.z, yaw: world.spots.start.yaw, speed: 0 };
   mode = 'free';
@@ -292,8 +340,8 @@ function applyCamera() {
 // Sprechblase über den Kopf des Gesprächspartners legen
 const headWorld = new THREE.Vector3();
 function placeBubbleAtHead() {
-  if (!talking) return;
-  talking.group.userData.parts.head.getWorldPosition(headWorld);
+  const head = talking ? talking.group.userData.parts.head : P.head;
+  head.getWorldPosition(headWorld);
   headWorld.y += 1.7; // bei der steilen Kamera liegt „über dem Kopf“ sonst im Bild auf dem Körper
   headWorld.project(camera);
   ui.placeBubble((headWorld.x + 1) / 2 * window.innerWidth, (1 - headWorld.y) / 2 * window.innerHeight);
@@ -415,6 +463,18 @@ function updateKunden(dt) {
 // ---------- Snap: einmal rendern an fester Stelle ----------
 function setupScene() {
   if (!SCENE || kunden.length === 0) return;
+  if (SCENE === 'bilanz') {
+    game = { ...game, ware: 0, verkauftHeute: START_WARE, geldHeute: 115, geld: 115, heat: 2 }; // Zahlen gehen auf: Ware + verkauft = Start
+    ui.setHud(game);
+    endDay();
+    return;
+  }
+  if (SCENE === 'ausverkauft') {
+    game = { ...game, ware: 0, verkauftHeute: START_WARE, geldHeute: 120, geld: 120 };
+    ui.setHud(game);
+    showSoldOut();
+    return;
+  }
   if (SCENE === 'lineup') {
     // Gruppenbild: alle Kunden in einer Reihe, Blick zur Kamera (Kamera von Süden, tief)
     const n = kunden.length, x0 = -(n - 1) * 1.7, z0 = 6;
@@ -448,7 +508,7 @@ function setupScene() {
 }
 
 if (SNAP) {
-  loadKunden().then(() => {
+  Promise.all([loadTexte(), loadKunden()]).then(() => {
     const overview = AT === 'overview';
     setupScene();
     applyPose(state);
@@ -477,6 +537,7 @@ if (SNAP) {
 } else {
   resize();
   window.addEventListener('resize', resize);
+  loadTexte();
   loadKunden();
   let last = performance.now();
   renderer.setAnimationLoop((now) => {
@@ -488,11 +549,13 @@ if (SNAP) {
       if (keys.rotL) camYaw += 1.5 * dt;
       if (keys.rotR) camYaw -= 1.5 * dt;
       let dir = inputToDir(keys, camYaw);
+      let run = keys.run;
+      if (joy && joy.active) { dir = rotateDir(joy, camYaw); run = joy.run; }
       if (dir.x === 0 && dir.z === 0 && clickTarget) {
         dir = dirToTarget(state, clickTarget);
         if (!dir) clickTarget = null;
       }
-      state = stepPlayer(state, { dir, run: keys.run }, dt, colliders);
+      state = stepPlayer(state, { dir, run }, dt, colliders);
     } else {
       state = stepPlayer(state, { dir: null, run: false }, dt, colliders);
     }

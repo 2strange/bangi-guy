@@ -5,6 +5,7 @@ import {
   initialState, normalizeKunde, normalizeKatalog, pickLine, sell, decline, isArrested, newDay, heatLabel,
   startDialog, advanceDialog, chooseOption, moodFor, nearestKunde, wanderStep, inspectCamera, kundeLookYaw,
   START_WARE, MAX_HEAT, pickKunden, idSeed,
+  DEFAULT_TEXTE, normalizeTexte, fillText, dayReport, soldOutDialog, isSoldOut, assignOutfits, outfitKey, variantCount, lageFor, dayEndCard,
 } from '../js/game.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -249,4 +250,94 @@ test('idSeed: stabil, positiv, verschieden für verschiedene ids', () => {
   assert.ok(idSeed('zivi_1') > 0 && Number.isInteger(idSeed('zivi_1')));
   assert.notEqual(idSeed('zivi_1'), idSeed('zivi_2'));
   assert.notEqual(idSeed('a'), idSeed('b'));
+});
+
+// ---------- Ausverkauft / Tagesende / Texte ----------
+test('Tagesbilanz zählt Verkäufe und Geld des Tages; newDay setzt sie zurück, Geld bleibt', () => {
+  let s = initialState();
+  s = sell(s, schluffi).state;
+  s = sell(s, { ...schluffi, id: 'k2', zahlt: 30 }).state;
+  const r = dayReport(s);
+  assert.equal(r.verkauft, 2); assert.equal(r.geldHeute, 50); assert.equal(r.geld, 50); assert.equal(r.tag, 1);
+  const n = newDay(s);
+  assert.equal(n.verkauftHeute, 0); assert.equal(n.geldHeute, 0); assert.equal(n.geld, 50);
+});
+
+test('isSoldOut + soldOutDialog: bei Ware 0 Meldung mit „Tag beenden“ / „Weiter“', () => {
+  let s = initialState();
+  for (let i = 0; i < START_WARE; i++) s = sell(s, { ...schluffi, id: 'k' + i }).state;
+  assert.ok(isSoldOut(s));
+  const d = soldOutDialog(normalizeTexte(null));
+  assert.equal(d.phase, 'ausverkauft');
+  assert.deepEqual(d.options, ['Tag beenden', 'Weiterbummeln']);
+  assert.ok(d.text.length > 10);
+  // Verkauf bei Ware 0 nutzt den Kundensatz aus den Texten, falls im State hinterlegt
+  const r = sell({ ...s, texte: normalizeTexte({ ausverkauft_kunde: ['Leer, Digga.'] }) }, { ...schluffi, id: 'neu' });
+  assert.equal(r.result, 'keine_ware'); assert.equal(r.text, 'Leer, Digga.');
+});
+
+test('normalizeTexte: Defaults bei fehlender/kaputter Datei, Schema der Content-Datei (tagesende nach Lage), fillText', () => {
+  assert.deepEqual(normalizeTexte(undefined), DEFAULT_TEXTE);
+  const t = normalizeTexte({ ausverkauft: ['A', 'B'], tagesende: { gut: ['Top.'], heat: 7, nichts: [] }, optionen: { weiter: 42 }, reveal_gags: [], mentor: [] });
+  assert.deepEqual(t.ausverkauft, ['A', 'B']);
+  assert.deepEqual(t.tagesende.gut, ['Top.']);
+  assert.deepEqual(t.tagesende.heat, DEFAULT_TEXTE.tagesende.heat, 'kaputt → Default');
+  assert.deepEqual(t.tagesende.nichts, DEFAULT_TEXTE.tagesende.nichts, 'leer → Default');
+  assert.deepEqual(t.tagesende.verhaftet, DEFAULT_TEXTE.tagesende.verhaftet, 'fehlt → Default');
+  assert.equal(t.optionen.weiter, 'Weiterbummeln');
+  assert.equal(fillText('Tag {tag}: {verkauft} Beutel, {unbekannt}', { tag: 3, verkauft: 5 }), 'Tag 3: 5 Beutel, {unbekannt}');
+});
+
+test('lageFor + dayEndCard: Lage aus der Bilanz, Spruch und Zeilen mit Zahlen gefüllt', () => {
+  assert.equal(lageFor({ verkauft: 0, heat: 0, verhaftet: false }), 'nichts');
+  assert.equal(lageFor({ verkauft: 3, heat: 2, verhaftet: false }), 'heat');
+  assert.equal(lageFor({ verkauft: 3, heat: 1, verhaftet: false }), 'gut');
+  assert.equal(lageFor({ verkauft: 3, heat: 3, verhaftet: true }), 'verhaftet');
+  let s = initialState();
+  s = sell(s, schluffi).state;
+  const t = normalizeTexte({ tagesende: { gut: ['Guter Tag {tag}.'] } });
+  const c = dayEndCard(s, t);
+  assert.equal(c.lage, 'gut'); assert.equal(c.titel, 'Feierabend.'); assert.equal(c.spruch, 'Guter Tag 1.');
+  assert.deepEqual(c.zeilen, ['Tag 1: 1 Beutel verkauft, 20 Münzen dazu.', 'Kasse: 20 · Heat: ···']);
+  const v = dayEndCard({ ...s, heat: 3, verhaftet: true }, t);
+  assert.equal(v.lage, 'verhaftet'); assert.equal(v.titel, 'VERHAFTET.');
+});
+
+// ---------- Outfits ----------
+test('assignOutfits: gleicher Hemd-Typ bekommt verschiedene Varianten, Schlüssel pro Tag eindeutig, deterministisch', () => {
+  const ks = [];
+  for (let i = 0; i < 6; i++) ks.push(normalizeKunde({ id: 'h' + i, hemd: 'hawaii', accessoire: 'cap' }));
+  for (let i = 0; i < 6; i++) ks.push(normalizeKunde({ id: 'p' + i, hemd: 'polo_sauber', accessoire: null }));
+  const o = assignOutfits(ks, 1);
+  const keys = ks.map((k) => outfitKey(k, o[k.id]));
+  assert.equal(new Set(keys).size, keys.length, 'keine Doppel-Outfits');
+  assert.deepEqual(assignOutfits(ks, 1), o, 'deterministisch');
+  assert.notDeepEqual(assignOutfits(ks, 2), o, 'anderer Tag, andere Zuteilung');
+  // mehr Polos als Farben: Wiederholung erst, wenn alle Varianten vergeben sind
+  const many = [];
+  for (let i = 0; i < variantCount('polo_sauber') + 1; i++) many.push(normalizeKunde({ id: 'q' + i, hemd: 'polo_sauber' }));
+  const om = assignOutfits(many, 1);
+  const colors = many.map((k) => om[k.id].color);
+  assert.equal(new Set(colors).size, variantCount('polo_sauber'));
+  // Hawaii-Varianten haben Muster + Farbe
+  assert.ok(['blumen', 'streifen', 'punkte', 'palmen'].includes(o.h0.pattern));
+  assert.equal(o.p0.pattern, 'uni');
+});
+
+test('Invariante: Ware + heute verkauft = Startware — ein Zivi nimmt keinen Beutel (er zahlt nicht, nichts wird übergeben)', () => {
+  let s = initialState();
+  const seq = [schluffi, zivi, { ...schluffi, id: 'k2' }, { ...schluffi, id: 'k3' }]; // ein Zivi (Heat 2), kein Verhaften
+  for (const k of seq) {
+    s = sell(s, k).state;
+    assert.equal(s.ware + s.verkauftHeute, START_WARE, `nach ${k.id}`);
+    const r = dayReport(s);
+    assert.equal(r.verkauft + s.ware, START_WARE);
+  }
+  // Ablehnen ändert nichts an der Bilanz
+  s = decline(s, { ...schluffi, id: 'k4' }).state;
+  assert.equal(s.ware + s.verkauftHeute, START_WARE);
+  // alles verkauft: Ware 0 heißt verkauft = 5
+  for (const id of ['k5', 'k6']) s = sell(s, { ...schluffi, id }).state;
+  assert.equal(s.ware, 0); assert.equal(dayReport(s).verkauft, START_WARE);
+  assert.equal(sell(s, { ...schluffi, id: 'k7' }).result, 'keine_ware');
 });
