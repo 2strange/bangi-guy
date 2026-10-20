@@ -5,13 +5,14 @@ import { buildWorld } from './world.js';
 import { schluffi } from './figures.js';
 import { buildKunde, setMood, setRevealed } from './kunden.js';
 import { createUI, isTouchDevice } from './ui.js';
+import { prepareGags, playGag, stopGag } from './gags.js';
 import {
   inputToDir, dirToTarget, stepPlayer, followCamera, waddlePose, CAM_OFFSET, DEFAULT_CAM_YAW, isOccluder, joystickInput, rotateDir,
 } from './logic.js';
 import {
   initialState, normalizeKatalog, pickKunden, startDialog, advanceDialog, chooseOption, isArrested, newDay, moodFor,
   kundeStatus, nearestKunde, wanderStep, inspectCamera, kundeLookYaw, TALK_DIST, idSeed,
-  normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE,
+  normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE, gagFor, nextIdleGagDelay,
 } from './game.js';
 
 // Tastenbelegung (Konstanten, einfach umzulegen): E = immer ansprechen, F = hinschauen, Kamera Q/R
@@ -21,12 +22,13 @@ const KEY_CAM_LEFT = 'KeyQ';
 const KEY_CAM_RIGHT = 'KeyR';
 
 // Parameter per Regex, weil der Screenshot-Aufruf „?snap=1“ hinter andere Parameter hängt (…?at=bar?snap=1)
-const q = (name) => (location.search.match(new RegExp('[?&]' + name + '=([-a-z0-9.]+)')) || [])[1];
+const q = (name) => (location.search.match(new RegExp('[?&]' + name + '=([-a-z0-9._]+)')) || [])[1];
 const SNAP = q('snap') === '1';
 const STATS = q('stats') === '1';
 const AT = q('at');
 const CY = q('cy'); // Kamera-Gierung in Grad relativ zum Standard, z. B. ?at=hotel&cy=-90 (Kamera im Osten, Blick nach Westen)
-const SCENE = q('scene'); // dialog | inspect | lineup | ausverkauft (nur Snap)
+const SCENE = q('scene'); // dialog | inspect | lineup | ausverkauft | bilanz | gag (nur Snap)
+const SCENE_ID = q('id'); // Kunde für scene=gag
 const TOUCH = q('touch') === '1' || isTouchDevice(); // Touch-Steuerung einblenden
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: SNAP });
@@ -133,7 +135,8 @@ function spawnKunden(day = 1) {
     const npc = { x: pts[0].x, z: pts[0].z, yaw: Math.PI, points: pts, idx: 1, pause: 1 + i * 0.7, speed: 0.5 + def.tempo * 1.1, phase: 0 };
     const collider = { x: npc.x, z: npc.z, r: 0.7 };
     colliders.push(collider);
-    kunden.push({ def, group, npc, collider, look: 0, id: def.id });
+    prepareGags(group);
+    kunden.push({ def, group, npc, collider, look: 0, id: def.id, gag: null, idleN: i, nextIdle: 3 + i * 1.3 });
     applyKunde(kunden[kunden.length - 1]);
   });
 }
@@ -141,6 +144,7 @@ function applyKunde(k) {
   k.group.position.set(k.npc.x, 0, k.npc.z);
   k.group.rotation.y = k.npc.yaw;
   k.collider.x = k.npc.x; k.collider.z = k.npc.z;
+  if (k.gag) return; // gags.js hat Arme/Beine/Kopf/Hund in der Hand
   const pose = waddlePose(k.npc.phase, k.npc.moving ? k.npc.speed : 0);
   const parts = k.group.userData.parts;
   parts.legs[0].rotation.x = pose.legL; parts.legs[1].rotation.x = pose.legR;
@@ -260,6 +264,8 @@ function confirmDialog() {
     ui.setHud(game);
     setMood(talking.group, moodFor(kundeStatus(game, talking.id)));
     if (dialog.result === 'reveal') setRevealed(talking.group, true);
+    const wann = dialog.result === 'ablehnung' ? 'ablehnung' : (dialog.result === 'kauf' || dialog.result === 'reveal') ? 'kauf' : null;
+    if (wann) startGag(talking, gagFor(texte, talking.id, wann));
     selected = 0;
     renderBubble();
     return;
@@ -438,10 +444,45 @@ function stats() {
 }
 let frameMs = 16;
 
+// ---------- Reveal-Gags (gags.js, Daten aus texte.json) ----------
+const clock = () => performance.now() / 1000;
+function startGag(k, entry) {
+  if (!entry) return;
+  if (k.gag) stopGag(k.group);
+  k.gag = { entry, t0: clock() };
+  k.npc = { ...k.npc, moving: false, pause: Math.max(k.npc.pause, entry.dauer_s + 1) };
+}
+// Gag beenden und Status-Mimik/Mütze wiederherstellen (stopGag setzt die Grundstimmung zurück)
+function endGag(k) {
+  if (!k.gag) return;
+  stopGag(k.group);
+  k.gag = null;
+  setMood(k.group, kundeStatus(game, k.id) === 'neutral' ? (k.def.stimmung_start || 'neutral') : moodFor(kundeStatus(game, k.id)));
+  setRevealed(k.group, kundeStatus(game, k.id) === 'misstrauisch');
+}
+function updateGag(k, now) {
+  if (!k.gag) return;
+  const t = now - k.gag.t0;
+  const running = playGag(k.group, k.gag.entry, t);
+  const d = Math.hypot(k.npc.x - state.x, k.npc.z - state.z);
+  if (k.gag.entry.wann === 'immer') { if (!running) endGag(k); return; }
+  // kauf/ablehnung halten den Endzustand, bis der Spieler weitergeht oder ein anderes Gespräch beginnt
+  if (!running && (d > TALK_DIST + 3 || (mode === 'dialog' && talking !== k))) endGag(k);
+}
+
 // ---------- Kunden je Frame ----------
 function updateKunden(dt) {
+  const now = clock();
   for (const k of kunden) {
     const busy = (mode === 'dialog' || mode === 'inspect') && talking === k;
+    if (k.gag) { updateGag(k, now); if (k.gag) { applyKunde(k); continue; } }
+    // Idle-Gag („immer“) alle 6–10 s, wenn der Spieler in der Nähe ist — der Hinweis zum Leute-Lesen
+    if (!busy && mode === 'free' && now > k.nextIdle) {
+      k.nextIdle = now + nextIdleGagDelay(k.idleN++);
+      const d = Math.hypot(k.npc.x - state.x, k.npc.z - state.z);
+      if (d < 10) startGag(k, gagFor(texte, k.id, 'immer'));
+      if (k.gag) { updateGag(k, now); applyKunde(k); continue; }
+    }
     if (busy) {
       // stehen bleiben und sich zum Spieler drehen — beim Hinschauen zur Kamera (wer angestarrt wird, dreht sich um)
       const to = mode === 'inspect' ? cam : state;
@@ -463,8 +504,24 @@ function updateKunden(dt) {
 // ---------- Snap: einmal rendern an fester Stelle ----------
 function setupScene() {
   if (!SCENE || kunden.length === 0) return;
+  if (SCENE === 'gag') {
+    // Kunde mitten im Kauf-Gag: ggf. Tag wechseln, bis der Kunde dran ist (Zivis rotieren)
+    let k = kunden.find((x) => x.id === SCENE_ID);
+    for (let day = 2; !k && day <= 3; day++) { spawnKunden(day); k = kunden.find((x) => x.id === SCENE_ID); }
+    k = k || kunden[0];
+    const p = k.npc.points[0];
+    k.npc = { ...k.npc, x: p.x, z: p.z, yaw: 0, moving: false, pause: 99 };
+    state = { ...state, x: p.x + 1.7, z: p.z - 1.8, yaw: Math.PI, speed: 0 };
+    k.npc.yaw = Math.atan2(state.x - k.npc.x, state.z - k.npc.z);
+    k.look = 0; applyKunde(k);
+    talking = k;
+    const entry = gagFor(texte, k.id, 'kauf') || gagFor(texte, k.id, 'immer') || gagFor(texte, k.id, 'ablehnung');
+    if (entry) { k.gag = { entry, t0: 0 }; playGag(k.group, entry, entry.dauer_s * 0.6); }
+    mode = 'inspect'; // Hinschau-Kamera + Spieler ausgeblendet, damit der Gag frei steht
+    return;
+  }
   if (SCENE === 'bilanz') {
-    game = { ...game, ware: 0, verkauftHeute: START_WARE, geldHeute: 115, geld: 115, heat: 2 }; // Zahlen gehen auf: Ware + verkauft = Start
+    game = { ...game, ware: 0, verkauftHeute: START_WARE - 1, anZivisHeute: 1, geldHeute: 95, geld: 95, heat: 2 }; // Zahlen gehen auf: verkauft + an Zivis + übrig = Start
     ui.setHud(game);
     endDay();
     return;

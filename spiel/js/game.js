@@ -3,6 +3,9 @@
 // Schlendern der Kunden, Hinschau-Kamera. Getestet mit `node --test`.
 
 export const START_WARE = 5;
+// Nimmt ein Zivi beim „Verkauf“ den Beutel mit (Ware −1, Bilanz „an die Polizei“)? Entscheid steht noch aus —
+// ein Wert zum Umschalten. sell() nimmt die Option auch pro Aufruf entgegen, damit Tests beide Fälle prüfen.
+export const ZIVI_BESCHLAGNAHMT = true;
 export const MAX_HEAT = 3;
 export const TALK_DIST = 3.2;     // so nah muss man ran für E/F
 export const SHOES = ['sandale', 'flipflop', 'turnschuh', 'barfuss', 'gummistiefel'];
@@ -19,7 +22,7 @@ export const EXTRAS = ['socken', 'preisschild', 'stirnband', 'halstuch_hund', 'f
 export const SPAWNS = ['K1', 'K2', 'K3', 'K4', 'K5', 'K6'];
 
 export function initialState() {
-  return { geld: 0, ware: START_WARE, heat: 0, tag: 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0 };
+  return { geld: 0, ware: START_WARE, heat: 0, tag: 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0 };
 }
 
 // ---------- Kundschaft: fehlende/kaputte Felder robust auffüllen ----------
@@ -81,13 +84,19 @@ export function pickLine(list, idx = 0) {
 // ---------- Verkauf / Ablehnen / Heat ----------
 export function kundeStatus(state, id) { return state.status[id] || 'neutral'; }
 
-export function sell(state, kunde, lineIdx = 0) {
+export function sell(state, kunde, lineIdx = 0, { beschlagnahmt = ZIVI_BESCHLAGNAHMT } = {}) {
   if (state.verhaftet) return { state, result: 'verhaftet', text: '' };
   if (kundeStatus(state, kunde.id) !== 'neutral') return { state, result: 'schon_erledigt', text: '' };
   if (state.ware <= 0) return { state, result: 'keine_ware', text: pickLine(state.texte?.ausverkauft_kunde, lineIdx) || 'Alles leer, Mann. Morgen wieder.' };
   if (kunde.zivi) {
+    // Der Beutel ist weg (an die Polizei), Geld gibt es keins
     const heat = Math.min(MAX_HEAT, state.heat + Math.max(1, kunde.heat));
-    const next = { ...state, heat, status: { ...state.status, [kunde.id]: 'misstrauisch' }, verhaftet: heat >= MAX_HEAT };
+    const next = {
+      ...state, heat,
+      ware: beschlagnahmt ? state.ware - 1 : state.ware,
+      anZivisHeute: (state.anZivisHeute || 0) + (beschlagnahmt ? 1 : 0),
+      status: { ...state.status, [kunde.id]: 'misstrauisch' }, verhaftet: heat >= MAX_HEAT,
+    };
     return { state: next, result: 'reveal', text: pickLine(kunde.saetze.reveal, lineIdx), heatPlus: heat - state.heat };
   }
   const next = {
@@ -108,7 +117,7 @@ export const isArrested = (state) => state.heat >= MAX_HEAT || state.verhaftet;
 
 // Verhaftung mild: Tag verloren, Ware weg, Geld bleibt, alle Kunden wieder neutral
 export function newDay(state) {
-  return { ...state, geld: state.geld, ware: START_WARE, heat: 0, tag: state.tag + 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0 };
+  return { ...state, geld: state.geld, ware: START_WARE, heat: 0, tag: state.tag + 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0 };
 }
 
 // Heat als Text/Icons für das HUD
@@ -229,9 +238,11 @@ export const DEFAULT_TEXTE = {
     nichts: ['Null verkauft. Immerhin: null verhaftet.'],
     verhaftet: ['Tag verloren. Die Ware ist weg, das Geld bleibt.'],
   },
-  bilanz: ['Tag {tag}: {verkauft} Beutel verkauft, {geldHeute} Münzen dazu.', 'Kasse: {geld} · Heat: {heatLabel}'],
+  bilanz: ['Tag {tag}: {weg} Beutel weg{polizei}, {geldHeute} Münzen dazu.', 'Kasse: {geld} · Heat: {heatLabel}'],
+  polizei: ' ({anZivis} an die Polizei 🙈)',
   titel: { feierabend: 'Feierabend.', verhaftet: 'VERHAFTET.' },
   optionen: { tag_beenden: 'Tag beenden', weiter: 'Weiterbummeln', neuer_tag: 'Neuer Tag' },
+  reveal_gags: [],
 };
 const strList = (v, fallback) => (Array.isArray(v) && v.length && v.every((x) => typeof x === 'string' && x.trim()) ? v : fallback);
 const str = (v, fallback) => (typeof v === 'string' && v.trim() ? v : fallback);
@@ -247,6 +258,8 @@ export function normalizeTexte(json) {
     ausverkauft_kunde: strList(t.ausverkauft_kunde, DEFAULT_TEXTE.ausverkauft_kunde),
     tagesende,
     bilanz: strList(t.bilanz, DEFAULT_TEXTE.bilanz),
+    polizei: str(t.polizei, DEFAULT_TEXTE.polizei),
+    reveal_gags: normalizeGags(t.reveal_gags),
     titel: { feierabend: str(ti.feierabend, DEFAULT_TEXTE.titel.feierabend), verhaftet: str(ti.verhaftet, DEFAULT_TEXTE.titel.verhaftet) },
     optionen: {
       tag_beenden: str(op.tag_beenden, DEFAULT_TEXTE.optionen.tag_beenden),
@@ -255,13 +268,28 @@ export function normalizeTexte(json) {
     },
   };
 }
+// Reveal-Gags (gags.js spielt sie): id, wann (kauf|ablehnung|immer), gag, mood, extra, dauer_s — kaputte Einträge fliegen raus
+export const GAG_WANN = ['kauf', 'ablehnung', 'immer'];
+export function normalizeGags(list) {
+  if (!Array.isArray(list)) return [];
+  return list.filter((g) => g && typeof g === 'object' && typeof g.id === 'string' && g.id && GAG_WANN.includes(g.wann))
+    .map((g) => ({
+      id: g.id, wann: g.wann, gag: str(g.gag, ''), mood: MOODS.includes(g.mood) ? g.mood : null,
+      extra: typeof g.extra === 'string' && g.extra ? g.extra : null,
+      dauer_s: Number.isFinite(g.dauer_s) && g.dauer_s > 0 ? Math.min(10, g.dauer_s) : 1.5,
+    }));
+}
+export const gagFor = (texte, id, wann) => (texte?.reveal_gags || []).find((g) => g.id === id && g.wann === wann) || null;
+// Idle-Gag-Takt: alle 6–10 s (deterministisch aus Zähler)
+export const nextIdleGagDelay = (n = 0) => 6 + ((n * 7919) % 400) / 100;
 // Platzhalter {name} füllen; unbekannte bleiben stehen
 export function fillText(tpl, vars) {
   return String(tpl).replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? String(vars[k]) : m));
 }
 // Tagesbilanz als Variablen für die Texte
 export function dayReport(state) {
-  return { tag: state.tag, verkauft: state.verkauftHeute || 0, geldHeute: state.geldHeute || 0, geld: state.geld, heat: state.heat, heatLabel: heatLabel(state.heat), verhaftet: isArrested(state) };
+  const verkauft = state.verkauftHeute || 0, anZivis = state.anZivisHeute || 0;
+  return { tag: state.tag, verkauft, anZivis, weg: verkauft + anZivis, uebrig: state.ware, geldHeute: state.geldHeute || 0, geld: state.geld, heat: state.heat, heatLabel: heatLabel(state.heat), verhaftet: isArrested(state) };
 }
 // Lage für den Bilanz-Spruch: verhaftet > nichts verkauft > Heat 2+ > gut
 export function lageFor(report) {
@@ -274,6 +302,7 @@ export function lageFor(report) {
 export function dayEndCard(state, texte, lineIdx = 0) {
   const t = texte || DEFAULT_TEXTE;
   const vars = dayReport(state);
+  vars.polizei = vars.anZivis > 0 ? fillText(t.polizei, vars) : '';
   const lage = lageFor(vars);
   return {
     titel: lage === 'verhaftet' ? t.titel.verhaftet : t.titel.feierabend,

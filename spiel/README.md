@@ -47,8 +47,9 @@ Dann `http://localhost:8000/` öffnen.
   „nass“, „schwitzt“, die Mimik-Beschreibungen und Tells (nur Text). Sie schlendern zwischen 2–3 Punkten, pausieren
   und schauen dem Spieler nach.
 - **Ansprechen (E):** Sprechblase im Comic-Look über dem Kopf: Gruß → Wahl **Verkaufen / Lieber nicht** → Ergebnis.
-- **Ergebnis:** Unbedenklicher → +Geld, Ware −1, Kunde zufrieden. Zivi → Heat +1…3, Reveal-Satz, Kunde misstrauisch
-  und setzt die Polizeimütze auf. Ablehnen → kleiner Satz. Jeder Kunde nur einmal pro Tag.
+- **Ergebnis:** Unbedenklicher → +Geld, Ware −1, Kunde zufrieden. Zivi → Heat +1…3, der Beutel ist weg (an die
+  Polizei, kein Geld; umschaltbar über `ZIVI_BESCHLAGNAHMT` in `js/game.js`), Reveal-Satz, Kunde misstrauisch und setzt die Polizeimütze auf. Die Bilanz rechnet
+  verkauft + an Zivis + übrig = Startware (getestet). Ablehnen → kleiner Satz. Jeder Kunde nur einmal pro Tag.
 - **HUD:** Tag, 💰 Geld, 🌿 Ware (Start 5), Heat als Sirenen 🚨 (0–3). Heat 3 → „VERHAFTET. Tag verloren. Geld
   bleibt.“ → Enter startet den nächsten Tag (Ware voll, Heat 0, Kunden wieder neutral).
 - **Ausverkauft:** Bei Ware 0 meldet sich der Schluffi selbst in einer Sprechblase: **Tag beenden** zeigt die
@@ -59,6 +60,11 @@ Dann `http://localhost:8000/` öffnen.
 - **Outfits ohne Doppel:** Pro Tag bekommt jeder Kunde eine Hemd-Variante (Hawaii: Muster blumen/streifen/punkte/
   palmen × 6 Farben als Canvas; andere Hemden: 6 Farben), gleiche Hemd-Typen am selben Tag nie dieselbe Variante
   (`assignOutfits`, getestet). Orange bleibt dem Spieler.
+- **Reveal-Gags:** `data/texte.json → reveal_gags[]` (id, wann = kauf | ablehnung | immer, mood, extra, dauer_s) werden
+  von `js/gags.js` gespielt: nach Verkauf bzw. Ablehnung der passende Gag des Kunden (hält den Endzustand, bis man
+  weitergeht), „immer“-Gags alle 6–10 s als Idle-Tick, wenn der Spieler in der Nähe ist — der Hinweis zum
+  Leute-Lesen. Während eines Gags steht der Kunde still und bekommt keine Schlender-Pose. `?snap=1&scene=gag&id=zivi_3`
+  zeigt einen Kunden mitten im Kauf-Gag.
 - **Mimik:** `setMood(figur, stimmung)` tauscht nur die Gesichtstextur; sobald `faces.js` eine Funktion
   `face(kind, mood)` exportiert, wird sie automatisch benutzt, bis dahin bleiben die vorhandenen Gesichter.
 - **Logik rein und getestet:** `js/game.js` (Zustand, Verkauf/Heat/Ware, Verhaftung + neuer Tag, Gesprächs-

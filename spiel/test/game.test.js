@@ -5,7 +5,7 @@ import {
   initialState, normalizeKunde, normalizeKatalog, pickLine, sell, decline, isArrested, newDay, heatLabel,
   startDialog, advanceDialog, chooseOption, moodFor, nearestKunde, wanderStep, inspectCamera, kundeLookYaw,
   START_WARE, MAX_HEAT, pickKunden, idSeed,
-  DEFAULT_TEXTE, normalizeTexte, fillText, dayReport, soldOutDialog, isSoldOut, assignOutfits, outfitKey, variantCount, lageFor, dayEndCard,
+  DEFAULT_TEXTE, normalizeTexte, fillText, dayReport, soldOutDialog, isSoldOut, assignOutfits, outfitKey, variantCount, lageFor, dayEndCard, normalizeGags, gagFor, nextIdleGagDelay, ZIVI_BESCHLAGNAHMT,
 } from '../js/game.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -58,14 +58,15 @@ test('sell an Unbedenklichen: +Geld, Ware −1, Status zufrieden, Zustand unver�
   assert.equal(sell(r.state, schluffi).result, 'schon_erledigt');
 });
 
-test('sell an Zivi: Heat steigt um seinen Wert, kein Geld, Ware bleibt, Reveal-Satz, misstrauisch', () => {
+test('sell an Zivi: Heat steigt um seinen Wert, kein Geld, Beutel weg (an die Polizei), Reveal-Satz, misstrauisch', () => {
   const r = sell(initialState(), zivi);
   assert.equal(r.result, 'reveal');
   assert.equal(r.text, 'Zentrale, angebissen.');
   assert.equal(r.state.heat, 2);
   assert.equal(r.heatPlus, 2);
   assert.equal(r.state.geld, 0);
-  assert.equal(r.state.ware, START_WARE);
+  assert.equal(r.state.ware, START_WARE - 1);
+  assert.equal(r.state.anZivisHeute, 1);
   assert.equal(r.state.status.z1, 'misstrauisch');
   assert.equal(isArrested(r.state), false);
 });
@@ -298,7 +299,10 @@ test('lageFor + dayEndCard: Lage aus der Bilanz, Spruch und Zeilen mit Zahlen ge
   const t = normalizeTexte({ tagesende: { gut: ['Guter Tag {tag}.'] } });
   const c = dayEndCard(s, t);
   assert.equal(c.lage, 'gut'); assert.equal(c.titel, 'Feierabend.'); assert.equal(c.spruch, 'Guter Tag 1.');
-  assert.deepEqual(c.zeilen, ['Tag 1: 1 Beutel verkauft, 20 Münzen dazu.', 'Kasse: 20 · Heat: ···']);
+  assert.deepEqual(c.zeilen, ['Tag 1: 1 Beutel weg, 20 Münzen dazu.', 'Kasse: 20 · Heat: ···']);
+  // mit Zivi: Polizei-Zusatz, Zahlen gehen auf
+  const z = dayEndCard(sell(s, zivi).state, t);
+  assert.equal(z.zeilen[0], 'Tag 1: 2 Beutel weg (1 an die Polizei 🙈), 20 Münzen dazu.');
   const v = dayEndCard({ ...s, heat: 3, verhaftet: true }, t);
   assert.equal(v.lage, 'verhaftet'); assert.equal(v.titel, 'VERHAFTET.');
 });
@@ -324,20 +328,58 @@ test('assignOutfits: gleicher Hemd-Typ bekommt verschiedene Varianten, Schlüsse
   assert.equal(o.p0.pattern, 'uni');
 });
 
-test('Invariante: Ware + heute verkauft = Startware — ein Zivi nimmt keinen Beutel (er zahlt nicht, nichts wird übergeben)', () => {
+test('Invariante: verkauft + an Zivis + übrig = Startware, über Verkäufe, Zivi-Reveal und Ablehnung bis Ware 0', () => {
   let s = initialState();
-  const seq = [schluffi, zivi, { ...schluffi, id: 'k2' }, { ...schluffi, id: 'k3' }]; // ein Zivi (Heat 2), kein Verhaften
-  for (const k of seq) {
-    s = sell(s, k).state;
-    assert.equal(s.ware + s.verkauftHeute, START_WARE, `nach ${k.id}`);
+  const check = (label) => {
     const r = dayReport(s);
-    assert.equal(r.verkauft + s.ware, START_WARE);
-  }
-  // Ablehnen ändert nichts an der Bilanz
-  s = decline(s, { ...schluffi, id: 'k4' }).state;
-  assert.equal(s.ware + s.verkauftHeute, START_WARE);
-  // alles verkauft: Ware 0 heißt verkauft = 5
-  for (const id of ['k5', 'k6']) s = sell(s, { ...schluffi, id }).state;
-  assert.equal(s.ware, 0); assert.equal(dayReport(s).verkauft, START_WARE);
+    assert.equal(r.verkauft + r.anZivis + r.uebrig, START_WARE, label);
+    assert.equal(r.weg, r.verkauft + r.anZivis, label + ' (weg)');
+  };
+  for (const k of [schluffi, zivi, { ...schluffi, id: 'k2' }]) { s = sell(s, k).state; check('nach ' + k.id); }
+  s = decline(s, { ...schluffi, id: 'k4' }).state; check('nach Ablehnung');
+  for (const id of ['k5', 'k6']) { s = sell(s, { ...schluffi, id }).state; check('nach ' + id); }
+  assert.equal(s.ware, 0);
+  const r = dayReport(s);
+  assert.equal(r.verkauft, 4); assert.equal(r.anZivis, 1); assert.equal(r.weg, START_WARE);
   assert.equal(sell(s, { ...schluffi, id: 'k7' }).result, 'keine_ware');
+  // bei Ware 0 scheitert auch der Zivi-„Verkauf“ (kein Beutel, kein Heat)
+  assert.equal(sell(s, { ...zivi, id: 'z9' }).result, 'keine_ware');
+  assert.equal(sell(s, { ...zivi, id: 'z9' }).state.heat, s.heat);
+});
+
+test('normalizeGags/gagFor: gültige Einträge bleiben, kaputte fliegen raus, Dauer gedeckelt; Idle-Takt 6–10 s', () => {
+  const t = normalizeTexte({ reveal_gags: [
+    { id: 'zivi_1', wann: 'kauf', gag: 'Marke', mood: 'misstrauisch', extra: 'dienstmarke', dauer_s: 1.5 },
+    { id: 'zivi_1', wann: 'ablehnung', mood: 'quatsch', dauer_s: 'lang' },
+    { id: 'zivi_2', wann: 'manchmal' }, { wann: 'kauf' }, null, { id: 'x', wann: 'immer', dauer_s: 99 },
+  ] });
+  assert.equal(t.reveal_gags.length, 3);
+  assert.equal(gagFor(t, 'zivi_1', 'kauf').extra, 'dienstmarke');
+  const ab = gagFor(t, 'zivi_1', 'ablehnung');
+  assert.equal(ab.mood, null); assert.equal(ab.dauer_s, 1.5);
+  assert.equal(gagFor(t, 'x', 'immer').dauer_s, 10);
+  assert.equal(gagFor(t, 'zivi_2', 'kauf'), null);
+  assert.deepEqual(normalizeTexte(null).reveal_gags, []);
+  for (let n = 0; n < 20; n++) { const d = nextIdleGagDelay(n); assert.ok(d >= 6 && d < 10, `Takt ${d}`); }
+});
+
+test('ZIVI_BESCHLAGNAHMT = false: Zivi nimmt keinen Beutel, Ware unverändert, Bilanz ohne Klammerzusatz', () => {
+  assert.equal(typeof ZIVI_BESCHLAGNAHMT, 'boolean');
+  let s = initialState();
+  s = sell(s, schluffi).state;
+  const r = sell(s, zivi, 0, { beschlagnahmt: false });
+  assert.equal(r.result, 'reveal'); assert.equal(r.state.heat, 2);
+  assert.equal(r.state.ware, START_WARE - 1, 'Ware unverändert durch den Zivi');
+  assert.equal(r.state.anZivisHeute, 0);
+  const rep = dayReport(r.state);
+  assert.equal(rep.verkauft + rep.uebrig, START_WARE);
+  assert.equal(rep.weg, 1);
+  const c = dayEndCard(r.state, normalizeTexte(null));
+  assert.equal(c.zeilen[0], 'Tag 1: 1 Beutel weg, 20 Münzen dazu.');
+  // Gegenprobe true: Beutel weg, Klammerzusatz
+  const t = sell(s, zivi, 0, { beschlagnahmt: true });
+  assert.equal(t.state.ware, START_WARE - 2); assert.equal(t.state.anZivisHeute, 1);
+  assert.equal(dayEndCard(t.state, normalizeTexte(null)).zeilen[0], 'Tag 1: 2 Beutel weg (1 an die Polizei 🙈), 20 Münzen dazu.');
+  // Standard ohne Option = Konstante
+  assert.equal(sell(s, zivi).state.ware, ZIVI_BESCHLAGNAHMT ? START_WARE - 2 : START_WARE - 1);
 });
