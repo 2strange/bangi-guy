@@ -22,7 +22,7 @@ Dann `http://localhost:8000/` öffnen. Ziehen = drehen, Rad = zoomen (OrbitContr
 - `schuhe.html` / `gesichter.html` – dieselbe Szene mit Kamera auf die Schuhe bzw. die Gesichter.
 - `?snap=1` – Screenshot-Modus: einmal rendern statt Render-Schleife, Canvas in Fenstergröße, Laufzeitfehler
   erscheinen als Text-Overlay. Die PNGs in `shots/` sind so entstanden (`bangi-probe.png`, `bangi-schuhe.png`,
-  `bangi-gesichter.png`; `v*.png` sind Zwischenstände).
+  `bangi-gesichter.png`).
 
 ## Dateien
 - `js/toon.js` – Toon-Material, Kontur-Hülle, Verform-/Bake-Helfer, Canvas-Texturen, deterministischer Zufall.
@@ -77,3 +77,4 @@ Dann `http://localhost:8000/` öffnen. Ziehen = drehen, Rad = zoomen (OrbitContr
 - Schnürsenkel liegen oben auf dem Schuh und sind von vorn kaum sichtbar; ggf. als gemalte Textur auf den Oberschuh.
 - Wasser ist eine flache Fläche; gemalte Wellenlinien am Ufer und leichte Transparenz würden es lebendiger machen.
 - Grasrand/Sand-Übergang ist hart; der Hügel könnte Büsche oder Blumen vertragen.
+- Rund 400 Meshes, durch die Hüllen etwa doppelte Geometrie; im Browser flüssig, Software-Rendering braucht Sekunden.
