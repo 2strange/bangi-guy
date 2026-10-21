@@ -28,7 +28,7 @@ export function createUI() {
   function setHud(state) {
     if (!hud) return;
     hud.innerHTML = `
-      <span class="hud-item"><b>Tag ${state.tag}</b></span>
+      <span class="hud-item"><b>Tag ${state.tag}</b>${state.clockLabel ? ` <span class="clock">${state.clockLabel}</span>` : ''}</span>
       <span class="hud-item">💰 <b>${state.geld}</b></span>
       <span class="hud-item${state.ware === 0 ? ' empty' : ''}">🌿 <b>${state.ware}</b></span>
       <span class="hud-item heat-${state.heat}">Heat <b>${heatLabel(state.heat)}</b></span>${state.mangos > 0 ? `<span class="hud-item">🥭 <b>${state.mangos}</b></span>` : ''}`;

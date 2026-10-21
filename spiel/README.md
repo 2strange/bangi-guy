@@ -65,6 +65,12 @@ Dann `http://localhost:8000/` öffnen.
   verkauft + an Zivis + übrig = Startware (getestet). Ablehnen → kleiner Satz. Jeder Kunde nur einmal pro Tag.
 - **HUD:** Tag, 💰 Geld, 🌿 Ware (Start 5), Heat als Sirenen 🚨 (0–3). Heat 3 → „VERHAFTET. Tag verloren. Geld
   bleibt.“ → Enter startet den nächsten Tag (Ware voll, Heat 0, Kunden wieder neutral).
+- **Tagesuhr:** Ein Tag dauert 7 Minuten Spielzeit (06:00 → 24:00 im HUD mit Sonne/Mond), Phasen morgen / mittag /
+  abend / nacht (reine Logik in `js/game.js`, getestet; die Uhr pausiert in Gesprächen und Karten). Abends kommt
+  der Hinweis „Ab in die Bangi Bar“ und der Mentor sitzt an der Bar: wer die Bar betritt, beendet den Tag mit der
+  Bilanz-Karte; sein Abendgespräch ist ein Rückblick nach Lage (kein Nachschub, der bleibt morgens am Hügel).
+  Spätestens nachts endet der Tag von allein (Hängematte). Hooks: `licht.js → setTageszeit(t01)`,
+  `audio.music.setMood('tag'|'abend')`. `?t=0.72` setzt die Tageszeit für Standbilder, `?snap=1&scene=abend`.
 - **Ausverkauft:** Bei Ware 0 meldet sich der Schluffi selbst in einer Sprechblase: **Tag beenden** zeigt die
   Tagesbilanz (verkauft, Geld, Heat) und startet den nächsten Tag; **Weiterbummeln** lässt einen die Leute weiter
   lesen. Die Bilanz-Karte wählt einen Spruch nach Lage (gut / heat / nichts / verhaftet) aus `data/texte.json`

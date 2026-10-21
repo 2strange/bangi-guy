@@ -71,6 +71,7 @@ export const PIER_SPOTS = {
   tuktuk: { x: 74, z: -4, yaw: -Math.PI / 2 },
   furt: { x: 59, z: 11, yaw: Math.PI / 2 },
   zufahrt: { x: 74, z: -30, yaw: Math.PI },
+  sperre: { x: 70, z: -17, yaw: Math.PI },
 };
 
 // Ankerplätze für Kunden (Zone „pier“), frei von Kulissen

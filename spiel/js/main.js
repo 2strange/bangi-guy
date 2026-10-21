@@ -18,6 +18,7 @@ import {
   normalizeStimmen, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
   normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
+  initialClock, clockStep, clockLabel, phaseFor, abendBeginnt, nachtBeginnt, barBeendetTag, inBar, normalizeAbend, mentorAbend,
 } from './game.js';
 import { POSTEN as POSTEN_LAYOUT, MARKT as MARKT_AREA, STAENDE, LANES as MARKT_LANES } from './zone-markt-layout.js';
 import { HAFENPLATZ } from './zone-pier-layout.js';
@@ -34,7 +35,8 @@ const SNAP = q('snap') === '1';
 const STATS = q('stats') === '1';
 const AT = q('at');
 const CY = q('cy'); // Kamera-Gierung in Grad relativ zum Standard, z. B. ?at=hotel&cy=-90 (Kamera im Osten, Blick nach Westen)
-const SCENE = q('scene'); // dialog | inspect | lineup | ausverkauft | bilanz | gag | mentor | mango | streife (nur Snap)
+const SCENE = q('scene'); // dialog | inspect | lineup | ausverkauft | bilanz | gag | mentor | mango | streife | abend (nur Snap)
+const T01 = q('t'); // Tageszeit 0..1 für Snaps
 const SCENE_ID = q('id'); // Kunde für scene=gag
 const TOUCH = q('touch') === '1' || isTouchDevice(); // Touch-Steuerung einblenden
 
@@ -102,7 +104,7 @@ ui.setHud(game);
 // Die Spiellogik ruft nur Einzeiler-Hooks; ohne Modul bleibt alles stumm.
 let audio = null;
 const SFX = { talk: 'ui_klick', kasse: 'kasse', alarm: 'heat', ablehnung: 'ablehnen', look: 'hinschauen', feierabend: 'ui_klick', verhaftet: 'verhaftet', ausverkauft: 'ausverkauft', schritt: 'schritt_sand', tuten: 'tuten', tuktuk: 'tuktuk_abwuergen' };
-const sfx = (name) => { try { audio?.sfx?.(SFX[name] || name); } catch (e) { /* ohne Ton weiter */ } };
+const sfx = (name, opts) => { try { audio?.sfx?.(SFX[name] || name, opts); } catch (e) { /* ohne Ton weiter */ } };
 const muteBtn = ui.createMuteButton((m) => { try { audio?.setMuted?.(m); } catch (e) { /* ignorieren */ } });
 let audioStarted = false;
 function startAudio() {
@@ -143,6 +145,21 @@ const firstGesture = () => { gestureSeen = true; startAudio(); setTimeout(startA
 window.addEventListener('pointerdown', firstGesture, { once: true });
 window.addEventListener('keydown', firstGesture, { once: true });
 let texte = normalizeTexte(null);
+let abendTexte = normalizeAbend(null);
+let tagesuhr = initialClock();
+let phase = phaseFor(0);
+// Licht (licht.js, eigenes Modul) und Musik-Stimmung: optional, Hooks nur
+let licht = null;
+import('./licht.js').then((m) => { licht = m; try { licht.setTageszeit?.(tagesuhr.t01); } catch (e) { /* ignorieren */ } }).catch(() => { /* kein Licht-Modul */ });
+function applyTageszeit() {
+  try { licht?.setTageszeit?.(tagesuhr.t01); } catch (e) { /* ignorieren */ }
+  const ph = phaseFor(tagesuhr.t01);
+  if (ph !== phase) {
+    phase = ph;
+    try { audio?.music?.setMood?.(ph === 'abend' || ph === 'nacht' ? 'abend' : 'tag'); } catch (e) { /* ignorieren */ }
+  }
+}
+function refreshHud() { ui.setHud({ ...game, clockLabel: clockLabel(tagesuhr.t01) }); }
 let stimmen = normalizeStimmen(null);
 const barkPrev = {}; // `${id}/${kind}` -> zuletzt gesagter Index (nie zweimal dieselbe Zeile)
 let barkSeed = 0;
@@ -228,6 +245,7 @@ async function loadTexte() {
   texte = normalizeTexte(json);
   mentorSz = normalizeMentorSzene(json);
   posten7 = normalizePosten7(json);
+  abendTexte = normalizeAbend(json);
   game = { ...game, texte };
 }
 async function loadStimmen() {
@@ -301,6 +319,19 @@ let nearK = null; // nächster Kunde in Reichweite (jeden Frame neu)
 let mentorSz = normalizeMentorSzene(null);
 const mentorRef = world.huegel.mentor ? { id: 'mentor', group: world.huegel.mentor, def: { id: 'mentor', name: 'Mentor', typ: 'Mentor', zivi: false }, npc: { x: world.huegel.mentor.position.x, z: world.huegel.mentor.position.z, yaw: 0 }, isMentor: true } : null;
 let nearMentor = false;
+// Abends sitzt der Mentor an der Bar (Hocker-Platz) statt im Garten; morgens zurück
+const MENTOR_GARTEN = mentorRef ? { x: mentorRef.npc.x, z: mentorRef.npc.z, yaw: mentorRef.group.rotation.y, y: mentorRef.group.position.y } : null;
+const MENTOR_BAR = { x: -29.6, z: -1.2, yaw: Math.PI };
+let mentorAmTresen = false;
+function placeMentor(abends) {
+  if (!mentorRef || abends === mentorAmTresen) return;
+  mentorAmTresen = abends;
+  const p = abends ? MENTOR_BAR : MENTOR_GARTEN;
+  mentorRef.npc.x = p.x; mentorRef.npc.z = p.z;
+  mentorRef.group.position.set(p.x, abends ? 0 : p.y, p.z);
+  mentorRef.group.rotation.y = p.yaw;
+  try { if (abends) figurePose(mentorRef.group, 'sitzen'); else figurePose(mentorRef.group, 'stehen'); } catch (e) { /* ohne Pose */ }
+}
 // Interaktionspunkte (E): Mango-Stand am Markt (kaufen), Pong am Posten (Mango abgeben); Blase an einem Hilfsobjekt
 let posten7 = normalizePosten7(null);
 function pointObj(x, y, z) { const o = new THREE.Object3D(); o.position.set(x, y, z); o.userData.parts = { head: o }; scene.add(o); return o; }
@@ -331,7 +362,7 @@ function showInfo(point, text, bark = null) {
 function usePoint(point) {
   if (point.id === 'mango_stand') {
     const r = buyMango(game);
-    game = r.state; ui.setHud(game);
+    game = r.state; refreshHud();
     if (r.result === 'gekauft') { sfx('kasse'); showInfo(point, `Eine Mango, 10 Münzen. Du hast jetzt ${game.mangos}. „3 = 1“ gilt nur für Stammkunden, sagt der Händler.`); }
     else showInfo(point, 'Zu wenig Geld, Mann. Der Händler zeigt auf das Schild und dann aufs Meer.');
     try { audio?.ambience?.ruf?.(); } catch (e) { /* ignorieren */ }
@@ -341,7 +372,7 @@ function usePoint(point) {
     const r = tukTukRide(game);
     if (r.result === 'zu_arm') { showInfo(point, `Somchai zeigt aufs Schild: ${TUKTUK_PREIS_MANGOS} Mangos. Oder ${TUKTUK_PREIS_GELD} Münzen, wenn's eilt. Du hast beides nicht.`); return; }
     if (r.result === 'verhaftet') return;
-    game = r.state; ui.setHud(game);
+    game = r.state; refreshHud();
     sfx('tuktuk');
     // Fahrt: Spieler landet an der Bar, die Streife verliert die Spur
     const bar = world.spots.bar;
@@ -353,7 +384,7 @@ function usePoint(point) {
   }
   if (point.id === 'pong' || point.id === 'gnaden_stand') {
     const r = giveMango(game);
-    game = r.state; ui.setHud(game);
+    game = r.state; refreshHud();
     if (r.result === 'gnade') { sfx('mango'); pongSay('mango_gnaedig'); }
     else if (r.result === 'schon_heute') pongSay('mango_schon');
     else if (r.result === 'keine_mango') pongSay('mango_keine');
@@ -395,7 +426,7 @@ function updatePatrol(dt, now) {
   if (r.event === 'chase_start') { sfx('pfeife'); try { audio?.bark?.('pong', 'verfolgung', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ } ui.showPrompt('Die Streife hat dich gesehen — lauf! (oder ab ins Gedränge)'); }
   if (r.event === 'lost') { try { audio?.bark?.('pong', 'sichtung', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ } if (mode === 'free') ui.showPrompt(null); }
   if (r.event === 'caught' && !busy && !isArrested(game)) {
-    game = arrestNow(game); ui.setHud(game);
+    game = arrestNow(game); refreshHud();
     sfx('verhaftet'); try { audio?.bark?.('pong', 'verhaftung', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ }
     dialog = null; ui.hideBubble(); mode = 'arrest';
     const c = dayEndCard(game, texte, lineIdx++);
@@ -413,7 +444,8 @@ function updatePatrol(dt, now) {
 let mentorFolge = null; // laufende Blasenfolge
 let mentorIdx = 0;
 function startMentor() {
-  mentorFolge = mentorSzene(game, mentorSz, lineIdx++);
+  // abends an der Bar: Abendgespräch (Rückblick + Abschied), kein Nachschub
+  mentorFolge = mentorAmTresen ? mentorAbend(game, abendTexte, lineIdx++) : mentorSzene(game, mentorSz, lineIdx++);
   mentorIdx = 0;
   talking = mentorRef;
   for (const key in keys) keys[key] = false;
@@ -436,7 +468,7 @@ function advanceMentor() {
   const before = game;
   game = finishMentor(game, mentorFolge);
   if (game.ware > before.ware) sfx('kasse');
-  ui.setHud(game);
+  refreshHud();
   mentorFolge = null;
   ui.hideBubble();
   stopBabble();
@@ -532,10 +564,10 @@ function confirmDialog() {
     // Streife hat den Verkauf gesehen (egal an wen): Heat +1, Pfiff
     if ((dialog.result === 'kauf' || dialog.result === 'reveal') && copSeesPlayer) {
       const sp = patrolSpotted(game, { selling: true });
-      game = sp.state; ui.setHud(game);
+      game = sp.state; refreshHud();
       sfx('pfeife'); try { audio?.bark?.('pong', 'sichtung', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ }
     }
-    ui.setHud(game);
+    refreshHud();
     setMood(talking.group, moodFor(kundeStatus(game, talking.id)));
     if (dialog.result === 'kauf' || dialog.result === 'reveal') sfx('kasse'); else sfx('ablehnung');
     if (dialog.result === 'reveal') setRevealed(talking.group, true);
@@ -570,19 +602,23 @@ function showSoldOut() {
   renderBubble();
 }
 // Tagesbilanz-Karte, danach neuer Tag
-function endDay() {
+function endDay(vorspann = null) {
   dialog = null;
   ui.hideBubble();
+  ui.showPrompt(null);
   mode = 'card';
   sfx('feierabend');
   const c = dayEndCard(game, texte, lineIdx++);
-  ui.showCard({ titel: c.titel, zeilen: [c.spruch, ...c.zeilen], button: c.button, rot: c.lage === 'verhaftet' });
+  ui.showCard({ titel: c.titel, zeilen: [...(vorspann ? [vorspann] : []), c.spruch, ...c.zeilen], button: c.button, rot: c.lage === 'verhaftet' });
 }
 function startNewDay() {
   game = newDay(game);
+  tagesuhr = initialClock();
+  applyTageszeit();
+  placeMentor(false);
   patrol = { ...patrolStart(PATROL_ROUTE), mode: 'patrol' };
   soldOutShown = false;
-  ui.setHud(game);
+  refreshHud();
   ui.hideCard();
   spawnKunden(game.tag); // neue Kundschaft, Zivis rotieren
   state = { ...state, x: world.spots.start.x, z: world.spots.start.z, yaw: world.spots.start.yaw, speed: 0 };
@@ -818,7 +854,10 @@ function updateFerry(t) {
   // Tuk-Tuk-Gag: Motor säuft synchron zum 8-s-Takt des Pier-Moduls ab (Zyklusbeginn), nur in Hörweite
   const tt = world.pier.tuktuk;
   const k = t % 8;
-  if (tt && k < tuktukLastK && Math.hypot(tt.x - state.x, tt.z - state.z) < 18) sfx('tuktuk');
+  if (tt && k < tuktukLastK) {
+    const dist = Math.hypot(tt.x - state.x, tt.z - state.z);
+    if (dist < 18) sfx('tuktuk', { gain: 1 - dist / 18, pan: panFor(POINTS.find((pt) => pt.id === 'tuktuk')?.obj) }); // Abstands-Lautstärke + Stereo
+  }
   tuktukLastK = k;
 }
 let tuktukLastK = 0;
@@ -878,10 +917,18 @@ function setupScene() {
     state = { ...state, x: 24, z: -78, yaw: Math.PI / 2, speed: 0 };
     patrol = { ...patrol, x: 18, z: -78.5, yaw: Math.PI / 2, mode: 'chase', lastSeen: { x: 24, z: -78 }, lost: 0, moving: true, phase: 1.1 };
     game = { ...game, heat: 2 };
-    ui.setHud(game);
+    refreshHud();
     copSeesPlayer = true;
     applyCop();
     ui.showPrompt('Die Streife hat dich gesehen — lauf! (oder ab ins Gedränge)');
+    mode = 'free';
+    return;
+  }
+  if (T01) { tagesuhr = { t01: Math.max(0, Math.min(1, parseFloat(T01))) }; applyTageszeit(); placeMentor(barBeendetTag(tagesuhr.t01)); refreshHud(); }
+  if (SCENE === 'abend') {
+    tagesuhr = { t01: 0.72 }; applyTageszeit(); placeMentor(true); refreshHud();
+    state = { ...state, x: world.spots.bar.x + 2, z: world.spots.bar.z + 3, yaw: Math.PI, speed: 0 };
+    ui.showPrompt(abendTexte.hinweis[0]);
     mode = 'free';
     return;
   }
@@ -890,7 +937,7 @@ function setupScene() {
     patrol = { ...patrol, x: 12, z: -78, yaw: Math.PI / 2, idx: 2, moving: true, phase: 2.2 };
     state = { ...state, x: 18, z: -77, yaw: -Math.PI / 2, speed: 0 };
     game = { ...game, heat: 1 };
-    ui.setHud(game);
+    refreshHud();
     copSeesPlayer = seesTarget(patrol, state);
     applyCop();
     mode = 'free';
@@ -907,7 +954,7 @@ function setupScene() {
     const sp = world.spots.garten;
     state = { ...state, x: mentorRef.npc.x + 1.2, z: mentorRef.npc.z + 2.6, yaw: Math.PI, speed: 0 };
     game = { ...game, ware: 1, heat: 2 };
-    ui.setHud(game);
+    refreshHud();
     startMentor();
     mentorIdx = Math.min(2, mentorFolge.length - 1); // Lektion: Regel
     showMentorStep();
@@ -932,13 +979,13 @@ function setupScene() {
   }
   if (SCENE === 'bilanz') {
     game = { ...game, ware: 0, verkauftHeute: START_WARE - 1, anZivisHeute: 1, geldHeute: 95, geld: 95, heat: 2 }; // Zahlen gehen auf: verkauft + an Zivis + übrig = Start
-    ui.setHud(game);
+    refreshHud();
     endDay();
     return;
   }
   if (SCENE === 'ausverkauft') {
     game = { ...game, ware: 0, verkauftHeute: START_WARE, geldHeute: 120, geld: 120 };
-    ui.setHud(game);
+    refreshHud();
     showSoldOut();
     return;
   }
@@ -1018,7 +1065,7 @@ if (SNAP) {
     const dt = Math.min(0.05, (now - last) / 1000);
     frameMs = now - last;
     last = now;
-    world.huegel.update(now / 1000);
+    if (!mentorAmTresen) world.huegel.update(now / 1000);
     world.markt?.update?.(now / 1000);
     world.pier?.update?.(now / 1000);
     updateFerry(now / 1000);
@@ -1040,6 +1087,15 @@ if (SNAP) {
       state = stepPlayer(state, { dir: null, run: false }, dt, colliders);
     }
     applyPose(state);
+    if (free) {
+      const prev = tagesuhr.t01;
+      tagesuhr = clockStep(tagesuhr, dt);
+      applyTageszeit();
+      if (abendBeginnt(prev, tagesuhr.t01)) { ui.showPrompt(abendTexte.hinweis[0]); placeMentor(true); try { audio?.bark?.('mentor', 'gruss'); } catch (e) { /* ignorieren */ } }
+      if (nachtBeginnt(prev, tagesuhr.t01)) { endDay(abendTexte.haengematte[0]); }
+      else if (barBeendetTag(tagesuhr.t01) && inBar(state, world.spots.bar) && mode === 'free') endDay();
+      if (Math.floor(prev * 1000) !== Math.floor(tagesuhr.t01 * 1000)) refreshHud();
+    }
     updatePatrol(dt, now);
     // Schritt im Sand: jede volle Watschel-Periode (1.6 Einheiten ≈ 0.4 s Gehen)
     if (state.moving && Math.floor(state.phase / (Math.PI * 2)) !== Math.floor(lastStepPhase / (Math.PI * 2))) sfx('schritt');

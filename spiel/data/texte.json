@@ -1,5 +1,5 @@
 {
-  "_schema": "Spieltexte für Bangi Beach (Sprechblasen, HUD, Tagesende). Eigentümer: Content. Alles kurz, Deutsch, Lebowski-Ton. Struktur: ausverkauft[] = Sprüche, wenn die Ware alle ist (zufällig wählen; zeigen auf Mentor/Kuppe tagsüber oder Bar abends). tagesende{lage: []} = Bilanz-Sprüche nach Lage, Schlüssel: gut (viel verkauft, Heat ≤ 1), heat (Heat 2+, Tag überstanden), nichts (kein Verkauf), verhaftet (Heat 3, Tag verloren, Geld bleibt); je Lage zufällig einen wählen. reveal_gags[] = pro Zivi bzw. Falle ein Eintrag: id (Kunde aus kunden.json), wann (kauf = beim Verkauf, ablehnung = bei Ablehnung, immer = Idle-Tick), gag (was man sieht, 1 Satz), mood (Grundgesicht der Mimik-API: neutral|misstrauisch|erschrocken|zufrieden|selig), extra (Requisit, das erscheint, als Kennwort für die Figuren-Bauer: dienstmarke|polizistenaugen|handschellen|funkgeraet|notizblock|pfeife|halstuch_marke|taschenlampe|pulsuhr|null), dauer_s (ungefähre Länge der Kleinanimation). posten7{} = Polizeiposten: mango{gnaedig[], schon_gehabt[], keine_mango[], kein_heat[]}, tafel{zeile1 mit {tage}, zeile2 je Heat 0–3, nachts[]}, pong{heat_0..heat_3[]} (Details in posten7._ablauf). mentor_szene{} = Ablauf der Kuppe-Szene (siehe _ablauf darin; schritte[] mit id, wer, text[] oder @-Verweis, quelle, blasen[], aktion ware_auffuellen|heat_minus, menge/wert, weiter). mentor[] = Weisheiten für die Kuppe: id, titel, mechanik (welche Regel sie freischaltet), einleitung (Mentor-Gerede, 1–2 Sätze), regel (der eigentliche Merksatz, so steht er später im Hilfe-Menü), pointe (Schluss-Gag), kunden_beispiel (ids aus kunden.json, an denen man die Regel übt).",
+  "_schema": "Spieltexte für Bangi Beach (Sprechblasen, HUD, Tagesende). Eigentümer: Content. Alles kurz, Deutsch, Lebowski-Ton. Struktur: ausverkauft[] = Sprüche, wenn die Ware alle ist (zufällig wählen; zeigen auf Mentor/Kuppe tagsüber oder Bar abends). tagesende{lage: []} = Bilanz-Sprüche nach Lage, Schlüssel: gut (viel verkauft, Heat ≤ 1), heat (Heat 2+, Tag überstanden), nichts (kein Verkauf), verhaftet (Heat 3, Tag verloren, Geld bleibt); je Lage zufällig einen wählen. reveal_gags[] = pro Zivi bzw. Falle ein Eintrag: id (Kunde aus kunden.json), wann (kauf = beim Verkauf, ablehnung = bei Ablehnung, immer = Idle-Tick), gag (was man sieht, 1 Satz), mood (Grundgesicht der Mimik-API: neutral|misstrauisch|erschrocken|zufrieden|selig), extra (Requisit, das erscheint, als Kennwort für die Figuren-Bauer: dienstmarke|polizistenaugen|handschellen|funkgeraet|notizblock|pfeife|halstuch_marke|taschenlampe|pulsuhr|null), dauer_s (ungefähre Länge der Kleinanimation). posten7{} = Polizeiposten: mango{gnaedig[], schon_gehabt[], keine_mango[], kein_heat[]}, tafel{zeile1 mit {tage}, zeile2 je Heat 0–3, nachts[]}, pong{heat_0..heat_3[]} (Details in posten7._ablauf). abend_bar{} = Abend-Phase: sonnenuntergang[] (Hinweis-Gags), barkeeper{name, beschreibung, gruss[], zwischenruf[], letzte_runde[], gute_nacht[]}, mentor{gut[], heat[], nichts[], verhaftet[]} (Rückblick nach Lage), einschlafen{text[], folge} (Details in abend_bar._ablauf). mentor_szene{} = Ablauf der Kuppe-Szene (siehe _ablauf darin; schritte[] mit id, wer, text[] oder @-Verweis, quelle, blasen[], aktion ware_auffuellen|heat_minus, menge/wert, weiter). mentor[] = Weisheiten für die Kuppe: id, titel, mechanik (welche Regel sie freischaltet), einleitung (Mentor-Gerede, 1–2 Sätze), regel (der eigentliche Merksatz, so steht er später im Hilfe-Menü), pointe (Schluss-Gag), kunden_beispiel (ids aus kunden.json, an denen man die Regel übt).",
 
   "ausverkauft": [
     "Alles weg. Der Mentor hockt auf der Kuppe und gießt. Hoch mit dir.",
@@ -149,6 +149,80 @@
         "„Hände hoch. Oder runter. Wie du willst, ich krieg dich eh nicht, aber die Fähre bringt morgen Leute mit Turnschuhen.“",
         "„Kaffee ist fertig. Du bleibst heute hier. Der Kaffee ist okay, versprochen.“"
       ]
+    }
+  },
+
+  "abend_bar": {
+    "_ablauf": "Abend-Phase: Sonne im Meer → sonnenuntergang[] als Hinweis-Blase (zufällig eine, alle ~20 s, bis der Spieler die Bar betritt oder in die Hängematte steigt). Betritt der Spieler die Bar: barkeeper.gruss[] → mentor{lage}[] (Rückblick, Lage wie tagesende: gut|heat|nichts|verhaftet; bei verhaftet sitzt der Spieler nach der Nacht bei Pong trotzdem kurz an der Bar, der Mentor war da) → barkeeper.letzte_runde[] → Tagesbilanz-Karte → barkeeper.gute_nacht[] → nächster Tag. barkeeper.zwischenruf[] optional als Kulisse, während der Mentor redet. einschlafen{} = Spieler legt sich stattdessen in die Hängematte (V1): text[] zufällig, kein Rückblick, Bilanz-Karte trotzdem; folge beschreibt die vorgeschlagene Mechanik (Heat kühlt über Nacht nur um 1 statt 2, kein Mentor-Bonus).",
+    "sonnenuntergang": [
+      "Die Sonne hat die Augen schon zu. Dein Stichwort: Bar.",
+      "Die Lichterkette an der Bar geht an. Eine Birne fehlt. Immer dieselbe.",
+      "Die Möwe auf dem Schild hat Feierabend gemacht. Sie sitzt jetzt am Tresen.",
+      "Pong pfeift ein letztes Mal, dann hört man nur noch Grillen. Und Gläser.",
+      "Der Mentor ist nicht mehr auf dem Hügel. Er ist auch nicht unterwegs. Er ist einfach schon an der Bar.",
+      "Happy Hour 24h, steht auf dem Schild. Aber abends meint sie es ernst."
+    ],
+    "barkeeper": {
+      "name": "Nong",
+      "beschreibung": "Barkeeper der Bangi Bar. Poliert seit Jahren dasselbe Glas, hat es nie benutzt. Die Möwe auf dem Schild heißt Chef und gehört ihm, sagt er. Redet wenig, hört alles, vergisst nichts, verrät nichts.",
+      "gruss": [
+        "Nong nickt. Das reicht bei Nong als Begrüßung.",
+        "„Der Hocker links ist frei. Der rechte gehört der Möwe.“",
+        "„Du siehst aus, als hättest du heute gearbeitet. Oder getan, als ob.“",
+        "Nong poliert das Glas. „Das Übliche?“ Du hast nie was bestellt."
+      ],
+      "zwischenruf": [
+        "„Happy Hour. Immer noch.“",
+        "Nong stellt dir ein Glas hin. Es ist leer. Er nickt. Du nickst.",
+        "„Chef hat Pommes geklaut. Chef ist die Möwe. Chef ist immer die Möwe.“",
+        "„Ich hab nichts gehört. Ich höre nie was. Ich weiß nur alles.“"
+      ],
+      "letzte_runde": [
+        "„Letzte Runde.“ Nong sagt das jeden Abend. Es stimmt nie.",
+        "Nong klopft zweimal auf den Tresen. Das heißt: Bilanz.",
+        "„Die Sonne ist weg, der Mentor ist satt, du bist fertig. Rechnen wir.“"
+      ],
+      "gute_nacht": [
+        "„Morgen wieder. Oder auch nicht. Der Hocker bleibt frei.“",
+        "Nong macht die Lichterkette aus. Die fehlende Birne fehlt jetzt weniger auf.",
+        "„Schlaf in der Hängematte. Nicht auf dem Tresen. Chef beißt.“",
+        "„Gute Nacht. Pong schläft auch. Wahrscheinlich.“"
+      ]
+    },
+    "mentor": {
+      "gut": [
+        "„Kasse voll, Heat kalt, Schuhe gelesen. Mann, du bist heute Welle gewesen. Nicht der Typ, der davor wegrennt.“",
+        "„Ich hab's vom Hügel gesehen. Jeder Verkauf eine Sandale. Du lernst schneller als mein Hund damals. Der hat nie gelernt.“",
+        "„So ein Tag ist wie ein guter Joint: alles rund, keiner hat's gemerkt. Morgen wieder, aber nicht übermütig.“",
+        "„Pong hat heute niemanden gesucht. Das heißt entweder, du warst gut, oder er hatte Mango. Beides zählt.“"
+      ],
+      "heat": [
+        "„Du hast Geld, aber die Streife kennt deinen Gang. Dein Gang, Mann. Lauf morgen anders.“",
+        "„Dreimal hat Pong gepfiffen. Dreimal. Ich hab's bis hier oben gehört. Also, hier unten. Ich war schon hier.“",
+        "„Heat ist wie Sonnenbrand: merkst du erst abends, und dann schläfst du schlecht. Mango morgen. Gleich morgens.“",
+        "„Du warst heute laut. Nicht du, dein Kunde. Gleiche Sache. Wer laut fragt, ist dein Problem, nicht seins.“"
+      ],
+      "nichts": [
+        "„Nichts verkauft. Hab ich auch mal gehabt. 1994 bis 1997. Nennt sich Pause.“",
+        "„Du hast heute vor allem geguckt. Gucken ist okay. Gucken ist die halbe Miete. Die andere Hälfte ist Miete.“",
+        "„Kein Verkauf, keine Verhaftung. Mathematisch ein Nullsummentag. Spirituell ein Erfolg. Finanziell: Nong, stell's ihm an.“",
+        "„Der Walross-Typ hat gefragt, ob du krank bist. Ich hab gesagt: nachdenklich. Das hat ihn verwirrt. Guter Tag für ihn.“"
+      ],
+      "verhaftet": [
+        "„Pong hat dich erwischt. In Sandalen. Mann, das ist wie vom Faultier überholt werden. Erzähl.“",
+        "„Tag weg, Ware weg, Geld noch da. Das ist kein Verlust, das ist eine Lektion mit Kaffee. Wie war der Kaffee?“",
+        "„Weißt du, was der Fehler war? Nein? Ich auch nicht, ich war hier. Aber es waren bestimmt die Schuhe. Es sind immer die Schuhe.“",
+        "„Nong, gib ihm das leere Glas. Er hat's verdient. Morgen gehst du erst zu mir hoch, dann zu den Leuten. Reihenfolge, Mann.“"
+      ]
+    },
+    "einschlafen": {
+      "text": [
+        "Du steigst in die Hängematte. Der Mentor sitzt an der Bar und erzählt die Geschichte heute jemand anderem. Der Möwe.",
+        "Die Hängematte schaukelt. Von der Bar kommt Gelächter. Nong lacht nie. Also war das der Mentor. Über dich.",
+        "Du schläfst ein, bevor die Lichterkette ausgeht. Die fehlende Birne wird dich morgen trotzdem begrüßen.",
+        "Kein Rückblick heute. Der Tag war, was er war. Die Grillen sind der Meinung, das reicht."
+      ],
+      "folge": "Nacht in der Hängematte: Tagesbilanz wird gezeigt, aber Heat kühlt über Nacht nur um 1 statt um 2 (der Mentor hat niemanden beruhigt), und es gibt keinen Mentor-Kommentar. Bewusst mild: die Hängematte ist der schnelle Weg, die Bar der bessere."
     }
   },
 

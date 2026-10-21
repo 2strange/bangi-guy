@@ -7,6 +7,7 @@ import {
   musicPattern, PROGRESSION, BARS, STEPS_PER_BAR, BPM, stepSeconds, nextGullDelay, rng, hashStr, midiToFreq, SFX_NAMES,
   babble, sfx, setMuted, isMuted, ambience, music, stimmeFor, setStimmen, normalizePan,
   ZONES, normalizeZones, pseudoWords, nextRufDelay, nextFunkDelay, sputterTimes, normalizeSfxOpts,
+  MOODS, normalizeMood, nextBpm, setMood, getMood, cricketBurst, nextClinkDelay,
 } from '../js/audio.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -126,12 +127,16 @@ test('musicPattern: 16 Takte, Skank nur auf Offbeats, One-Drop, Bass im Keller, 
 });
 
 test('Zonen: normalizeZones clampt, ignoriert Unbekanntes, null = Strand; Pseudo-Wörter brabbelbar', () => {
-  assert.deepEqual(ZONES, ['strand', 'markt', 'posten', 'pier']);
-  assert.deepEqual(normalizeZones(null), { strand: 1, markt: 0, posten: 0, pier: 0 });
-  assert.deepEqual(normalizeZones({}), { strand: 0, markt: 0, posten: 0, pier: 0 });
-  assert.deepEqual(normalizeZones({ strand: 1, markt: 0.3 }), { strand: 1, markt: 0.3, posten: 0, pier: 0 });
-  assert.deepEqual(normalizeZones({ strand: 7, markt: -1, posten: 'x', bar: 1 }), { strand: 1, markt: 0, posten: 0, pier: 0 });
-  assert.deepEqual(normalizeZones({ posten: '0.4', pier: 0.9 }), { strand: 0, markt: 0, posten: 0.4, pier: 0.9 });
+  assert.deepEqual(ZONES, ['strand', 'markt', 'posten', 'pier', 'bar']);
+  assert.deepEqual(normalizeZones(null), { strand: 1, markt: 0, posten: 0, pier: 0, bar: 0 });
+  assert.deepEqual(normalizeZones({}), { strand: 0, markt: 0, posten: 0, pier: 0, bar: 0 });
+  assert.deepEqual(normalizeZones({ strand: 1, markt: 0.3 }), { strand: 1, markt: 0.3, posten: 0, pier: 0, bar: 0 });
+  assert.deepEqual(normalizeZones({ strand: 7, markt: -1, posten: 'x', disco: 1 }), { strand: 1, markt: 0, posten: 0, pier: 0, bar: 0 });
+  assert.deepEqual(normalizeZones({ posten: '0.4', pier: 0.9, bar: 1 }), { strand: 0, markt: 0, posten: 0.4, pier: 0.9, bar: 1 });
+  // Grillen-Schwall und Klirren-Abstand im Bereich
+  const cb = cricketBurst(rng(1));
+  assert.ok(cb.pulses >= 6 && cb.pulses <= 17 && cb.gap > 1 / 40 && cb.gap < 1 / 26 && cb.pause >= 0.25 && cb.freq >= 3900);
+  assert.equal(nextClinkDelay(() => 0), 2); assert.equal(nextClinkDelay(() => 1), 7);
   // Abwürgen: Zündungen werden langsamer, Puff kommt nach der letzten, Gesamtlänge ~1–2 s
   const sp = sputterTimes();
   assert.equal(sp.pops[0], 0);
@@ -153,6 +158,30 @@ test('Zonen: normalizeZones clampt, ignoriert Unbekanntes, null = Strand; Pseudo
   assert.equal(stimmeFor('mentor', { stil: 'piepsig' }).stil, 'knarzig', 'Datei gewinnt');
 });
 
+test('Stimmung: abend ohne Kick, weniger Shaker, mehr Lick, langsamer; tag unverändert; Tempo gleitet', () => {
+  assert.equal(normalizeMood('abend'), 'abend'); assert.equal(normalizeMood('x'), 'tag'); assert.equal(normalizeMood(undefined), 'tag');
+  assert.ok(MOODS.abend.bpm < MOODS.tag.bpm && MOODS.abend.reverb > MOODS.tag.reverb && MOODS.abend.drums < MOODS.tag.drums);
+  for (let b = 0; b < BARS; b++) {
+    const tag = musicPattern(b, 'tag'), ab = musicPattern(b, 'abend');
+    assert.deepEqual(tag, musicPattern(b), 'tag = Standard');
+    assert.ok(!ab.events.some((e) => e.type === 'kick'), 'abends kein Kick');
+    const sh = (p) => p.events.filter((e) => e.type === 'shaker');
+    assert.ok(sh(ab).length < sh(tag).length && sh(ab).every((e) => e.step % 4 === 2), 'abends nur Offbeat-Shaker');
+    assert.ok(ab.events.some((e) => e.type === 'skank') && ab.events.some((e) => e.type === 'bass') && ab.events.some((e) => e.type === 'rim'), 'Skank, Bass, Rimshot bleiben');
+    for (const e of ab.events) assert.ok(e.step >= 0 && e.step < STEPS_PER_BAR);
+    for (const e of ab.events.filter((x) => x.type === 'lead')) assert.ok(e.note >= 48 && e.note <= 90, `Lead-Ton ${e.note}`);
+  }
+  const leads = (m) => { let n = 0; for (let b = 0; b < BARS; b++) n += musicPattern(b, m).events.filter((e) => e.type === 'lead').length; return n; };
+  assert.ok(leads('abend') > leads('tag'), 'abends mehr Melodie');
+  assert.deepEqual(musicPattern(3, 'abend'), musicPattern(3 + BARS, 'abend'), 'Loop wickelt');
+  // Tempo-Gleiten: monoton, kommt an, springt nie
+  let bpm = MOODS.tag.bpm; let steps = 0;
+  while (bpm !== MOODS.abend.bpm && steps < 500) { const n = nextBpm(bpm, MOODS.abend.bpm); assert.ok(n < bpm && bpm - n < 1, 'kleine Schritte abwärts'); bpm = n; steps++; }
+  assert.equal(bpm, MOODS.abend.bpm); assert.ok(steps > 16 && steps < 200, `in ${steps} 16teln (1–12 Takte)`);
+  assert.equal(nextBpm(70, 70), 70);
+  close(stepSeconds(), 60 / BPM / 4); close(stepSeconds(60), 0.25);
+});
+
 test('Helfer: rng deterministisch im Bereich, hash stabil, Möwenpause 8–22 s, midi', () => {
   const r1 = rng(42), r2 = rng(42);
   for (let i = 0; i < 100; i++) { const v = r1(); assert.equal(v, r2()); assert.ok(v >= 0 && v < 1); }
@@ -163,8 +192,8 @@ test('Helfer: rng deterministisch im Bereich, hash stabil, Möwenpause 8–22 s,
 });
 
 test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Dauer', () => {
-  for (const n of ['kasse', 'ablehnen', 'heat', 'verhaftet', 'ausverkauft', 'schritt_sand', 'ui_klick', 'hinschauen', 'pfeife', 'mango', 'funk', 'tuten', 'tuktuk_abwuergen']) assert.ok(SFX_NAMES.includes(n), n);
-  assert.equal(SFX_NAMES.length, 13);
+  for (const n of ['kasse', 'ablehnen', 'heat', 'verhaftet', 'ausverkauft', 'schritt_sand', 'ui_klick', 'hinschauen', 'pfeife', 'mango', 'funk', 'tuten', 'tuktuk_abwuergen', 'gaehnen']) assert.ok(SFX_NAMES.includes(n), n);
+  assert.equal(SFX_NAMES.length, 14);
   for (const n of SFX_NAMES) assert.equal(sfx(n), 0);
   assert.equal(sfx('gibtsnicht'), 0);
   assert.equal(sfx('tuktuk_abwuergen', { gain: 0.5, pan: -0.3 }), 0, 'Optionen ohne Audio: no-op');
@@ -180,8 +209,12 @@ test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Daue
   ambience.start(); ambience.stop(); music.start(); music.stop();
   assert.equal(ambience.isPlaying(), false); assert.equal(music.isPlaying(), false);
   assert.equal(ambience.ruf(), 0); assert.equal(ambience.funk(), 0);
-  assert.deepEqual(ambience.setZone({ markt: 0.5 }), { strand: 0, markt: 0.5, posten: 0, pier: 0 });
-  assert.deepEqual(ambience.getZone(), { strand: 0, markt: 0.5, posten: 0, pier: 0 });
+  assert.deepEqual(ambience.setZone({ markt: 0.5 }), { strand: 0, markt: 0.5, posten: 0, pier: 0, bar: 0 });
+  assert.deepEqual(ambience.getZone(), { strand: 0, markt: 0.5, posten: 0, pier: 0, bar: 0 });
+  // Stimmung ohne Audio: wird gemerkt, Unsinn → tag
+  assert.equal(setMood('abend'), 'abend'); assert.equal(getMood(), 'abend'); assert.equal(music.getMood(), 'abend'); assert.equal(ambience.getMood(), 'abend');
+  assert.equal(music.getBpm(), MOODS.abend.bpm);
+  assert.equal(setMood('nacht'), 'tag'); assert.equal(getMood(), 'tag');
   ambience.setZone(null);
   setMuted(true); assert.equal(isMuted(), true); setMuted(false); assert.equal(isMuted(), false);
   const d = babble('zivi_polo', 'Nice shoes. Where did you get them?');

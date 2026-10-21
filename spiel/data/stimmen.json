@@ -1,5 +1,5 @@
 {
-  "_schema": "Stimmen und Barks (kurze englische Ausrufe, 1–5 Wörter, Lebowski-/Surfer-Ton) für Sprechblasen und das Gebrabbel (Animal-Crossing-Stil). Eigentümer: Content. LOOKUP: slug = zuordnung[kundeId] ?? kundeId; profil = stimmen[slug]?.charakter ?? stimmen.default.charakter. Feste Slugs: default (Fallback), spieler (der Schluffi), mentor. stimmen{slug} = charakter {tonhoehe 0.5–2.0 (1.0 = mittlere Männerstimme ~220 Hz, 0.6 Bass, 1.6 Oma/Kind), tempo 0.6–1.6 (1.0 = ~8 Silben/s), stil (schluffig|brummig|knarzig|quietschig|zackig|piepsig|cool), vibrato 0–1 (nervös = hoch), laut 0.5–1.2 (relative Lautstärke)} und barks {situation: []}. Situationen bei Kunden: gruss (Spieler kommt in Reichweite), kauf (Verkauf abgeschlossen), ablehnung (Spieler lehnt ab oder Kunde will nicht), zivi_verdaechtig (Spieler schaut genau hin / Kunde merkt Misstrauen; bei Zivis die Tarnung, bei Harmlosen Verwirrung); mentor hat stattdessen gruss, lektion, nachschub, abschied; pong (Polizist, Nicht-Kunde) hat pfiff, sichtung, verfolgung, mango_gnaedig, mango_schon, mango_keine, verhaftung; haendler (Markt-Ambience, keine Figur) hat nur ruf; funk (Polizeifunk am Posten, keine Figur) hat nur spruch; default und spieler haben keine barks. zuordnung{kundeId: slug} verbindet kunden.json mit einer Stimme (gleiche Info als Feld stimme in kunden.json; zuordnung gewinnt bei Widerspruch). Barks werden zufällig gewählt, nie zweimal hintereinander dieselbe; Satzzeichen steuern das Gebrabbel (? = Tonhöhe hoch, ! = lauter, … = Pause). Apostrophe sind gerade (').",
+  "_schema": "Stimmen und Barks (kurze englische Ausrufe, 1–5 Wörter, Lebowski-/Surfer-Ton) für Sprechblasen und das Gebrabbel (Animal-Crossing-Stil). Eigentümer: Content. LOOKUP: slug = zuordnung[kundeId] ?? kundeId; profil = stimmen[slug]?.charakter ?? stimmen.default.charakter. Feste Slugs: default (Fallback), spieler (der Schluffi), mentor. stimmen{slug} = charakter {tonhoehe 0.5–2.0 (1.0 = mittlere Männerstimme ~220 Hz, 0.6 Bass, 1.6 Oma/Kind), tempo 0.6–1.6 (1.0 = ~8 Silben/s), stil (schluffig|brummig|knarzig|quietschig|zackig|piepsig|cool), vibrato 0–1 (nervös = hoch), laut 0.5–1.2 (relative Lautstärke)} und barks {situation: []}. Situationen bei Kunden: gruss (Spieler kommt in Reichweite), kauf (Verkauf abgeschlossen), ablehnung (Spieler lehnt ab oder Kunde will nicht), zivi_verdaechtig (Spieler schaut genau hin / Kunde merkt Misstrauen; bei Zivis die Tarnung, bei Harmlosen Verwirrung); mentor hat stattdessen gruss, lektion, nachschub, abschied, abend (an der Bar); barkeeper (Nong, Nicht-Kunde) hat gruss, zwischenruf, letzte_runde, gute_nacht; pong (Polizist, Nicht-Kunde) hat pfiff, sichtung, verfolgung, mango_gnaedig, mango_schon, mango_keine, verhaftung; haendler (Markt-Ambience, keine Figur) hat nur ruf; funk (Polizeifunk am Posten, keine Figur) hat nur spruch; default und spieler haben keine barks. zuordnung{kundeId: slug} verbindet kunden.json mit einer Stimme (gleiche Info als Feld stimme in kunden.json; zuordnung gewinnt bei Widerspruch). Barks werden zufällig gewählt, nie zweimal hintereinander dieselbe; Satzzeichen steuern das Gebrabbel (? = Tonhöhe hoch, ! = lauter, … = Pause). Apostrophe sind gerade (').",
 
   "zuordnung": {
     "stammkunde_1": "stammkunde",
@@ -197,7 +197,17 @@
         "gruss": ["Sit. Not on the beds.", "Ah. The kid.", "You again. Good.", "Water the beds first.", "Morning, apprentice."],
         "lektion": ["Listen, man.", "Thailand, '94…", "Rule of thumb.", "Write that down. Or don't.", "Here's the thing."],
         "nachschub": ["Fresh from the garden.", "Today's harvest.", "Don't drop it.", "One bag. Make it count.", "Organic, obviously."],
-        "abschied": ["Go sell, man.", "Sandals, remember.", "Evening, at the bar.", "Don't get caught.", "Be the wave."]
+        "abschied": ["Go sell, man.", "Sandals, remember.", "Evening, at the bar.", "Don't get caught.", "Be the wave."],
+        "abend": ["Sit. Tell me.", "Saw it from the hill.", "Shoes, man. Always shoes.", "Nong, the usual.", "Not bad. Not bad."]
+      }
+    },
+    "barkeeper": {
+      "charakter": { "tonhoehe": 0.8, "tempo": 0.7, "stil": "cool", "vibrato": 0.0, "laut": 0.8 },
+      "barks": {
+        "gruss": ["Hm.", "Left stool.", "The usual?", "Long day?", "Chef says hi."],
+        "zwischenruf": ["Happy hour.", "Still happy hour.", "Chef, no fries.", "Heard nothing.", "Glass. Empty. Yours."],
+        "letzte_runde": ["Last round.", "Count it.", "Sun's gone.", "Tab's open.", "Closing. Not really."],
+        "gute_nacht": ["Night.", "Stool stays free.", "Hammock. Not the bar.", "Chef bites.", "Lights out."]
       }
     }
   }

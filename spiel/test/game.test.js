@@ -10,6 +10,7 @@ import {
   normalizeMentorSzene, mentorSzene, finishMentor, applyMentorAktion, mentorBesucht,
   POSTEN_DEFAULT, inPostenSicht, buyMango, giveMango, mangoAbgegeben, tafelText, MANGO_PREIS,
   normalizePosten7, mangoText, pongText, tafelLines, DEFAULT_POSTEN7, patrolSpotted, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
+  DAY_LENGTH, phaseFor, initialClock, clockStep, clockLabel, abendBeginnt, nachtBeginnt, barBeendetTag, inBar, normalizeAbend, mentorAbend, DEFAULT_ABEND,
 } from '../js/game.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -303,7 +304,7 @@ test('lageFor + dayEndCard: Lage aus der Bilanz, Spruch und Zeilen mit Zahlen ge
   const t = normalizeTexte({ tagesende: { gut: ['Guter Tag {tag}.'] } });
   const c = dayEndCard(s, t);
   assert.equal(c.lage, 'gut'); assert.equal(c.titel, 'Feierabend.'); assert.equal(c.spruch, 'Guter Tag 1.');
-  assert.deepEqual(c.zeilen, ['Tag 1: 1 Beutel weg, 20 Münzen dazu.', 'Kasse: 20 · Heat: ···']);
+  assert.deepEqual(c.zeilen, ['Tag 1: 1 Beutel weg, 20 Münzen dazu.', 'Kasse: 20 · Heat: ···', 'Tage ohne Vorfall: 0']);
   // mit Zivi: Polizei-Zusatz, Zahlen gehen auf
   const z = dayEndCard(sell(s, zivi).state, t);
   assert.equal(z.zeilen[0], 'Tag 1: 2 Beutel weg (1 an die Polizei 🙈), 20 Münzen dazu.');
@@ -581,4 +582,35 @@ test('Tuk-Tuk F3: zahlt zuerst mit Mangos (Schild), sonst mit Geld, sonst nichts
   assert.equal(poor.result, 'zu_arm'); assert.equal(poor.state.geld, 10);
   assert.equal(tukTukRide({ ...rich, verhaftet: true }).result, 'verhaftet');
   assert.equal(TUKTUK_PREIS_MANGOS, 20);
+});
+
+// ---------- Tagesuhr ----------
+test('Tagesuhr: ein Tag dauert DAY_LENGTH Sekunden, Phasen in fester Reihenfolge, Uhr 06:00 → 24:00', () => {
+  assert.ok(DAY_LENGTH >= 360 && DAY_LENGTH <= 480, '6–8 Minuten');
+  let c = initialClock();
+  const seen = [];
+  for (let t = 0; t < DAY_LENGTH + 1; t += 1) { c = clockStep(c, 1); const ph = phaseFor(c.t01); if (seen[seen.length - 1] !== ph) seen.push(ph); }
+  assert.deepEqual(seen, ['morgen', 'mittag', 'abend', 'nacht']);
+  close(c.t01, 1, 1e-9, 'läuft nicht über 1 hinaus');
+  assert.equal(phaseFor(0), 'morgen'); assert.equal(phaseFor(0.5), 'mittag'); assert.equal(phaseFor(0.7), 'abend'); assert.equal(phaseFor(0.95), 'nacht');
+  assert.equal(clockLabel(0), '🌅 06:00'); assert.equal(clockLabel(0.5), '☀️ 15:00'); assert.equal(clockLabel(1), '🌙 24:00');
+  assert.ok(clockLabel(0.7).startsWith('🌇'));
+});
+test('Abend: Hinweis-Flanke, Bar beendet den Tag nur abends/nachts, Nacht-Flanke für die Hängematte', () => {
+  assert.equal(abendBeginnt(0.65, 0.67), true); assert.equal(abendBeginnt(0.67, 0.68), false);
+  assert.equal(nachtBeginnt(0.89, 0.91), true); assert.equal(nachtBeginnt(0.91, 0.92), false);
+  assert.equal(barBeendetTag(0.3), false); assert.equal(barBeendetTag(0.7), true); assert.equal(barBeendetTag(0.95), true);
+  const bar = { x: -27, z: 2.5 };
+  assert.equal(inBar({ x: -25, z: 4 }, bar), true); assert.equal(inBar({ x: -20, z: 4 }, bar), false);
+});
+test('Abendgespräch des Mentors: Rückblick nach Lage + Abschied, ohne Nachschub; Texte robust mit Defaults', () => {
+  const A = normalizeAbend({ abend: { mentor_abend: { gut: ['Top, Tag {tag}.'] }, abschied: 7, hinweis: ['Bar!'] } });
+  assert.deepEqual(A.hinweis, ['Bar!']); assert.deepEqual(A.abschied, DEFAULT_ABEND.abschied);
+  let s = sell(initialState(), schluffi).state;
+  const f = mentorAbend(s, A);
+  assert.deepEqual(f.map((e) => e.id), ['rueckblick', 'abschied']);
+  assert.equal(f[0].text, 'Top, Tag 1.'); assert.equal(f[0].lage, 'gut');
+  assert.ok(!f.some((e) => e.aktion), 'keine Aktion (kein Nachschub abends)');
+  assert.equal(mentorAbend({ ...s, heat: 3, verhaftet: true }, A)[0].lage, 'verhaftet');
+  assert.deepEqual(normalizeAbend(undefined), normalizeAbend({}));
 });

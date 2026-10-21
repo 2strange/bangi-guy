@@ -243,7 +243,7 @@ export const DEFAULT_TEXTE = {
     nichts: ['Null verkauft. Immerhin: null verhaftet.'],
     verhaftet: ['Tag verloren. Die Ware ist weg, das Geld bleibt.'],
   },
-  bilanz: ['Tag {tag}: {weg} Beutel weg{polizei}, {geldHeute} Münzen dazu.', 'Kasse: {geld} · Heat: {heatLabel}'],
+  bilanz: ['Tag {tag}: {weg} Beutel weg{polizei}, {geldHeute} Münzen dazu.', 'Kasse: {geld} · Heat: {heatLabel}', 'Tage ohne Vorfall: {tage}'],
   polizei: ' ({anZivis} an die Polizei 🙈)',
   titel: { feierabend: 'Feierabend.', verhaftet: 'VERHAFTET.' },
   optionen: { tag_beenden: 'Tag beenden', weiter: 'Weiterbummeln', neuer_tag: 'Neuer Tag' },
@@ -294,7 +294,7 @@ export function fillText(tpl, vars) {
 // Tagesbilanz als Variablen für die Texte
 export function dayReport(state) {
   const verkauft = state.verkauftHeute || 0, anZivis = state.anZivisHeute || 0;
-  return { tag: state.tag, verkauft, anZivis, weg: verkauft + anZivis, uebrig: state.ware, geldHeute: state.geldHeute || 0, geld: state.geld, heat: state.heat, heatLabel: heatLabel(state.heat), verhaftet: isArrested(state) };
+  return { tag: state.tag, verkauft, anZivis, weg: verkauft + anZivis, uebrig: state.ware, geldHeute: state.geldHeute || 0, geld: state.geld, heat: state.heat, heatLabel: heatLabel(state.heat), verhaftet: isArrested(state), tage: isArrested(state) ? 0 : (state.tageOhneVorfall || 0) };
 }
 // Lage für den Bilanz-Spruch: verhaftet > nichts verkauft > Heat 2+ > gut
 export function lageFor(report) {
@@ -560,4 +560,55 @@ export function tukTukRide(state, { mangos = TUKTUK_PREIS_MANGOS, geld = TUKTUK_
   if ((state.mangos || 0) >= mangos) return { state: { ...state, mangos: state.mangos - mangos }, result: 'mangos', ziel: 'bar' };
   if (state.geld >= geld) return { state: { ...state, geld: state.geld - geld }, result: 'geld', ziel: 'bar' };
   return { state, result: 'zu_arm' };
+}
+
+// ---------- Tagesuhr: ein Tag ≈ 7 Minuten Spielzeit, Phasen morgen / mittag / abend / nacht ----------
+export const DAY_LENGTH = 420;            // Sekunden Spielzeit pro Tag
+export const PHASES = ['morgen', 'mittag', 'abend', 'nacht'];
+export const PHASE_AT = { mittag: 0.28, abend: 0.66, nacht: 0.9 }; // Anteile des Tages (t01)
+export const phaseFor = (t01) => (t01 >= PHASE_AT.nacht ? 'nacht' : t01 >= PHASE_AT.abend ? 'abend' : t01 >= PHASE_AT.mittag ? 'mittag' : 'morgen');
+export const initialClock = () => ({ t01: 0 });
+// Uhr weiterdrehen (läuft nur im freien Spiel; in Gesprächen/Karten pausiert der Aufrufer)
+export function clockStep(clock, dt, dayLength = DAY_LENGTH) {
+  return { ...clock, t01: Math.min(1, clock.t01 + dt / dayLength) };
+}
+// Anzeige: 06:00 (Morgen) … 24:00 (Nacht) plus Sonnen-/Mond-Symbol
+export function clockLabel(t01) {
+  const h = 6 + 18 * Math.max(0, Math.min(1, t01));
+  const hh = Math.floor(h), mm = Math.floor((h - hh) * 60);
+  const sym = { morgen: '🌅', mittag: '☀️', abend: '🌇', nacht: '🌙' }[phaseFor(t01)];
+  return `${sym} ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+// Abends darf man den Tag in der Bar beenden; nachts endet er von allein (Hängematte)
+export const abendBeginnt = (prev, next) => phaseFor(prev) !== 'abend' && phaseFor(next) === 'abend';
+export const nachtBeginnt = (prev, next) => phaseFor(prev) !== 'nacht' && phaseFor(next) === 'nacht';
+export const barBeendetTag = (t01) => phaseFor(t01) === 'abend' || phaseFor(t01) === 'nacht';
+export const inBar = (pos, bar, r = 4) => Math.hypot(pos.x - bar.x, pos.z - bar.z) <= r;
+export const DEFAULT_ABEND = {
+  hinweis: ['Sonne geht unter. Ab in die Bangi Bar, Mann.'],
+  haengematte: ['Zu spät für die Bar. Die Hängematte hat dich.'],
+  mentor_abend: {
+    gut: ['Guter Tag. Du hast gelesen, nicht geredet. So geht das.'],
+    heat: ['Pong hat nach dir gefragt. Dreimal. Morgen gießt du erst mal.'],
+    nichts: ['Nichts verkauft? Auch eine Art, nicht verhaftet zu werden.'],
+    verhaftet: ['Erwischt. Die Sandalen-Regel, Mann. Die SANDALEN-Regel.'],
+  },
+  abschied: ['Morgen früh auf der Kuppe. Die Beete warten nicht.'],
+};
+export function normalizeAbend(json) {
+  const t = json && typeof json === 'object' && json.abend && typeof json.abend === 'object' ? json.abend : {};
+  const D = DEFAULT_ABEND;
+  const m = t.mentor_abend && typeof t.mentor_abend === 'object' ? t.mentor_abend : {};
+  const mentor_abend = {};
+  for (const l of LAGEN) mentor_abend[l] = strList(m[l], D.mentor_abend[l]);
+  return { hinweis: strList(t.hinweis, D.hinweis), haengematte: strList(t.haengematte, D.haengematte), mentor_abend, abschied: strList(t.abschied, D.abschied) };
+}
+// Abendgespräch an der Bar: Rückblick nach Lage + Abschied — ohne Nachschub (der bleibt morgens am Hügel)
+export function mentorAbend(state, abend, lineIdx = 0) {
+  const A = abend || DEFAULT_ABEND;
+  const lage = lageFor(dayReport(state));
+  return [
+    { id: 'rueckblick', text: fillText(pickLine(A.mentor_abend[lage], lineIdx), dayReport(state)), bark: 'lektion', lage },
+    { id: 'abschied', text: pickLine(A.abschied, lineIdx), bark: 'abschied' },
+  ];
 }

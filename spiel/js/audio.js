@@ -8,7 +8,8 @@
 //   sfx(name, { gain, pan })        name: kasse | ablehnen | heat | verhaftet | ausverkauft | schritt_sand | ui_klick | hinschauen |
 //                                   pfeife | mango | funk | tuten | tuktuk_abwuergen; gain 0..1 = Abstands-Lautstärke, pan -1..1
 //   ambience.start() / .stop()      Zonen-Ambience: strand (Brandung + Möwe), markt (Gewirr + Händlerrufe), posten (Funk), pier (Tuk-Tuk-Leerlauf)
-//   ambience.setZone({ strand: 1, markt: 0.3 })   Mischung 0..1 je Zone, weich; .ruf() / .funk() sofort
+//   ambience.setZone({ strand: 1, markt: 0.3 })   Mischung 0..1 je Zone (+ bar: Klirren, Gemurmel), weich; .ruf() / .funk() sofort
+//   setMood('tag' | 'abend')        Musik (langsamer, kein Kick, Hall, dunkler) + Ambience (Grillen an, Möwen stumm), weich
 //   music.start() / .stop() / .setVolume(0..1) / .setEnabled(bool)   Strand-Loop, ~75 BPM
 //   loadStimmen() → stimmeFor(id)   Stimmprofile + Barks aus data/stimmen.json
 //   babble(stimmeOderId, text, { pan }) → Dauer in Sekunden; stopBabble()
@@ -24,9 +25,9 @@ export const VOL = {
   voice: 0.55,
   // einzelne Effekte relativ zum SFX-Bus
   kasse: 0.8, ablehnen: 0.6, heat: 0.55, verhaftet: 0.5, ausverkauft: 0.6, schritt_sand: 0.18, ui_klick: 0.35, hinschauen: 0.4,
-  pfeife: 0.45, mango: 0.6, funk: 0.4, tuten: 0.55, tuktuk_abwuergen: 0.5,
+  pfeife: 0.45, mango: 0.6, funk: 0.4, tuten: 0.55, tuktuk_abwuergen: 0.5, gaehnen: 0.5,
   // Ambience-Details (relativ zum Ambience-Bus)
-  moewe: 0.35, walla: 0.16, ruf: 0.3, funkspruch: 0.45, tuktuk: 0.22,
+  moewe: 0.35, walla: 0.16, ruf: 0.3, funkspruch: 0.45, tuktuk: 0.22, klirren: 0.2, grillen: 0.1,
 };
 const STORE_MUTE = 'bangi_audio_muted';
 const STORE_MUSIC = 'bangi_audio_music';
@@ -195,36 +196,50 @@ const LICKS = [
   [[2, 7], [6, 9], [10, 7], [12, 4]],
   [[0, 0], [4, 2], [8, 4], [10, 7], [14, 12]],
 ];
-/** Events eines Taktes (bar ≥ 0, wird modulo BARS gewickelt). Deterministisch. */
-export function musicPattern(bar) {
+// Stimmungen: tag = Strand-Loop wie gehabt; abend = Bar-Live: langsamer, kein Kick, Shaker nur auf den Offbeats,
+// Skank weicher und dunkler, mehr Hall und Echo, Lick in jedem zweiten Block
+export const MOODS = {
+  tag:   { bpm: 75, drums: 1,   skank: 1,   bass: 1,   lead: 0.6, reverb: 0.08, echo: 0.22, tone: 7000 },
+  abend: { bpm: 66, drums: 0.5, skank: 0.75, bass: 0.9, lead: 0.9, reverb: 0.38, echo: 0.32, tone: 2600 },
+};
+export const normalizeMood = (m) => (MOODS[m] ? m : 'tag');
+/** Tempo gleitet pro 16tel ein Stück zum Ziel (kein Sprung beim Stimmungswechsel) */
+export const nextBpm = (cur, target) => (Math.abs(target - cur) < 0.05 ? target : cur + (target - cur) * 0.06);
+/** Events eines Taktes (bar ≥ 0, wird modulo BARS gewickelt). Deterministisch. mood: tag | abend */
+export function musicPattern(bar, mood = 'tag') {
   const b = ((bar % BARS) + BARS) % BARS;
+  const abend = normalizeMood(mood) === 'abend';
   const chord = CHORD[PROGRESSION[b]];
   const r = rng(1000 + b);
   const ev = [];
   const push = (step, type, extra = {}) => ev.push({ step, type, ...extra });
-  // Shaker: alle Achtel, Offbeats lauter
-  for (let s = 0; s < 16; s += 2) push(s, 'shaker', { vel: s % 4 === 2 ? 0.9 : 0.45 });
-  // One-Drop
+  // Shaker: alle Achtel, Offbeats lauter; abends nur die Offbeats, leise
+  for (let s = 0; s < 16; s += 2) {
+    if (abend && s % 4 !== 2) continue;
+    push(s, 'shaker', { vel: abend ? 0.5 : (s % 4 === 2 ? 0.9 : 0.45) });
+  }
+  // One-Drop; abends kein Kick (Bar-Live, nur Rimshot)
   const dubDrop = b === 7 || b === 15;         // Dub: Kick fällt weg, Rimshot bleibt + Echo-Gefühl
-  if (!dubDrop) push(8, 'kick', { vel: 1 });
-  push(8, 'rim', { vel: 1 });
-  if (b % 4 === 3) push(14, 'rim', { vel: 0.6 });  // kleiner Fill am Blockende
+  if (!dubDrop && !abend) push(8, 'kick', { vel: 1 });
+  push(8, 'rim', { vel: abend ? 0.6 : 1 });
+  if (b % 4 === 3) push(14, 'rim', { vel: abend ? 0.4 : 0.6 });  // kleiner Fill am Blockende
   // Skank (Offbeats), auf Takt 15 nur zwei Anschläge, Platz für den Lick
   const skankSteps = b === 15 ? [2, 10] : [2, 6, 10, 14];
-  for (const s of skankSteps) push(s, 'skank', { notes: chord.skank, vel: s === 6 || s === 14 ? 0.85 : 1, len: 2 });
-  if (b % 4 === 1 && r() < 0.6) push(15, 'skank', { notes: chord.skank, vel: 0.5, len: 1 }); // Vorschlag vor Takt 1
+  for (const s of skankSteps) push(s, 'skank', { notes: chord.skank, vel: s === 6 || s === 14 ? 0.85 : 1, len: abend ? 3 : 2 });
+  if (b % 4 === 1 && r() < 0.6 && !abend) push(15, 'skank', { notes: chord.skank, vel: 0.5, len: 1 }); // Vorschlag vor Takt 1
   // Bass: Grundton auf 1 (lang), Grundton auf 3, Quinte vor der 1; in Dub-Takten erst ab der 3
   const root = chord.bass, fifth = root + 7, third = root + (PROGRESSION[b] === 'Em' ? 3 : 4);
   if (!dubDrop) push(0, 'bass', { note: root, len: 6, vel: 1 });
   push(8, 'bass', { note: root, len: 3, vel: 0.9 });
   if (b % 4 === 3) { push(11, 'bass', { note: third, len: 2, vel: 0.7 }); push(13, 'bass', { note: fifth, len: 2, vel: 0.8 }); }
   else push(12, 'bass', { note: fifth, len: 2, vel: 0.75 });
-  // Steel-Drum-Lick in den letzten vier Takten, leise
+  // Steel-Drum-Lick in den letzten vier Takten, leise; abends auch in Takt 4–7 (mehr Melodie, weniger Groove)
   if (b >= 12) for (const [s, semi] of LICKS[b - 12]) push(s, 'lead', { note: chord.skank[0] + semi, vel: 0.6, len: 3 });
+  else if (abend && b >= 4 && b < 8) for (const [s, semi] of LICKS[b - 4]) push(s, 'lead', { note: chord.skank[0] + semi - 12, vel: 0.45, len: 4 });
   ev.sort((x, y) => x.step - y.step);
   return { bar: b, chord: PROGRESSION[b], events: ev };
 }
-export const stepSeconds = () => 60 / BPM / 4;
+export const stepSeconds = (bpm = BPM) => 60 / bpm / 4;
 
 /** Möwen-Abstand in Sekunden (8–22 s), rng = Funktion 0..1 */
 export const nextGullDelay = (r) => 8 + r() * 14;
@@ -233,7 +248,14 @@ export const nextRufDelay = (r) => 6 + r() * 9;
 export const nextFunkDelay = (r) => 10 + r() * 15;
 
 // ---------- Zonen (rein) ----------
-export const ZONES = ['strand', 'markt', 'posten', 'pier'];
+export const ZONES = ['strand', 'markt', 'posten', 'pier', 'bar'];
+/** Grillen-Zirpen: ein Schwall aus n Pulsen bei rate Hz, Pause danach (rein, testbar) */
+export function cricketBurst(r) {
+  const n = 6 + Math.floor(r() * 12), rate = 26 + r() * 14;
+  return { pulses: n, gap: 1 / rate, pause: 0.25 + r() * 0.9, freq: 3900 + r() * 900 };
+}
+/** Gläserklirren an der Bar alle 2–7 s */
+export const nextClinkDelay = (r) => 2 + r() * 5;
 /** Gewichte 0..1 je Zone; unbekannte Schlüssel ignoriert, fehlende = 0; null/undefined = nur Strand */
 export function normalizeZones(g) {
   const out = {};
@@ -512,6 +534,21 @@ const SFX = {
     o.connect(g); g.connect(out); o.start(tp); o.stop(tp + 0.5);
     return puff + 0.5;
   },
+  // Gähnen: Stimme gleitet hoch und müde wieder runter, Formant „aah → ooh“, dazu Atem
+  gaehnen(t, out) {
+    const o = osc('triangle', 170, t);
+    o.frequency.exponentialRampToValueAtTime(250, t + 0.5); o.frequency.exponentialRampToValueAtTime(125, t + 1.3);
+    const vib = osc('sine', 5, t + 0.4); const vg = ctx.createGain(); vg.gain.value = 5; vib.connect(vg); vg.connect(o.frequency);
+    const bp = filt('bandpass', 600, 2.2);
+    bp.frequency.setValueAtTime(600, t); bp.frequency.linearRampToValueAtTime(950, t + 0.5); bp.frequency.linearRampToValueAtTime(420, t + 1.3);
+    const lp = filt('lowpass', 2200, 0.7);
+    const g = gainEnv(t, { a: 0.25, peak: 0.6, d: 0.55, hold: 0.55 });
+    o.connect(bp); bp.connect(lp); lp.connect(g); g.connect(out);
+    o.start(t); vib.start(t + 0.4); stopAt([o, vib], t + 1.5);
+    const n = noise(); const nb = filt('bandpass', 1400, 0.6); const ng = gainEnv(t, { a: 0.3, peak: 0.12, d: 0.6, hold: 0.4 });
+    n.connect(nb); nb.connect(ng); ng.connect(out); n.start(t); n.stop(t + 1.5);
+    return 1.5;
+  },
   // Zoom-Swoosh: Bandpass-Rauschen fegt hoch
   hinschauen(t, out) {
     const n = noise(); const bp = filt('bandpass', 300, 1.5);
@@ -676,7 +713,78 @@ function layerPier(out) {
   return { nodes: [motor, n, pl, wob], timers: [], weight: 0 };
 }
 
-const LAYERS = { strand: layerStrand, markt: layerMarkt, posten: layerPosten, pier: layerPier };
+// Bar: Gemurmel (dunkler Rauschteppich + zwei Brabbel-Stimmen) und Gläserklirren
+function layerBar(out) {
+  const nodes = [], timers = [];
+  const n = noise(); const bp = filt('bandpass', 380, 1.0); const g = ctx.createGain(); g.gain.value = 0.1;
+  const l = osc('sine', 0.23, now()); const lg = ctx.createGain(); lg.gain.value = 0.04; l.connect(lg); lg.connect(g.gain);
+  n.connect(bp); bp.connect(g); g.connect(out); n.start(); l.start(); nodes.push(n, l);
+  const layer = { nodes, timers, weight: 0 };
+  const walla = ctx.createGain(); walla.gain.value = VOL.walla * 0.8; const wlp = filt('lowpass', 1200, 0.7); walla.connect(wlp); wlp.connect(out);
+  for (let v = 0; v < 2; v++) {
+    const r = rng(700 + v);
+    const p = pan(v ? 0.5 : -0.5); p.connect(walla);
+    const loop = () => {
+      if (!amb) return;
+      let wait = 0.8 + r() * 2;
+      if (layer.weight > 0.02 && ready() && !muted) {
+        const plan = babblePlan({ tonhoehe: 0.7 + r() * 0.5, tempo: 0.7 + r() * 0.3, stil: v ? 'brummig' : 'schluffig', vibrato: 0.1, laut: 0.6 }, pseudoWords(r, 2 + Math.floor(r() * 3)), Math.floor(r() * 1e9));
+        renderPlan(plan, p, now() + 0.02);
+        wait += plan.duration;
+      }
+      timers[v] = setTimeout(loop, wait * 1000);
+    };
+    timers[v] = setTimeout(loop, 500 + v * 900);
+  }
+  // Gläserklirren: zwei, drei hohe, unharmonische Partials mit Nachklang, zufällig gepannt
+  const clink = () => {
+    if (!amb) return;
+    if (layer.weight > 0.05 && ready() && !muted) {
+      const t = now() + 0.02, p = pan(Math.random() * 1.2 - 0.6); p.connect(out);
+      const hits = 1 + Math.floor(Math.random() * 2);
+      for (let h = 0; h < hits; h++) {
+        const tt = t + h * (0.06 + Math.random() * 0.05), f0 = 2600 + Math.random() * 900;
+        const g = gainEnv(tt, { a: 0.002, peak: VOL.klirren * (0.6 + Math.random() * 0.4), d: 0.35 + Math.random() * 0.3 });
+        g.connect(p);
+        [[1, 1], [1.48, 0.5], [2.31, 0.25]].forEach(([ratio, v]) => { const o = osc('sine', f0 * ratio, tt); const og = ctx.createGain(); og.gain.value = v; o.connect(og); og.connect(g); o.start(tt); o.stop(tt + 0.8); });
+      }
+    }
+    timers[2] = setTimeout(clink, nextClinkDelay(Math.random) * 1000);
+  };
+  timers[2] = setTimeout(clink, 1500);
+  return layer;
+}
+// Abend: Grillen (unabhängig von der Zone, über die Stimmung geblendet). Drei Grillen, je Schwall aus kurzen Pulsen.
+function layerGrillen(out) {
+  const timers = [];
+  const layer = { nodes: [], timers, weight: 0 };
+  for (let v = 0; v < 3; v++) {
+    const r = rng(900 + v);
+    const p = pan([-0.7, 0.2, 0.75][v]); p.connect(out);
+    const loop = () => {
+      if (!amb) return;
+      const b = cricketBurst(r);
+      if (layer.weight > 0.02 && ready() && !muted) {
+        const t = now() + 0.02;
+        const o = osc('sine', b.freq, t); const o2 = osc('sine', b.freq * 1.01, t); const og2 = ctx.createGain(); og2.gain.value = 0.5;
+        const g = ctx.createGain(); g.gain.value = 0;
+        o.connect(g); o2.connect(og2); og2.connect(g); g.connect(p);
+        for (let i = 0; i < b.pulses; i++) {
+          const tt = t + i * b.gap;
+          g.gain.setValueAtTime(0.0001, tt); g.gain.linearRampToValueAtTime(VOL.grillen, tt + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, tt + b.gap * 0.6);
+        }
+        const end = t + b.pulses * b.gap + 0.05;
+        o.start(t); o2.start(t); stopAt([o, o2], end);
+      }
+      timers[v] = setTimeout(loop, (b.pulses * b.gap + b.pause) * 1000);
+    };
+    timers[v] = setTimeout(loop, 400 + v * 300);
+  }
+  return layer;
+}
+
+const LAYERS = { strand: layerStrand, markt: layerMarkt, posten: layerPosten, pier: layerPier, bar: layerBar };
+let ambMood = 'tag';
 let zoneWeights = normalizeZones(null);
 export const ambience = {
   start() {
@@ -691,8 +799,11 @@ export const ambience = {
       amb.layers[z] = LAYERS[z](g);
       amb.layers[z].weight = zoneWeights[z];
     }
+    // Grillen hängen an der Stimmung, nicht an der Zone
+    const gg = ctx.createGain(); gg.gain.value = ambMood === 'abend' ? 1 : 0; gg.connect(fade);
+    amb.gains.grillen = gg; amb.layers.grillen = layerGrillen(gg); amb.layers.grillen.weight = gg.gain.value;
     const scheduleGull = () => {
-      amb.gullTimer = setTimeout(() => { if (!amb) return; if (ready() && !muted && zoneWeights.strand > 0.05) gull(now() + 0.05, amb.gains.strand); scheduleGull(); }, nextGullDelay(Math.random) * 1000);
+      amb.gullTimer = setTimeout(() => { if (!amb) return; if (ready() && !muted && zoneWeights.strand > 0.05 && ambMood !== 'abend') gull(now() + 0.05, amb.gains.strand); scheduleGull(); }, nextGullDelay(Math.random) * 1000);
     };
     amb.gullTimer = setTimeout(scheduleGull, 2500);
   },
@@ -705,6 +816,13 @@ export const ambience = {
     setTimeout(() => { for (const l of Object.values(a.layers)) stopAt(l.nodes, 0); a.fade.disconnect(); }, 2000);
   },
   isPlaying: () => !!amb,
+  /** Stimmung 'tag' | 'abend': abends Grillen an (weich), Möwen verstummen */
+  setMood(m) {
+    ambMood = normalizeMood(m);
+    if (amb) { const w = ambMood === 'abend' ? 1 : 0; amb.gains.grillen.gain.setTargetAtTime(w, now(), 1.2); amb.layers.grillen.weight = w; }
+    return ambMood;
+  },
+  getMood: () => ambMood,
   /** Zonen-Mischung, z. B. { strand: 1, markt: 0.3 }; fehlende Zonen = 0, weich überblendet (~1 s). null = nur Strand. */
   setZone(gewichte) {
     zoneWeights = normalizeZones(gewichte);
@@ -762,48 +880,95 @@ function shaker(t, vel, out) {
   const g = gainEnv(t, { a: 0.008, peak: 0.22 * vel, d: 0.05 });
   n.connect(hp); hp.connect(g); g.connect(out); n.start(t); n.stop(t + 0.08);
 }
-let mus = null; // { timer, nextStep, nextTime, out, skank, delay }
+let mus = null; // { timer, nextStep, nextTime, out, skank, drums, lead, delay, wet, reverbWet, tone, bpm, barMood }
+let mood = 'tag';
 const LOOKAHEAD = 0.18, TICK_MS = 50;
+// Synthetische Hallfahne (Rauschen mit exponentiellem Abklingen), einmal pro Context
+let reverbBuf = null;
+function reverbImpulse(seconds = 1.9) {
+  if (reverbBuf) return reverbBuf;
+  const len = Math.floor(ctx.sampleRate * seconds);
+  reverbBuf = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const d = reverbBuf.getChannelData(c);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6);
+  }
+  return reverbBuf;
+}
 function scheduleStep(stepAbs, t) {
   const bar = Math.floor(stepAbs / STEPS_PER_BAR), step = stepAbs % STEPS_PER_BAR;
-  const pat = musicPattern(bar);
-  const sec = stepSeconds();
+  if (step === 0) mus.barMood = mood; // Pattern wechselt nur an der Taktgrenze
+  const pat = musicPattern(bar, mus.barMood);
+  const sec = stepSeconds(mus.bpm);
   for (const e of pat.events) {
     if (e.step !== step) continue;
     const len = (e.len || 1) * sec;
     switch (e.type) {
       case 'skank': for (const m of e.notes) steelDrum(t, m, e.vel * 0.55, len * 0.6, mus.skank); break;
-      case 'lead': steelDrum(t, e.note + 12, e.vel * 0.7, len, mus.skank); break;
-      case 'bass': bassNote(t, e.note, e.vel, len, mus.out); break;
-      case 'kick': kick(t, e.vel, mus.out); break;
-      case 'rim': rimshot(t, e.vel, mus.skank); break;
-      case 'shaker': shaker(t, e.vel, mus.out); break;
+      case 'lead': steelDrum(t, e.note + 12, e.vel * 0.7, len, mus.lead); break;
+      case 'bass': bassNote(t, e.note, e.vel, len, mus.bass); break;
+      case 'kick': kick(t, e.vel, mus.drums); break;
+      case 'rim': rimshot(t, e.vel, mus.drums); break;
+      case 'shaker': shaker(t, e.vel, mus.drums); break;
       default: break;
     }
   }
+}
+// Stimmung auf die laufenden Knoten legen (weich, ~2 s); das Tempo gleitet im Scheduler
+function applyMood() {
+  if (!mus) return;
+  const p = MOODS[mood], t = now(), tc = 0.7;
+  mus.drums.gain.setTargetAtTime(p.drums, t, tc);
+  mus.skank.gain.setTargetAtTime(p.skank, t, tc);
+  mus.bass.gain.setTargetAtTime(p.bass, t, tc);
+  mus.lead.gain.setTargetAtTime(p.lead / MOODS.tag.lead, t, tc);
+  mus.wet.gain.setTargetAtTime(p.echo, t, tc);
+  mus.reverbWet.gain.setTargetAtTime(p.reverb, t, tc);
+  mus.tone.frequency.setTargetAtTime(p.tone, t, tc);
 }
 export const music = {
   start() {
     if (!ready() || mus || !musicEnabled) return;
     const out = ctx.createGain(); out.gain.value = 1; out.connect(bus.music);
-    // Skank + Rimshot gehen zusätzlich durch ein leises Dub-Echo (punktierte Achtel)
-    const skank = ctx.createGain(); skank.connect(out);
-    const delay = ctx.createDelay(1.0); delay.delayTime.value = stepSeconds() * 3;
-    const fb = ctx.createGain(); fb.gain.value = 0.3; const wet = ctx.createGain(); wet.gain.value = 0.22;
+    const p = MOODS[mood];
+    // Klangfarbe: ein Lowpass vor dem Ausgang, abends dunkler
+    const tone = filt('lowpass', p.tone, 0.5); tone.connect(out);
+    // Gruppen mit eigener Lautstärke je Stimmung
+    const skank = ctx.createGain(); skank.gain.value = p.skank; skank.connect(tone);
+    const drums = ctx.createGain(); drums.gain.value = p.drums; drums.connect(tone);
+    const bass = ctx.createGain(); bass.gain.value = p.bass; bass.connect(tone);
+    const lead = ctx.createGain(); lead.gain.value = p.lead / MOODS.tag.lead; lead.connect(tone);
+    // Skank, Lead + Drums gehen zusätzlich durch ein leises Dub-Echo (punktierte Achtel)
+    const delay = ctx.createDelay(1.0); delay.delayTime.value = stepSeconds(p.bpm) * 3;
+    const fb = ctx.createGain(); fb.gain.value = 0.3; const wet = ctx.createGain(); wet.gain.value = p.echo;
     const dlp = filt('lowpass', 1800, 0.7);
-    skank.connect(delay); delay.connect(dlp); dlp.connect(fb); fb.connect(delay); dlp.connect(wet); wet.connect(out);
-    mus = { timer: null, nextStep: 0, nextTime: now() + 0.1, out, skank, delay };
+    skank.connect(delay); lead.connect(delay); drums.connect(delay); delay.connect(dlp); dlp.connect(fb); fb.connect(delay); dlp.connect(wet); wet.connect(tone);
+    // Hall (Bar-Live-Gefühl abends): Convolver mit synthetischer Fahne
+    const reverb = ctx.createConvolver(); reverb.buffer = reverbImpulse();
+    const reverbWet = ctx.createGain(); reverbWet.gain.value = p.reverb;
+    skank.connect(reverb); lead.connect(reverb); drums.connect(reverb); reverb.connect(reverbWet); reverbWet.connect(tone);
+    mus = { timer: null, nextStep: 0, nextTime: now() + 0.1, out, skank, drums, bass, lead, delay, wet, reverbWet, tone, bpm: p.bpm, barMood: mood };
     const tick = () => {
       if (!mus) return;
       while (mus.nextTime < now() + LOOKAHEAD) {
         if (!muted) scheduleStep(mus.nextStep, mus.nextTime);
         mus.nextStep++;
-        mus.nextTime += stepSeconds();
+        mus.bpm = nextBpm(mus.bpm, MOODS[mood].bpm);
+        mus.nextTime += stepSeconds(mus.bpm);
+        mus.delay.delayTime.setTargetAtTime(stepSeconds(mus.bpm) * 3, mus.nextTime, 0.3);
       }
     };
     mus.timer = setInterval(tick, TICK_MS);
     tick();
   },
+  /** Stimmung 'tag' | 'abend': Tempo gleitet, Drums/Hall/Klangfarbe blenden weich; Pattern wechselt an der Taktgrenze */
+  setMood(m) {
+    mood = normalizeMood(m);
+    applyMood();
+    return mood;
+  },
+  getMood: () => mood,
+  getBpm: () => (mus ? mus.bpm : MOODS[mood].bpm),
   stop() {
     if (!mus) return;
     const m = mus; mus = null;
@@ -938,3 +1103,12 @@ export function babble(stimme, text, opts = {}) {
   playPlan(plan, normalizePan(opts && opts.pan));
   return plan.duration;
 }
+
+// ---------- Stimmung (Musik + Ambience in einem) ----------
+/** 'tag' | 'abend' — das Spiel ruft das einmal beim Phasenwechsel; alles blendet weich, nichts springt */
+export function setMood(m) {
+  music.setMood(m);
+  ambience.setMood(m);
+  return normalizeMood(m);
+}
+export const getMood = () => music.getMood();
