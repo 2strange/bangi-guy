@@ -136,7 +136,7 @@
     "touristin": {
       "charakter": { "tonhoehe": 1.35, "tempo": 1.0, "stil": "piepsig", "vibrato": 0.3, "laut": 0.9 },
       "barks": {
-        "gruss": ["Yoo-hoo!", "Are you local?", "Photo? No? Okay, photo.", "Husband's asleep.", "How exotic!"],
+        "gruss": ["Yoo-hoo!", "Are you local?", "Photo? No? Okay, photo.", "Husband's asleep.", "How authentic!"],
         "kauf": ["Oh my!", "For the diary.", "Back by five!", "Delightful.", "Postcards too?"],
         "ablehnung": ["Oh. Mangoes, then.", "Just once, I thought.", "Husband was right.", "Pity.", "Well!"],
         "zivi_verdaechtig": ["Is it the hat?", "I'm on a cruise!", "Cheeky boy.", "Do I look official?"]

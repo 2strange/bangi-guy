@@ -203,7 +203,7 @@
       "mimik": "Dauerlächeln unter einem Hut von der Größe eines Sonnenschirms, Augen nur als Lachfalten. Beim Kauf: kichert hinter dem Fächer. Bei Ablehnung: 'Ach so', fächelt weiter.",
       "tells": ["Hut größer als der Marktstand", "Kreuzfahrt-Bändchen am Handgelenk: muss um fünf zurück aufs Schiff", "zahlt wenig, kauft aber jeden Tag", "fotografiert alles, auch dich (harmlos, aber peinlich)"],
       "saetze": {
-        "gruss": ["Huhu! Sind Sie einheimisch? Sie sehen so einheimisch aus.", "Mein Mann schläft auf dem Schiff. Ich erlebe was.", "Darf ich ein Foto? Nein? Ich mach trotzdem eins."],
+        "gruss": ["Huhu! Wohnen Sie hier? Sie sehen so entspannt aus.", "Mein Mann schläft auf dem Schiff. Ich erlebe was.", "Darf ich ein Foto? Nein? Ich mach trotzdem eins."],
         "kauf": ["Das kommt ins Reisetagebuch. Als 'Gewürz'.", "Entzückend. Haben Sie auch Postkarten davon?", "Um fünf muss ich aufs Schiff. Reicht das bis dahin?"],
         "ablehnung": ["Ach so. Dann eben Mangos.", "Schade, ich hätte so gern was Verbotenes gemacht. Einmal.", "Na gut. Mein Mann sagt eh, ich übertreibe."],
         "reveal": []
@@ -232,7 +232,7 @@
       "extras": ["schlamm_bis_knie", "reissack", "hose_hochgekrempelt"],
       "zivi": false, "zahlt": 25, "zahlt_in": "reis", "feilschen": 0.1, "heat": 0, "tempo": 0.5, "spawn": "K7", "stimme": "bauer",
       "stimmung_start": "neutral",
-      "mimik": "Wettergegerbt, normale Augen, blinzelt gegen die Sonne (Kegelhut-Schatten im Gesicht), Mund entspannt. Beim Kauf: ein langsames Nicken, dann ein Blick zum Himmel, als käme das Geld von dort. Bei Ablehnung: zuckt nicht mal, pflanzt weiter.",
+      "mimik": "Wettergegerbt, blinzelt in den Himmel, als käme gleich Regen, Mund entspannt. Beim Kauf: ein langsames Nicken, dann ein Blick zum Himmel, als käme das Geld von dort. Bei Ablehnung: zuckt nicht mal, pflanzt weiter.",
       "tells": ["barfuß mit Schlamm bis zum Knie: steht den ganzen Tag im Wasser, rennt nirgendwohin", "Kegelhut, kein Hemd", "zahlt in Reis (gleicher Wert, schwerer zu tragen)", "spricht nur in Wetter"],
       "saetze": {
         "gruss": ["Regen kommt. Nicht heute. Aber er kommt.", "Du bist der Junge vom Hügel. Dein Mentor klaut mein Wasser.", "Komm nicht ins Feld. Die Reiher mögen keine Sandalen."],

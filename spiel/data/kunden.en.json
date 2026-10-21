@@ -125,7 +125,7 @@
       "name": "Mrs. Dr. Hat", "typ": "Cruise-ship auntie",
       "tells": ["hat bigger than the market stall", "cruise wristband: has to be back on the ship by five", "pays little, but buys every day", "photographs everything, including you (harmless, but embarrassing)"],
       "saetze": {
-        "gruss": ["Yoo-hoo! Are you a local? You look so local.", "My husband's asleep on the ship. I'm having experiences.", "May I take a photo? No? I'll take one anyway."],
+        "gruss": ["Yoo-hoo! Do you live here? You look so relaxed.", "My husband's asleep on the ship. I'm having experiences.", "May I take a photo? No? I'll take one anyway."],
         "kauf": ["This goes in the travel diary. As 'spice'.", "Delightful. Do you have postcards of it too?", "I have to be on the ship by five. Will it last till then?"],
         "ablehnung": ["Oh, I see. Mangoes, then.", "Pity, I would have loved to do something forbidden. Just once.", "Fine. My husband says I overdo it anyway."],
         "reveal": []
