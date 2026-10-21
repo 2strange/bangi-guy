@@ -977,6 +977,9 @@ function updateKunden(dt) {
 
 // ---------- Snap: einmal rendern an fester Stelle ----------
 function setupScene() {
+  // ?t= (Uhr-t) gilt auch ohne Szene; HUD mit Uhr auffrischen, bevor eine Szene früh zurückkehrt
+  if (T01) { tagesuhr = { t01: Math.max(0, Math.min(1, parseFloat(T01))) }; applyTageszeit(); placeMentor(barBeendetTag(tagesuhr.t01)); }
+  refreshHud();
   if (!SCENE || kunden.length === 0) return;
   if (SCENE === 'gag') {
     // Kunde mitten im Kauf-Gag: ggf. Tag wechseln, bis der Kunde dran ist (Zivis rotieren)
@@ -1006,7 +1009,6 @@ function setupScene() {
     mode = 'free';
     return;
   }
-  if (T01) { tagesuhr = { t01: Math.max(0, Math.min(1, parseFloat(T01))) }; applyTageszeit(); placeMentor(barBeendetTag(tagesuhr.t01)); refreshHud(); }
   if (SCENE === 'nong') {
     // Nong grüßt (eine Braue hoch), Bar-Kamera
     tagesuhr = { t01: 0.74 }; applyTageszeit(); placeMentor(true); refreshHud();
