@@ -47,7 +47,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x8fe0ff);
 scene.fog = new THREE.Fog(0x9fe6ff, 70, 230);
 
-const camera = new THREE.PerspectiveCamera(44, 1.6, 0.5, 600);
+const camera = new THREE.PerspectiveCamera(44, 1.6, 1.0, 600); // near 1.0: bessere Tiefenauflösung, die Kamera ist nie näher als ~4 Einheiten
 
 // Licht: Sonne mit Schatten, die mit dem Spieler mitwandert (kleine, scharfe Schattenkarte)
 const sunLight = new THREE.DirectionalLight(0xfff4d6, 1.9);
@@ -900,7 +900,7 @@ if (SNAP) {
     setupScene();
     applyPose(state);
     for (let i = 0; i < 300; i++) cam = followCamera(cam, state, 1 / 60, camYaw);
-    if (overview) { cam = { x: 12, y: 135, z: -160, tx: 12, ty: 0, tz: -22 }; scene.fog = null; } // Übersicht ohne Nebel (Welt reicht bis z −98)
+    if (overview) { cam = { x: 12, y: 135, z: -160, tx: 12, ty: 0, tz: -22 }; scene.fog = null; camera.near = 20; camera.updateProjectionMatrix(); } // Übersicht ohne Nebel; near 20 gegen Tiefen-Streifen (Gras über Sand) in der Ferne
     if (mode === 'inspect') {
       cam = inspectCamera(talking.npc, state, inspectOpts(talking));
       talking.npc.yaw = Math.atan2(cam.x - talking.npc.x, cam.z - talking.npc.z);
