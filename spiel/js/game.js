@@ -3,6 +3,7 @@
 // Schlendern der Kunden, Hinschau-Kamera. Getestet mit `node --test`.
 
 export const START_WARE = 5;
+export const MAX_WARE = 15; // Taschen-Maximum: darüber gibt der Mentor nichts mehr („voll“)
 // Nimmt ein Zivi beim „Verkauf“ den Beutel mit (Ware −1, Bilanz „an die Polizei“)? Entscheid steht noch aus —
 // ein Wert zum Umschalten. sell() nimmt die Option auch pro Aufruf entgegen, damit Tests beide Fälle prüfen.
 export const ZIVI_BESCHLAGNAHMT = true;
@@ -128,7 +129,9 @@ export function newDay(state, { nacht = 'bar' } = {}) {
   const tageOhneVorfall = isArrested(state) ? 0 : (state.tageOhneVorfall || 0) + 1;
   // Über Nacht kühlt der Heat: Bar −2, Hängematte −1; nach einer Verhaftung ist er ohnehin abgegolten (0)
   const heat = isArrested(state) ? 0 : Math.max(0, state.heat - (NACHT_ABKUEHLUNG[nacht] ?? NACHT_ABKUEHLUNG.bar));
-  return { ...state, geld: state.geld, ware: START_WARE, heat, tag: state.tag + 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, tageOhneVorfall };
+  // Restware bleibt über Nacht in der Tasche (Nachschub gibt es morgens beim Mentor obendrauf); nach einer Verhaftung ist sie weg
+  const ware = isArrested(state) ? 0 : state.ware;
+  return { ...state, geld: state.geld, ware, heat, tag: state.tag + 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, tageOhneVorfall };
 }
 
 // Heat als Text/Icons für das HUD
@@ -407,7 +410,7 @@ export const DEFAULT_MENTOR_SZENE = {
   ausgelernt: ['Heute keine Weisheit. Nur Gras und Schweigen.'],
   giessen: ['Gieß ordentlich.'],
 };
-export const MENTOR_AKTIONEN = ['ware_auffuellen', 'heat_minus'];
+export const MENTOR_AKTIONEN = ['ware_auffuellen', 'ware_plus', 'heat_minus']; // ware_plus = Alias für ware_auffuellen
 export function normalizeMentorSzene(json) {
   const t = json && typeof json === 'object' ? json : {};
   const m = t.mentor_szene && typeof t.mentor_szene === 'object' ? t.mentor_szene : {};
@@ -436,22 +439,21 @@ export function normalizeMentorSzene(json) {
   };
   return out;
 }
-// Aktion anwenden: ware_auffuellen = auf `menge` auffüllen (nicht darüber), heat_minus = Heat um `wert` kühlen
+// Aktion anwenden: ware_auffuellen/ware_plus = `menge` obendrauf (gedeckelt bei MAX_WARE), heat_minus = Heat um `wert` kühlen
 export function applyMentorAktion(state, aktion, value) {
-  if (aktion === 'ware_auffuellen') return { ...state, ware: Math.max(state.ware, value) };
+  if (aktion === 'ware_auffuellen' || aktion === 'ware_plus') return { ...state, ware: Math.min(MAX_WARE, state.ware + value) };
   if (aktion === 'heat_minus') return { ...state, heat: Math.max(0, state.heat - value), verhaftet: false };
   return state;
 }
 export const mentorBesucht = (state) => state.mentorTag === state.tag;
 /**
  * Blasenfolge für den Besuch beim Mentor: [{ id, text, aktion?, value?, bark }]. Einmal pro Tag die volle Szene
- * (Ankunft → Lektion → Nachschub → Abschied); nochmal am selben Tag: schon_geholt; mit voller Tasche: voll.
+ * (Ankunft → Lektion → Nachschub → Abschied); nochmal am selben Tag: schon_geholt; mit voller Tasche (MAX_WARE): voll.
  */
 export function mentorSzene(state, sz, lineIdx = 0) {
   const S = sz || normalizeMentorSzene(null);
   if (mentorBesucht(state)) return [{ id: 'schon_geholt', text: pickLine(S.schon_geholt, lineIdx), bark: 'gruss' }];
-  const menge = S.schritte.find((st) => st.aktion === 'ware_auffuellen')?.menge ?? START_WARE;
-  if (state.ware >= menge) return [{ id: 'voll', text: pickLine(S.voll, lineIdx), bark: 'gruss' }];
+  if (state.ware >= MAX_WARE) return [{ id: 'voll', text: pickLine(S.voll, lineIdx), bark: 'gruss' }];
   const out = [];
   let step = S.schritte[0];
   const byId = Object.fromEntries(S.schritte.map((st) => [st.id, st]));
@@ -465,7 +467,7 @@ export function mentorSzene(state, sz, lineIdx = 0) {
     } else {
       const list = step.text === '@ankunft' ? S.ankunft : Array.isArray(step.text) ? step.text : [step.text];
       const entry = { id: step.id, text: pickLine(list, lineIdx), bark };
-      if (step.aktion) { entry.aktion = step.aktion; entry.value = step.aktion === 'ware_auffuellen' ? step.menge : step.wert; }
+      if (step.aktion) { entry.aktion = step.aktion; entry.value = step.aktion === 'heat_minus' ? step.wert : step.menge; }
       out.push(entry);
     }
     step = step.weiter ? byId[step.weiter] : null;

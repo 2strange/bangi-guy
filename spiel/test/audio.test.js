@@ -7,7 +7,7 @@ import {
   musicPattern, PROGRESSION, BARS, STEPS_PER_BAR, BPM, stepSeconds, nextGullDelay, rng, hashStr, midiToFreq, SFX_NAMES,
   babble, sfx, setMuted, isMuted, ambience, music, stimmeFor, setStimmen, normalizePan,
   ZONES, normalizeZones, pseudoWords, nextRufDelay, nextFunkDelay, sputterTimes, normalizeSfxOpts,
-  MOODS, normalizeMood, nextBpm, setMood, getMood, cricketBurst, nextClinkDelay,
+  MOODS, normalizeMood, nextBpm, setMood, getMood, cricketBurst, nextClinkDelay, frogCall, nextFrogDelay, JINGLES,
 } from '../js/audio.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -127,12 +127,21 @@ test('musicPattern: 16 Takte, Skank nur auf Offbeats, One-Drop, Bass im Keller, 
 });
 
 test('Zonen: normalizeZones clampt, ignoriert Unbekanntes, null = Strand; Pseudo-Wörter brabbelbar', () => {
-  assert.deepEqual(ZONES, ['strand', 'markt', 'posten', 'pier', 'bar']);
-  assert.deepEqual(normalizeZones(null), { strand: 1, markt: 0, posten: 0, pier: 0, bar: 0 });
-  assert.deepEqual(normalizeZones({}), { strand: 0, markt: 0, posten: 0, pier: 0, bar: 0 });
-  assert.deepEqual(normalizeZones({ strand: 1, markt: 0.3 }), { strand: 1, markt: 0.3, posten: 0, pier: 0, bar: 0 });
-  assert.deepEqual(normalizeZones({ strand: 7, markt: -1, posten: 'x', disco: 1 }), { strand: 1, markt: 0, posten: 0, pier: 0, bar: 0 });
-  assert.deepEqual(normalizeZones({ posten: '0.4', pier: 0.9, bar: 1 }), { strand: 0, markt: 0, posten: 0.4, pier: 0.9, bar: 1 });
+  assert.deepEqual(ZONES, ['strand', 'markt', 'posten', 'pier', 'bar', 'reisfeld']);
+  const Z = (o) => ({ strand: 0, markt: 0, posten: 0, pier: 0, bar: 0, reisfeld: 0, ...o });
+  assert.deepEqual(normalizeZones(null), Z({ strand: 1 }));
+  assert.deepEqual(normalizeZones({}), Z({}));
+  assert.deepEqual(normalizeZones({ strand: 1, markt: 0.3 }), Z({ strand: 1, markt: 0.3 }));
+  assert.deepEqual(normalizeZones({ strand: 7, markt: -1, posten: 'x', disco: 1 }), Z({ strand: 1 }));
+  assert.deepEqual(normalizeZones({ posten: '0.4', pier: 0.9, bar: 1, reisfeld: 0.5 }), Z({ posten: 0.4, pier: 0.9, bar: 1, reisfeld: 0.5 }));
+  // Frösche: 1–3 Quaker, tief, Trill 18–32 Hz, Pausen 0.8–3 s
+  for (let i = 0; i < 20; i++) { const c = frogCall(rng(i)); assert.ok(c.n >= 1 && c.n <= 3 && c.freq >= 110 && c.freq <= 220 && c.gap >= 0.22 && c.trill >= 18 && c.trill <= 32, JSON.stringify(c)); }
+  assert.equal(nextFrogDelay(() => 0), 0.8); assert.equal(nextFrogDelay(() => 1), 3);
+  // Jingles: Umfang sinnvoll, ziel/morgen steigen, fail fällt chromatisch
+  for (const m of [...JINGLES.ziel, ...JINGLES.morgen, ...JINGLES.woche_fail, ...JINGLES.woche_gut.flat()]) assert.ok(m >= 55 && m <= 96, `MIDI ${m}`);
+  for (let i = 1; i < JINGLES.ziel.length; i++) assert.ok(JINGLES.ziel[i] > JINGLES.ziel[i - 1]);
+  for (let i = 1; i < JINGLES.woche_fail.length; i++) assert.ok(JINGLES.woche_fail[i] < JINGLES.woche_fail[i - 1]);
+  assert.equal(JINGLES.woche_gut.length, 4); for (const c of JINGLES.woche_gut) assert.equal(c.length, 3);
   // Grillen-Schwall und Klirren-Abstand im Bereich
   const cb = cricketBurst(rng(1));
   assert.ok(cb.pulses >= 6 && cb.pulses <= 17 && cb.gap > 1 / 40 && cb.gap < 1 / 26 && cb.pause >= 0.25 && cb.freq >= 3900);
@@ -192,8 +201,9 @@ test('Helfer: rng deterministisch im Bereich, hash stabil, Möwenpause 8–22 s,
 });
 
 test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Dauer', () => {
-  for (const n of ['kasse', 'ablehnen', 'heat', 'verhaftet', 'ausverkauft', 'schritt_sand', 'ui_klick', 'hinschauen', 'pfeife', 'mango', 'funk', 'tuten', 'tuktuk_abwuergen', 'gaehnen']) assert.ok(SFX_NAMES.includes(n), n);
-  assert.equal(SFX_NAMES.length, 14);
+  for (const n of ['kasse', 'ablehnen', 'heat', 'verhaftet', 'ausverkauft', 'schritt_sand', 'ui_klick', 'hinschauen', 'pfeife', 'mango', 'funk', 'tuten', 'tuktuk_abwuergen', 'gaehnen',
+    'ui_oeffnen', 'ui_schliessen', 'ui_umschalten', 'ui_schritt', 'ziel', 'morgen', 'woche_gut', 'woche_fail']) assert.ok(SFX_NAMES.includes(n), n);
+  assert.equal(SFX_NAMES.length, 22);
   for (const n of SFX_NAMES) assert.equal(sfx(n), 0);
   assert.equal(sfx('gibtsnicht'), 0);
   assert.equal(sfx('tuktuk_abwuergen', { gain: 0.5, pan: -0.3 }), 0, 'Optionen ohne Audio: no-op');
@@ -209,8 +219,8 @@ test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Daue
   ambience.start(); ambience.stop(); music.start(); music.stop();
   assert.equal(ambience.isPlaying(), false); assert.equal(music.isPlaying(), false);
   assert.equal(ambience.ruf(), 0); assert.equal(ambience.funk(), 0);
-  assert.deepEqual(ambience.setZone({ markt: 0.5 }), { strand: 0, markt: 0.5, posten: 0, pier: 0, bar: 0 });
-  assert.deepEqual(ambience.getZone(), { strand: 0, markt: 0.5, posten: 0, pier: 0, bar: 0 });
+  assert.deepEqual(ambience.setZone({ markt: 0.5 }), { strand: 0, markt: 0.5, posten: 0, pier: 0, bar: 0, reisfeld: 0 });
+  assert.deepEqual(ambience.getZone(), { strand: 0, markt: 0.5, posten: 0, pier: 0, bar: 0, reisfeld: 0 });
   // Stimmung ohne Audio: wird gemerkt, Unsinn → tag
   assert.equal(setMood('abend'), 'abend'); assert.equal(getMood(), 'abend'); assert.equal(music.getMood(), 'abend'); assert.equal(ambience.getMood(), 'abend');
   assert.equal(music.getBpm(), MOODS.abend.bpm);

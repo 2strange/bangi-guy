@@ -26,8 +26,11 @@ export const VOL = {
   // einzelne Effekte relativ zum SFX-Bus
   kasse: 0.8, ablehnen: 0.6, heat: 0.55, verhaftet: 0.5, ausverkauft: 0.6, schritt_sand: 0.18, ui_klick: 0.35, hinschauen: 0.4,
   pfeife: 0.45, mango: 0.6, funk: 0.4, tuten: 0.55, tuktuk_abwuergen: 0.5, gaehnen: 0.5,
+  ui_oeffnen: 0.35, ui_schliessen: 0.3, ui_umschalten: 0.3, ui_schritt: 0.45,
+  ziel: 0.55, morgen: 0.5, woche_gut: 0.6, woche_fail: 0.5,
   // Ambience-Details (relativ zum Ambience-Bus)
   moewe: 0.35, walla: 0.16, ruf: 0.3, funkspruch: 0.45, tuktuk: 0.22, klirren: 0.2, grillen: 0.1,
+  frosch: 0.28, wasser: 0.2,
 };
 const STORE_MUTE = 'bangi_audio_muted';
 const STORE_MUSIC = 'bangi_audio_music';
@@ -248,7 +251,20 @@ export const nextRufDelay = (r) => 6 + r() * 9;
 export const nextFunkDelay = (r) => 10 + r() * 15;
 
 // ---------- Zonen (rein) ----------
-export const ZONES = ['strand', 'markt', 'posten', 'pier', 'bar'];
+export const ZONES = ['strand', 'markt', 'posten', 'pier', 'bar', 'reisfeld'];
+/** Froschruf: 1–3 „Quak“ mit Grundton 110–220 Hz und Abstand (rein, testbar) */
+export function frogCall(r) {
+  return { n: 1 + Math.floor(r() * 3), freq: 110 + r() * 110, gap: 0.22 + r() * 0.18, trill: 18 + r() * 14 };
+}
+/** Nächster Frosch in 0.8–3 s */
+export const nextFrogDelay = (r) => 0.8 + r() * 2.2;
+// Jingle-Noten (MIDI) — rein, damit Tests prüfen können, dass Tonleiter/Umfang stimmen
+export const JINGLES = {
+  ziel: [67, 71, 74, 79],                                   // G-Dur-Arpeggio hoch
+  morgen: [79, 83, 86, 91, 86],                             // kurzes Steel-Drum-Motiv nach dem Hahn
+  woche_gut: [[67, 71, 74], [72, 76, 79], [74, 78, 81], [79, 83, 86]], // G C D G, Akkorde
+  woche_fail: [66, 65, 64, 62],                             // „Wah-wah-wah-waaah“ chromatisch runter
+};
 /** Grillen-Zirpen: ein Schwall aus n Pulsen bei rate Hz, Pause danach (rein, testbar) */
 export function cricketBurst(r) {
   const n = 6 + Math.floor(r() * 12), rate = 26 + r() * 14;
@@ -549,6 +565,73 @@ const SFX = {
     n.connect(nb); nb.connect(ng); ng.connect(out); n.start(t); n.stop(t + 1.5);
     return 1.5;
   },
+  // --- UI: Menü/Tutorial ---
+  // Menü öffnen: zwei weiche Blips aufwärts
+  ui_oeffnen(t, out) { blip(t, 660, out); blip(t + 0.07, 990, out); return 0.2; },
+  // Menü schließen: abwärts
+  ui_schliessen(t, out) { blip(t, 990, out); blip(t + 0.07, 660, out); return 0.2; },
+  // Option umschalten: ein Tick mit kurzem Rutsch nach oben
+  ui_umschalten(t, out) {
+    const o = osc('square', 880, t); o.frequency.exponentialRampToValueAtTime(1320, t + 0.05);
+    const lp = filt('lowpass', 3000, 0.7); const g = gainEnv(t, { a: 0.002, peak: 0.4, d: 0.07 });
+    o.connect(lp); lp.connect(g); g.connect(out); o.start(t); o.stop(t + 0.1);
+    return 0.1;
+  },
+  // Tutorial-Schritt erledigt: „ding-ding“ hoch, zweiter Ton klingt nach
+  ui_schritt(t, out) {
+    [[0, 1320, 0.12], [0.11, 1980, 0.45]].forEach(([dt, f, d]) => {
+      const g = gainEnv(t + dt, { a: 0.003, peak: 0.5, d });
+      g.connect(out);
+      [[1, 1], [2.76, 0.25]].forEach(([ratio, v]) => { const o = osc('sine', f * ratio, t + dt); const og = ctx.createGain(); og.gain.value = v; o.connect(og); og.connect(g); o.start(t + dt); o.stop(t + dt + d + 0.05); });
+    });
+    return 0.6;
+  },
+  // --- Jingles ---
+  // Ziel erreicht: Steel-Drum-Arpeggio hoch + Rimshot auf dem letzten Ton
+  ziel(t, out) {
+    JINGLES.ziel.forEach((m, i) => steelDrum(t + i * 0.11, m, 0.9, i === 3 ? 0.9 : 0.3, out));
+    rimshot(t + 0.33, 0.7, out);
+    return 1.3;
+  },
+  // Tagesstart: Hahn („ki-ke-ri-KIII“) und ein kurzes Steel-Drum-Motiv
+  morgen(t, out) {
+    const bp = filt('bandpass', 1500, 1.5); const lp = filt('lowpass', 3500, 0.7); bp.connect(lp); lp.connect(out);
+    [[0, 620, 0.14, 0.75], [0.17, 700, 0.14, 0.8], [0.34, 560, 0.14, 0.75], [0.52, 980, 0.55, 1]].forEach(([dt, f, d, v], i) => {
+      const tt = t + dt;
+      const o = osc('sawtooth', f, tt);
+      if (i === 3) { o.frequency.exponentialRampToValueAtTime(f * 1.12, tt + 0.1); o.frequency.exponentialRampToValueAtTime(f * 0.7, tt + d); } // letzte Silbe kippt müde weg
+      else o.frequency.exponentialRampToValueAtTime(f * 1.08, tt + d);
+      const vib = osc('sine', 9, tt); const vg = ctx.createGain(); vg.gain.value = 14; vib.connect(vg); vg.connect(o.frequency);
+      const g = gainEnv(tt, { a: 0.015, peak: 0.5 * v, d: 0.08, hold: d - 0.05 });
+      o.connect(g); g.connect(bp); o.start(tt); vib.start(tt); stopAt([o, vib], tt + d + 0.1);
+    });
+    JINGLES.morgen.forEach((m, i) => steelDrum(t + 1.25 + i * 0.14, m, 0.7, i === 4 ? 0.8 : 0.3, out));
+    return 2.3;
+  },
+  // Woche geschafft: vier Steel-Drum-Akkorde mit Bass und Rimshots, letzter hält
+  woche_gut(t, out) {
+    const bassNotes = [43, 48, 50, 43];
+    JINGLES.woche_gut.forEach((chord, i) => {
+      const tt = t + i * 0.42, last = i === 3;
+      chord.forEach((m, k) => steelDrum(tt + k * 0.02, m, 0.8, last ? 1.6 : 0.5, out));
+      bassNote(tt, bassNotes[i], 0.9, last ? 1.4 : 0.35, out);
+      rimshot(tt + 0.21, 0.5, out);
+      if (last) { shaker(tt + 0.21, 0.6, out); shaker(tt + 0.42, 0.6, out); }
+    });
+    return 3.2;
+  },
+  // Woche verpatzt: „Wah-wah-wah-waaah“ — Sägezahn mit Wah-Filter, chromatisch runter, letzter Ton sackt ab
+  woche_fail(t, out) {
+    JINGLES.woche_fail.forEach((m, i) => {
+      const tt = t + i * 0.45, last = i === 3, d = last ? 1.3 : 0.4, f = midiToFreq(m);
+      const o = osc('sawtooth', f, tt);
+      if (last) o.frequency.exponentialRampToValueAtTime(f * 0.84, tt + d);
+      const bp = filt('bandpass', 400, 3); bp.frequency.setValueAtTime(400, tt); bp.frequency.linearRampToValueAtTime(1300, tt + 0.12); bp.frequency.linearRampToValueAtTime(500, tt + d);
+      const g = gainEnv(tt, { a: 0.03, peak: 0.55, d: 0.2, hold: d - 0.2 });
+      o.connect(bp); bp.connect(g); g.connect(out); o.start(tt); o.stop(tt + d + 0.1);
+    });
+    return 2.9;
+  },
   // Zoom-Swoosh: Bandpass-Rauschen fegt hoch
   hinschauen(t, out) {
     const n = noise(); const bp = filt('bandpass', 300, 1.5);
@@ -559,6 +642,12 @@ const SFX = {
   },
 };
 export const SFX_NAMES = Object.keys(SFX);
+// weicher UI-Blip (Sinus + Oktave, kurz)
+function blip(t, f, out) {
+  const g = gainEnv(t, { a: 0.004, peak: 0.45, d: 0.09 });
+  g.connect(out);
+  [[1, 1], [2, 0.3]].forEach(([ratio, v]) => { const o = osc('sine', f * ratio, t); const og = ctx.createGain(); og.gain.value = v; o.connect(og); og.connect(g); o.start(t); o.stop(t + 0.15); });
+}
 const warned = new Set();
 /** Spielt einen Effekt. Gibt die ungefähre Dauer in Sekunden zurück (0, wenn Audio nicht läuft). */
 /** Optionen für sfx: gain 0..1 (Abstands-Lautstärke, Standard 1), pan -1..1 (Standard Mitte); ungültig → Standard */
@@ -783,7 +872,44 @@ function layerGrillen(out) {
   return layer;
 }
 
-const LAYERS = { strand: layerStrand, markt: layerMarkt, posten: layerPosten, pier: layerPier, bar: layerBar };
+// Reisfeld: Frösche (Sägezahn mit Trill durch Formant-Bandpass), plätscherndes Wasser, Grillen auch tagsüber leise
+function layerReisfeld(out) {
+  const nodes = [], timers = [];
+  const layer = { nodes, timers, weight: 0 };
+  // Wasser: Hochpass-Rauschen, Lautstärke flattert mit zwei nicht ganzzahligen LFOs
+  const n = noise(); const bp = filt('bandpass', 2600, 0.8); const wg = ctx.createGain(); wg.gain.value = VOL.wasser;
+  [[1.7, 0.08], [0.43, 0.06]].forEach(([f, depth]) => { const l = osc('sine', f, now()); const lg = ctx.createGain(); lg.gain.value = depth; l.connect(lg); lg.connect(wg.gain); l.start(); nodes.push(l); });
+  n.connect(bp); bp.connect(wg); wg.connect(out); n.start(); nodes.push(n);
+  // Frösche: drei, je eigene Schleife, gepannt
+  for (let v = 0; v < 3; v++) {
+    const r = rng(1100 + v);
+    const p = pan([-0.6, 0.1, 0.7][v]); p.connect(out);
+    const loop = () => {
+      if (!amb) return;
+      const c = frogCall(r);
+      if (layer.weight > 0.02 && ready() && !muted) {
+        for (let i = 0; i < c.n; i++) {
+          const tt = now() + 0.02 + i * c.gap;
+          const o = osc('sawtooth', c.freq, tt); o.frequency.exponentialRampToValueAtTime(c.freq * 0.8, tt + 0.16);
+          const tr = osc('square', c.trill, tt); const tg = ctx.createGain(); tg.gain.value = 0.5; const am = ctx.createGain(); am.gain.value = 0.5; tr.connect(tg); tg.connect(am.gain);
+          const f1 = filt('bandpass', 520, 3); const f2 = filt('lowpass', 1800, 0.7);
+          const g = gainEnv(tt, { a: 0.01, peak: VOL.frosch * (0.7 + r() * 0.3), d: 0.08, hold: 0.09 });
+          o.connect(am); am.connect(f1); f1.connect(f2); f2.connect(g); g.connect(p);
+          o.start(tt); tr.start(tt); stopAt([o, tr], tt + 0.25);
+        }
+      }
+      timers[v] = setTimeout(loop, (c.n * c.gap + nextFrogDelay(r)) * 1000);
+    };
+    timers[v] = setTimeout(loop, 600 + v * 500);
+  }
+  // Grillen tagsüber leise (die Abend-Grillen kommen zusätzlich über die Stimmung)
+  const gg = ctx.createGain(); gg.gain.value = 0.45; gg.connect(out);
+  const gr = layerGrillen(gg);
+  layer.sub = gr; // Gewicht wird in setZone mitgezogen
+  return layer;
+}
+
+const LAYERS = { strand: layerStrand, markt: layerMarkt, posten: layerPosten, pier: layerPier, bar: layerBar, reisfeld: layerReisfeld };
 let ambMood = 'tag';
 let zoneWeights = normalizeZones(null);
 export const ambience = {
@@ -798,6 +924,7 @@ export const ambience = {
       amb.gains[z] = g;
       amb.layers[z] = LAYERS[z](g);
       amb.layers[z].weight = zoneWeights[z];
+      if (amb.layers[z].sub) amb.layers[z].sub.weight = zoneWeights[z];
     }
     // Grillen hängen an der Stimmung, nicht an der Zone
     const gg = ctx.createGain(); gg.gain.value = ambMood === 'abend' ? 1 : 0; gg.connect(fade);
@@ -811,9 +938,9 @@ export const ambience = {
     if (!amb) return;
     const a = amb; amb = null;
     clearTimeout(a.gullTimer);
-    for (const l of Object.values(a.layers)) l.timers.forEach(clearTimeout);
+    for (const l of Object.values(a.layers)) { l.timers.forEach(clearTimeout); if (l.sub) l.sub.timers.forEach(clearTimeout); }
     a.fade.gain.setTargetAtTime(0.0001, now(), 0.4);
-    setTimeout(() => { for (const l of Object.values(a.layers)) stopAt(l.nodes, 0); a.fade.disconnect(); }, 2000);
+    setTimeout(() => { for (const l of Object.values(a.layers)) { stopAt(l.nodes, 0); if (l.sub) stopAt(l.sub.nodes, 0); } a.fade.disconnect(); }, 2000);
   },
   isPlaying: () => !!amb,
   /** Stimmung 'tag' | 'abend': abends Grillen an (weich), Möwen verstummen */
@@ -830,6 +957,7 @@ export const ambience = {
     for (const z of ZONES) {
       amb.gains[z].gain.setTargetAtTime(zoneWeights[z], now(), 0.35);
       amb.layers[z].weight = zoneWeights[z];
+      if (amb.layers[z].sub) amb.layers[z].sub.weight = zoneWeights[z];
     }
     return zoneWeights;
   },

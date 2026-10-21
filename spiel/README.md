@@ -91,8 +91,9 @@ Dann `http://localhost:8000/` öffnen.
   (`assignOutfits`, getestet). Orange bleibt dem Spieler.
 - **Mentor-Szene:** Auf der Kuppe (Heckenlücke bei x −54…−46, dann die Serpentine hoch) steht der Mentor im
   Garten. E = zuhören: Ankunft → Lektion des Tages aus `texte.json → mentor[]` (drei Blasen: Einleitung, Regel,
-  Pointe; ab Tag 4 „ausgelernt“) → Nachschub (Ware wird auf 5 aufgefüllt) → Abschied (Heat −1). Einmal pro Tag;
-  nochmal: „schon geholt“, mit voller Tasche: „voll“. Logik rein in `js/game.js` (`mentorSzene`, `finishMentor`,
+  Pointe; ab Tag 4 „ausgelernt“) → Nachschub (+5 Beutel obendrauf, Taschen-Maximum 15) → Abschied (Heat −1). Einmal
+  pro Tag; nochmal: „schon geholt“, mit voller Tasche (15): „voll“. Restware bleibt über Nacht in der Tasche, nach einer
+  Verhaftung ist sie weg. Logik rein in `js/game.js` (`mentorSzene`, `finishMentor`,
   getestet), Texte aus `mentor_szene{}`. `?snap=1&scene=mentor` zeigt die Regel-Blase.
 - **Posten 7 (Heat-Zone):** In Pongs Sichtweite (Radius 15) gibt ein Verkauf an einen Zivi doppelt Heat, dazu
   Trillerpfeife. Am Mango-Stand des Markts kauft man Mangos (E, 10 Münzen, 🥭 im HUD); bei Pong (E) senkt eine

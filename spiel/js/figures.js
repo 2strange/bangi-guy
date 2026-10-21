@@ -436,7 +436,7 @@ export function pose(figur, name = 'stehen') {
 const NONG_SKIN = 0x8d5a3a;
 const NONG_FACE = { skin: '#8d5a3a', bart: 'schnauzer', seed: 41, lids: [0.55, 0.2] };
 
-function bareFoot(skin, side = 'L') {
+export function bareFoot(skin, side = 'L') {
   const m = sideSign(side);
   const g = new THREE.Group();
   const footGeo = new RoundedBoxGeometry(0.42, 0.18, 0.78, 3, 0.07);

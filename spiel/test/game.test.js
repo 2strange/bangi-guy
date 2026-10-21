@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   initialState, normalizeKunde, normalizeKatalog, pickLine, sell, decline, isArrested, newDay, heatLabel,
   startDialog, advanceDialog, chooseOption, moodFor, nearestKunde, wanderStep, inspectCamera, kundeLookYaw,
-  START_WARE, MAX_HEAT, pickKunden, idSeed,
+  START_WARE, MAX_WARE, MAX_HEAT, pickKunden, idSeed,
   DEFAULT_TEXTE, normalizeTexte, fillText, dayReport, soldOutDialog, isSoldOut, assignOutfits, outfitKey, variantCount, lageFor, dayEndCard, normalizeGags, gagFor, nextIdleGagDelay, ZIVI_BESCHLAGNAHMT,
   normalizeStimmen, stimmeSlug, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, applyMentorAktion, mentorBesucht,
@@ -103,12 +103,13 @@ test('decline: Status abgelehnt, Ablehnungssatz, kein Geld/Heat', () => {
   assert.equal(r.state.status.z1, 'abgelehnt');
 });
 
-test('newDay: Geld bleibt, Ware voll, Heat 0, Tag +1, Kunden wieder neutral', () => {
+test('newDay: Geld bleibt, Restware bleibt (nach Verhaftung weg), Heat 0, Tag +1, Kunden wieder neutral', () => {
   let s = sell(initialState(), schluffi).state;
+  assert.equal(newDay(s).ware, START_WARE - 1, 'Restware bleibt über Nacht in der Tasche');
   s = { ...s, heat: 3, verhaftet: true };
   const n = newDay(s);
   assert.equal(n.geld, 20);
-  assert.equal(n.ware, START_WARE);
+  assert.equal(n.ware, 0, 'nach der Verhaftung ist die Ware weg');
   assert.equal(n.heat, 0);
   assert.equal(n.tag, 2);
   assert.deepEqual(n.status, {});
@@ -443,12 +444,12 @@ test('mentorSzene: volle Folge am ersten Besuch — Ankunft, drei Lektionsblasen
   assert.equal(f[0].text, 'Setz dich.'); assert.equal(f[2].text, 'R1'); assert.equal(f[2].titel, 'Sandalen');
   assert.deepEqual(f.map((e) => e.bark), ['gruss', 'lektion', 'lektion', 'lektion', 'nachschub', 'abschied']);
   const n = finishMentor(s, f);
-  assert.equal(n.ware, 5, 'auf 5 aufgefüllt'); assert.equal(n.heat, 1, 'Heat −1'); assert.equal(n.mentorTag, 1);
+  assert.equal(n.ware, 6, '+5 obendrauf (1 + 5)'); assert.equal(n.heat, 1, 'Heat −1'); assert.equal(n.mentorTag, 1);
   assert.ok(mentorBesucht(n));
   // zweiter Besuch am selben Tag: nur schon_geholt, keine Aktion
   const f2 = mentorSzene(n, SZ);
   assert.deepEqual(f2.map((e) => e.id), ['schon_geholt']);
-  assert.equal(finishMentor(n, f2).ware, 5);
+  assert.equal(finishMentor(n, f2).ware, 6);
   // neuer Tag: wieder besuchbar, Lektion 2; Tag 3 ohne Weisheit → ausgelernt
   const d2 = { ...newDay(n), ware: 0 };
   assert.equal(mentorBesucht(d2), false);
@@ -457,11 +458,13 @@ test('mentorSzene: volle Folge am ersten Besuch — Ankunft, drei Lektionsblasen
   assert.deepEqual(mentorSzene(d3, SZ).map((e) => e.id), ['ankunft', 'ausgelernt', 'nachschub', 'abschied']);
 });
 
-test('mentorSzene: volle Tasche → nur „voll“; Aktionen füllen nur auf, Heat nicht unter 0; Defaults bei fehlender Datei', () => {
-  const s = { ...initialState(), ware: START_WARE };
+test('mentorSzene: volle Tasche (MAX_WARE) → nur „voll“; Nachschub kommt obendrauf, gedeckelt; Heat nicht unter 0; Defaults bei fehlender Datei', () => {
+  const s = { ...initialState(), ware: MAX_WARE };
   assert.deepEqual(mentorSzene(s, SZ).map((e) => e.id), ['voll']);
-  assert.equal(applyMentorAktion({ ...s, ware: 3 }, 'ware_auffuellen', 5).ware, 5);
-  assert.equal(applyMentorAktion({ ...s, ware: 7 }, 'ware_auffuellen', 5).ware, 7, 'nicht kürzen');
+  assert.equal(mentorSzene({ ...s, ware: START_WARE }, SZ).length, 6, 'mit 5 in der Tasche gibt es trotzdem Nachschub');
+  assert.equal(applyMentorAktion({ ...s, ware: 3 }, 'ware_auffuellen', 5).ware, 8, '+5 obendrauf');
+  assert.equal(applyMentorAktion({ ...s, ware: 7 }, 'ware_plus', 5).ware, 12, 'Alias ware_plus');
+  assert.equal(applyMentorAktion({ ...s, ware: 13 }, 'ware_auffuellen', 5).ware, MAX_WARE, 'Taschen-Maximum');
   assert.equal(applyMentorAktion({ ...s, heat: 0 }, 'heat_minus', 1).heat, 0);
   assert.equal(applyMentorAktion(s, 'quatsch', 9), s);
   const D = normalizeMentorSzene(undefined);
