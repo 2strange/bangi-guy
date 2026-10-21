@@ -239,9 +239,11 @@ test('isOccluder: Palmenkrone neben der Sichtlinie — Kugel mit Blattlängen-Ra
 
 // ---------- Welt-Grenze gegen das Dorf-Layout ----------
 import { DORF } from '../js/zone-dorf-layout.js';
-test('WORLD.minZ reicht bis zum Nordrand des Dorfs (Layout-Daten)', () => {
-  assert.ok(WORLD.minZ <= DORF.minZ, `WORLD.minZ ${WORLD.minZ} muss ≤ DORF.minZ ${DORF.minZ} sein`);
-  assert.ok(WORLD.minZ >= DORF.minZ - 2, 'aber nicht weit darüber hinaus (sonst läuft man ins Leere)');
+import { WORLD_MIN_Z as MARKT_MIN_Z, MARKT, POSTEN } from '../js/zone-markt-layout.js';
+test('WORLD.minZ reicht bis Posten 7 (Markt-Layout) und damit über Dorf und Markt hinaus', () => {
+  assert.equal(WORLD.minZ, MARKT_MIN_Z, 'Nordgrenze = Markt-Layout');
+  assert.ok(WORLD.minZ <= DORF.minZ && WORLD.minZ <= MARKT.minZ, 'Dorf und Markt liegen innerhalb');
+  assert.ok(WORLD.minZ <= POSTEN.gebaeude.z - POSTEN.gebaeude.d / 2, 'Posten-Gebäude innerhalb');
 });
 
 // ---------- Gebäude vs. Promenade, Joystick ----------
@@ -350,4 +352,20 @@ test('assignAnchors: pro Tag eine Mischung über Strand und Dorf, Zivi-Abstand g
   // Mischung ändert sich über die Tage (nicht immer dieselben Kunden im Dorf)
   const dorfIds = (day) => Object.entries(assignAnchors(ks, ANCHORS, { day })).filter(([, a]) => a.zone === 'dorf').map(([id]) => id).sort().join();
   assert.notEqual(dorfIds(1), dorfIds(2));
+});
+
+// ---------- Ambience ----------
+import { zoneMix } from '../js/logic.js';
+test('zoneMix: Strand überall ≥ 0.2 und am Strand 1, Zonen fallen linear mit dem Abstand, fehlende Zonen = 0', () => {
+  const defs = { markt: { x: 60, z: -90, r: 20 }, posten: { x: 20, z: -84, r: 15 } };
+  const beach = zoneMix({ x: 0, z: 5 }, defs);
+  close(beach.strand, 1); close(beach.markt, 0); close(beach.posten, 0);
+  const atMarkt = zoneMix({ x: 60, z: -90 }, defs);
+  close(atMarkt.markt, 1); close(atMarkt.strand, 0.2, 1e-9, 'weit im Norden nur Grundrauschen');
+  const half = zoneMix({ x: 70, z: -90 }, defs);
+  close(half.markt, 0.5);
+  const mid = zoneMix({ x: 0, z: -39 }, defs);
+  close(mid.strand, 0.5);
+  assert.deepEqual(zoneMix({ x: 0, z: 0 }, { markt: null }), { strand: 1, markt: 0 });
+  assert.deepEqual(zoneMix({ x: 0, z: 0 }), { strand: 1 });
 });

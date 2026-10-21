@@ -31,7 +31,7 @@ export function createUI() {
       <span class="hud-item"><b>Tag ${state.tag}</b></span>
       <span class="hud-item">💰 <b>${state.geld}</b></span>
       <span class="hud-item${state.ware === 0 ? ' empty' : ''}">🌿 <b>${state.ware}</b></span>
-      <span class="hud-item heat-${state.heat}">Heat <b>${heatLabel(state.heat)}</b></span>`;
+      <span class="hud-item heat-${state.heat}">Heat <b>${heatLabel(state.heat)}</b></span>${state.mangos > 0 ? `<span class="hud-item">🥭 <b>${state.mangos}</b></span>` : ''}`;
   }
 
   function showPrompt(text, { small = false } = {}) {

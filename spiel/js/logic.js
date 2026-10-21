@@ -9,8 +9,8 @@ export const TURN_RATE = 10;        // rad/s Richtung Zielwinkel (exponentiell)
 export const WADE_DEPTH = 1.6;      // so weit darf er ins Wasser (knöcheltief)
 
 // Spielfläche der Zone (Bühne). Nord = -z (Hügel), Süd = +z (Meer).
-// Nordgrenze = Nordrand des Dorfs Krummgassen (zone-dorf-layout.js: DORF.minZ, Test sichert die Übereinstimmung)
-export const WORLD_MIN_Z = -74;
+// Nordgrenze = Posten 7 + Absperrung (zone-markt-layout.js: WORLD_MIN_Z, Test sichert die Übereinstimmung; nördlich des Dorfs)
+export const WORLD_MIN_Z = -98;
 export const WORLD = { minX: -66, maxX: 66, minZ: WORLD_MIN_Z };
 
 // Uferlinie: Sichelbucht, in der Mitte reicht das Meer am weitesten ins Land.
@@ -348,5 +348,18 @@ export function assignAnchors(kunden, anchors = ANCHORS, { minDist = ZIVI_MIN_DI
     const best = okAny.length ? rot(okAny, day) : free().sort((a, b) => Math.min(...taken.map((t) => dist2(b, t))) - Math.min(...taken.map((t) => dist2(a, t))));
     pick(z, best);
   });
+  return out;
+}
+
+// ---------- Ambience-Mischung nach Spielerposition (audio.ambience.setZone) ----------
+// defs: { markt: {x,z,r}, posten: {x,z,r} } (fehlende Zonen = 0); Strand bleibt überall ≥ 0.2 (nie Stille),
+// ist am Strand 1 und fällt nach Norden (hinter der Hecke) weich ab.
+export function zoneMix(pos, defs = {}, { strandMin = 0.2, heckeZ = -24, fade = 30 } = {}) {
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
+  const out = { strand: Math.max(strandMin, 1 - clamp01((heckeZ - pos.z) / fade)) };
+  for (const [name, z] of Object.entries(defs)) {
+    if (!z || !Number.isFinite(z.r) || z.r <= 0) { out[name] = 0; continue; }
+    out[name] = 1 - clamp01(Math.hypot(pos.x - z.x, pos.z - z.z) / z.r);
+  }
   return out;
 }

@@ -31,6 +31,8 @@ Dann `http://localhost:8000/` öffnen.
 - **Ton:** 🔊/🔇 (alles) und 🎵 (nur Musik) oben rechts (erscheinen, sobald `js/audio.js` vorhanden ist). Audio startet erst nach der ersten
   Geste; die Spiellogik ruft nur Hooks (`sfx('kasse')`, `babble(kundeId, text)`, …); Brandung und Musik-Loop starten mit
   der ersten Geste; Schritte im Sand alle ~0,4 s Laufweg, Kasse/Heat/Verhaftet/Ausverkauft/Hinschauen/Klick als SFX.
+  Die Ambience-Mischung (Strand / Markt / Posten) folgt der Spielerposition (`zoneMix`, getestet; Mitten aus dem
+  Markt-Layout).
   Barks kommen aus `audio.bark(kundeId, situation, { pan })` (Text + Gebrabbel, Stereo-Position aus der
   Bildposition des Kopfs), ohne Audio aus dem eigenen Picker.
 - **E** – ansprechen (nur mit Kunde in Reichweite). In der Sprechblase: **1 / 2** oder Pfeile + **Enter**
@@ -76,6 +78,11 @@ Dann `http://localhost:8000/` öffnen.
   Pointe; ab Tag 4 „ausgelernt“) → Nachschub (Ware wird auf 5 aufgefüllt) → Abschied (Heat −1). Einmal pro Tag;
   nochmal: „schon geholt“, mit voller Tasche: „voll“. Logik rein in `js/game.js` (`mentorSzene`, `finishMentor`,
   getestet), Texte aus `mentor_szene{}`. `?snap=1&scene=mentor` zeigt die Regel-Blase.
+- **Posten 7 (Heat-Zone):** In Pongs Sichtweite (Radius 15) gibt ein Verkauf an einen Zivi doppelt Heat, dazu
+  Trillerpfeife. Am Mango-Stand des Markts kauft man Mangos (E, 10 Münzen, 🥭 im HUD); bei Pong (E) senkt eine
+  Mango den Heat um 1 — einmal pro Tag, nur mit Mango und nur bei Heat > 0 (Texte aus `texte.json → posten7`).
+  Die Tafel am Posten zeigt den echten Stand „Tage ohne Vorfall“ (zählt pro Tag hoch, Verhaftung → 0). Logik in
+  `js/game.js`, getestet. `?snap=1&scene=mango` zeigt den Kauf.
 - **Reveal-Gags:** `data/texte.json → reveal_gags[]` (id, wann = kauf | ablehnung | immer, mood, extra, dauer_s) werden
   von `js/gags.js` gespielt: nach Verkauf bzw. Ablehnung der passende Gag des Kunden (hält den Endzustand, bis man
   weitergeht), „immer“-Gags alle 6–10 s als Idle-Tick, wenn der Spieler in der Nähe ist — der Hinweis zum
@@ -93,7 +100,7 @@ Dann `http://localhost:8000/` öffnen.
 - Standbilder: `?snap=1&scene=dialog` (Sprechblase in der Wahl-Phase), `?snap=1&scene=inspect` (Hinschau-Kamera auf
   den Zivi), `?snap=1&scene=lineup` (alle Kunden in einer Reihe), `?snap=1&scene=ausverkauft` (Ausverkauft-Meldung).
 
-URL-Parameter: `?at=start|bar|pier|mitte|hotel|verleih|ost|hecke|overview|dorf|platz|waesche|hunde|nord` setzt den Startpunkt, `?cy=-90` dreht die
+URL-Parameter: `?at=start|bar|pier|mitte|hotel|verleih|ost|hecke|overview|dorf|platz|waesche|hunde|nord|huegel|garten|markt|marktmitte|posten|ring` setzt den Startpunkt, `?cy=-90` dreht die
 Kamera (Grad, relativ zum Standard), `?stats=1` zeigt Draw-Calls/Dreiecke/FPS, `?snap=1` rendert ein einzelnes
 Standbild (für die PNGs in `shots/`).
 
@@ -103,6 +110,8 @@ Standbild (für die PNGs in `shots/`).
   Anlauf/Bremsen, Kollision (Kreise + Rechtecke, Rausdrücken in zwei Durchgängen), Uferlinie als Funktion,
   Welt-Grenzen, Folge-Kamera, Watschel-Pose, NPC-Kopfdrehung, Klick-Ziel.
 - `test/logic.test.js` – Tests dazu (`npm test` bzw. `node --test "test/**/*.test.js"`), kein Browser nötig.
+- `js/zone-markt.js` + `js/zone-markt-layout.js` – Mango-Markt östlich des Dorfs und Posten 7 nördlich mit Ringstraße
+  (eingehängt aus `world.js` mit `buildMarkt()`; liefert Spots, Ankerplätze, Tafel-Setter).
 - `js/zone-huegel.js` + `js/zone-huegel-layout.js` – Zone „Kiffer-Kuppe“: Heightfield mit Serpentine, Mentor-Hütte,
   Garten, Mentor (eingehängt aus `world.js` mit `buildHuegel()`; `height(x, z)` hebt Spieler und Kamera).
 - `js/zone-dorf.js` + `js/zone-dorf-layout.js` – Zone „Krummgassen“ nördlich der Hecke (eigenes Modul, wird aus

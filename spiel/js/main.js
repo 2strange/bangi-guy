@@ -9,7 +9,7 @@ import { createUI, isTouchDevice, hintSeen, markHint } from './ui.js';
 import { prepareGags, playGag, stopGag } from './gags.js';
 import {
   inputToDir, dirToTarget, stepPlayer, followCamera, waddlePose, CAM_OFFSET, DEFAULT_CAM_YAW, isOccluder, joystickInput, rotateDir,
-  ANCHORS, assignAnchors,
+  ANCHORS, assignAnchors, zoneMix,
 } from './logic.js';
 import {
   initialState, normalizeKatalog, pickKunden, startDialog, advanceDialog, chooseOption, isArrested, newDay, moodFor,
@@ -17,7 +17,9 @@ import {
   normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE, gagFor, nextIdleGagDelay,
   normalizeStimmen, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
+  normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht,
 } from './game.js';
+import { POSTEN as POSTEN_LAYOUT, MARKT as MARKT_AREA, STAENDE } from './zone-markt-layout.js';
 
 // Tastenbelegung (Konstanten, einfach umzulegen): E = immer ansprechen, F = hinschauen, Kamera Q/R
 const KEY_TALK = 'KeyE';
@@ -31,7 +33,7 @@ const SNAP = q('snap') === '1';
 const STATS = q('stats') === '1';
 const AT = q('at');
 const CY = q('cy'); // Kamera-Gierung in Grad relativ zum Standard, z. B. ?at=hotel&cy=-90 (Kamera im Osten, Blick nach Westen)
-const SCENE = q('scene'); // dialog | inspect | lineup | ausverkauft | bilanz | gag | mentor (nur Snap)
+const SCENE = q('scene'); // dialog | inspect | lineup | ausverkauft | bilanz | gag | mentor | mango (nur Snap)
 const SCENE_ID = q('id'); // Kunde für scene=gag
 const TOUCH = q('touch') === '1' || isTouchDevice(); // Touch-Steuerung einblenden
 
@@ -110,6 +112,16 @@ function startAudio() {
   } catch (e) { /* ignorieren */ }
 }
 let audioRetryAt = 0;
+// Zonen-Ambience: Mischung aus der Spielerposition, alle 250 ms (Zonen-Mitten kommen vom Markt-Modul, bis dahin Platzhalter)
+let ambienceAt = 0;
+const POSTEN_ZONE = { x: POSTEN_LAYOUT.pong.x, z: POSTEN_LAYOUT.pong.z, r: 15 }; // Sichtweite von Pong (Heat-Zone)
+const MARKT_ZONE = { x: (MARKT_AREA.minX + MARKT_AREA.maxX) / 2, z: (MARKT_AREA.minZ + MARKT_AREA.maxZ) / 2, r: 22 };
+const ZONE_DEFS = () => ({ markt: MARKT_ZONE, posten: POSTEN_ZONE });
+function updateAmbience(now) {
+  if (!audio?.ambience?.setZone || now < ambienceAt) return;
+  ambienceAt = now + 250;
+  try { audio.ambience.setZone(zoneMix(state, ZONE_DEFS())); } catch (e) { /* ignorieren */ }
+}
 import('./audio.js').then((m) => {
   audio = m;
   try { audio.initAudio?.(); audio.loadStimmen?.(); muteBtn.set(!!audio.isMuted?.()); } catch (e) { /* ignorieren */ }
@@ -154,7 +166,7 @@ function spawnKunden(day = 1) {
   clearKunden();
   const list = pickKunden(katalog, undefined, 2, day);
   const outfits = assignOutfits(list, day); // keine Doppel-Outfits pro Tag
-  const anchors = assignAnchors(list, ANCHORS, { day }); // feste Plätze, Zivis mit Abstand
+  const anchors = assignAnchors(list, ANCHORS.concat(world.markt?.anchors || []), { day }); // feste Plätze über alle Zonen, Zivis mit Abstand
   const seen = {};
   list.forEach((def, i) => {
     const a = anchors[def.id];
@@ -211,6 +223,7 @@ async function loadTexte() {
   } catch (e) { /* Datei fehlt → Platzhalter-Texte */ }
   texte = normalizeTexte(json);
   mentorSz = normalizeMentorSzene(json);
+  posten7 = normalizePosten7(json);
   game = { ...game, texte };
 }
 async function loadStimmen() {
@@ -281,6 +294,49 @@ let nearK = null; // nächster Kunde in Reichweite (jeden Frame neu)
 let mentorSz = normalizeMentorSzene(null);
 const mentorRef = world.huegel.mentor ? { id: 'mentor', group: world.huegel.mentor, def: { id: 'mentor', name: 'Mentor', typ: 'Mentor', zivi: false }, npc: { x: world.huegel.mentor.position.x, z: world.huegel.mentor.position.z, yaw: 0 }, isMentor: true } : null;
 let nearMentor = false;
+// Interaktionspunkte (E): Mango-Stand am Markt (kaufen), Pong am Posten (Mango abgeben); Blase an einem Hilfsobjekt
+let posten7 = normalizePosten7(null);
+function pointObj(x, y, z) { const o = new THREE.Object3D(); o.position.set(x, y, z); o.userData.parts = { head: o }; scene.add(o); return o; }
+const mangoStandDef = STAENDE.find((st) => st.kind === 'mango') || { x: 44, z: -44 };
+const POINTS = [
+  { id: 'mango_stand', x: mangoStandDef.x, z: mangoStandDef.z + 1.4, r: TALK_DIST + 0.6, name: 'Mango-Stand', obj: pointObj(mangoStandDef.x, 2.6, mangoStandDef.z) },
+  { id: 'pong', x: POSTEN_LAYOUT.pong.x, z: POSTEN_LAYOUT.pong.z, r: TALK_DIST + 0.8, name: 'Pong', obj: world.markt?.pong || pointObj(POSTEN_LAYOUT.pong.x, 2.6, POSTEN_LAYOUT.pong.z) },
+];
+let nearPoint = null;
+function pongSay(situation) {
+  try { const pan = panFor(POINTS[1].obj); if (situation === 'pfiff') sfx('pfeife'); else audio?.bark?.('pong', situation, { pan }); } catch (e) { /* ohne Ton */ }
+}
+// Einzel-Blase mit „Weiter“ (nutzt den Mentor-Modus mit einer Folge aus einer Blase)
+function showInfo(point, text, bark = null) {
+  mentorFolge = [{ id: point.id, text, bark }];
+  mentorIdx = 0;
+  talking = { id: point.id, group: point.obj, def: { id: point.id, name: point.name, typ: point.name, zivi: false }, npc: { x: point.x, z: point.z, yaw: 0 } };
+  for (const key in keys) keys[key] = false;
+  clickTarget = null;
+  mode = 'info';
+  ui.showPrompt(null);
+  ui.showBubble({ text, options: ['Weiter'] }, point.name, 0);
+}
+function usePoint(point) {
+  if (point.id === 'mango_stand') {
+    const r = buyMango(game);
+    game = r.state; ui.setHud(game);
+    if (r.result === 'gekauft') { sfx('kasse'); showInfo(point, `Eine Mango, 10 Münzen. Du hast jetzt ${game.mangos}. „3 = 1“ gilt nur für Stammkunden, sagt der Händler.`); }
+    else showInfo(point, 'Zu wenig Geld, Mann. Der Händler zeigt auf das Schild und dann aufs Meer.');
+    try { audio?.ambience?.ruf?.(); } catch (e) { /* ignorieren */ }
+    return;
+  }
+  if (point.id === 'pong') {
+    const r = giveMango(game);
+    game = r.state; ui.setHud(game);
+    if (r.result === 'gnade') { sfx('mango'); pongSay('mango_gnaedig'); }
+    else if (r.result === 'schon_heute') pongSay('mango_schon');
+    else if (r.result === 'keine_mango') pongSay('mango_keine');
+    const text = r.result === 'keine_mango' && game.heat === 0 ? pongText(posten7, game, lineIdx++) : mangoText(posten7, r.result, lineIdx++);
+    showInfo(point, text);
+  }
+}
+function endInfo() { mentorFolge = null; ui.hideBubble(); stopBabble(); mode = 'free'; }
 let mentorFolge = null; // laufende Blasenfolge
 let mentorIdx = 0;
 function startMentor() {
@@ -317,7 +373,7 @@ function advanceMentor() {
 let joy = null;
 const touch = ui.createTouchControls({
   onJoystick: (dx, dy) => { joy = dx === null ? null : joystickInput(dx, dy, { radius: touch.radius }); if (joy) clickTarget = null; },
-  onTalk: () => { sfx('talk'); if (mode === 'dialog') confirmDialog(); else if (mode === 'mentor') advanceMentor(); else if (nearK && mode === 'free') startTalk(nearK); else if (nearMentor && mode === 'free') startMentor(); },
+  onTalk: () => { sfx('talk'); if (mode === 'dialog') confirmDialog(); else if (mode === 'mentor') advanceMentor(); else if (mode === 'info') endInfo(); else if (nearK && mode === 'free') startTalk(nearK); else if (nearMentor && mode === 'free') startMentor(); else if (nearPoint && mode === 'free') usePoint(nearPoint); },
   onLook: () => { sfx('talk'); if (nearK || mode === 'inspect') toggleInspect(); },
   onCamLeft: (down) => { keys.rotL = down; },
   onCamRight: (down) => { keys.rotR = down; },
@@ -327,7 +383,9 @@ window.addEventListener('keydown', (e) => {
   if (mode === 'arrest' || mode === 'card') { if (e.code === 'Enter' || e.code === 'Space') { startNewDay(); e.preventDefault(); } return; }
   if (mode === 'dialog') { dialogKey(e); return; }
   if (mode === 'mentor') { if (['Enter', 'Space', 'KeyE', 'Digit1'].includes(e.code)) advanceMentor(); else if (e.code === 'Escape') advanceMentor(); e.preventDefault(); return; }
+  if (mode === 'info') { if (['Enter', 'Space', 'KeyE', 'Digit1', 'Escape'].includes(e.code)) endInfo(); e.preventDefault(); return; }
   if (e.code === KEY_TALK && nearMentor && mode === 'free') { startMentor(); e.preventDefault(); return; }
+  if (e.code === KEY_TALK && nearPoint && !nearK && mode === 'free') { usePoint(nearPoint); e.preventDefault(); return; }
   // E = immer ansprechen (ohne Kunden in Reichweite passiert nichts), F = hinschauen
   if (e.code === KEY_TALK) { if (nearK && mode === 'free') startTalk(nearK); e.preventDefault(); return; }
   if (e.code === KEY_LOOK && (nearK || mode === 'inspect')) { toggleInspect(); e.preventDefault(); return; }
@@ -352,6 +410,7 @@ ui.onOptionClick((i, where) => {
   sfx('talk');
   if (where === 'card') startNewDay();
   else if (mode === 'mentor') advanceMentor();
+  else if (mode === 'info') endInfo();
   else if (mode === 'dialog') { selected = i; confirmDialog(); }
 });
 
@@ -393,9 +452,10 @@ function confirmDialog() {
   }
   if (dialog.phase === 'wahl') {
     const heatBefore = game.heat;
-    const r = chooseOption(game, dialog, talking.def, dialog.options[selected], lineIdx++);
+    const inSicht = inPostenSicht(state, POSTEN_ZONE);
+    const r = chooseOption(game, dialog, talking.def, dialog.options[selected], lineIdx++, { posten: POSTEN_ZONE, pos: state });
     game = r.state; dialog = r.dialog;
-    if (game.heat > heatBefore) sfx('alarm');
+    if (game.heat > heatBefore) { sfx('alarm'); if (inSicht) { sfx('pfeife'); pongSay('sichtung'); } }
     ui.setHud(game);
     setMood(talking.group, moodFor(kundeStatus(game, talking.id)));
     if (dialog.result === 'kauf' || dialog.result === 'reveal') sfx('kasse'); else sfx('ablehnung');
@@ -595,6 +655,7 @@ function stats() {
 }
 let frameMs = 16;
 let lastStepPhase = 0;
+let tafelAt = 0, tafelShown = -1;
 
 // ---------- Reveal-Gags (gags.js, Daten aus texte.json) ----------
 const clock = () => performance.now() / 1000;
@@ -628,6 +689,10 @@ const badgeWorld = new THREE.Vector3();
 function updateNearHint() {
   if (!nearK && nearMentor) {
     const txt = mentorBesucht(game) ? 'Mentor — E: kurz hallo sagen' : (TOUCH ? '💬 Reden: dem Mentor zuhören (Lektion + Nachschub)' : 'Mentor — E: zuhören (Lektion + Nachschub)');
+    ui.showPrompt(txt); ui.showBadge(null); ui.pulseButtons({ talk: true }); return;
+  }
+  if (!nearK && nearPoint) {
+    const txt = nearPoint.id === 'mango_stand' ? `Mango-Stand — E: Mango kaufen (10 Münzen)` : (game.mangos > 0 ? 'Pong — E: Mango abgeben (1 Mango = 1 Gnade)' : 'Pong — E: ansprechen');
     ui.showPrompt(txt); ui.showBadge(null); ui.pulseButtons({ talk: true }); return;
   }
   if (!nearK) { ui.showPrompt(null); ui.showBadge(null); ui.pulseButtons(null); return; }
@@ -698,6 +763,13 @@ function setupScene() {
     const entry = gagFor(texte, k.id, 'kauf') || gagFor(texte, k.id, 'immer') || gagFor(texte, k.id, 'ablehnung');
     if (entry) { k.gag = { entry, t0: 0 }; playGag(k.group, entry, entry.dauer_s * 0.6); }
     mode = 'inspect'; // Hinschau-Kamera + Spieler ausgeblendet, damit der Gag frei steht
+    return;
+  }
+  if (SCENE === 'mango') {
+    const pt = POINTS[0];
+    state = { ...state, x: pt.x + 0.4, z: pt.z + 1.2, yaw: Math.PI, speed: 0 };
+    game = { ...game, geld: 35 };
+    usePoint(pt); // kauft eine Mango und zeigt die Blase
     return;
   }
   if (SCENE === 'mentor' && mentorRef) {
@@ -777,7 +849,7 @@ if (SNAP) {
     setupScene();
     applyPose(state);
     for (let i = 0; i < 300; i++) cam = followCamera(cam, state, 1 / 60, camYaw);
-    if (overview) { cam = { x: 6, y: 112, z: -128, tx: 6, ty: 0, tz: -10 }; scene.fog = null; } // Übersicht ohne Nebel
+    if (overview) { cam = { x: 12, y: 135, z: -160, tx: 12, ty: 0, tz: -22 }; scene.fog = null; } // Übersicht ohne Nebel (Welt reicht bis z −98)
     if (mode === 'inspect') {
       cam = inspectCamera(talking.npc, state, inspectOpts(talking));
       talking.npc.yaw = Math.atan2(cam.x - talking.npc.x, cam.z - talking.npc.z);
@@ -787,15 +859,17 @@ if (SNAP) {
     applyCamera();
     camera.updateMatrixWorld();
     world.huegel.update(3.2);
+    world.markt?.update?.(3.2);
+    try { world.markt?.setTafel?.(0); } catch (e) { /* ignorieren */ }
     world.group.updateMatrixWorld(true);
     kundenGroup.updateMatrixWorld(true);
     updateFade(mode === 'inspect' ? talking.npc : state);
     const shoot = () => {
       resize(); camera.updateMatrixWorld();
       if (SCENE === 'badge' || SCENE === 'hint' || SCENE === 'bark') { const near = nearestKunde(state, kundenPos()); nearK = near ? near.ref : null; updateNearHint(); placeBarks(); }
-      if (mode === 'dialog' || mode === 'mentor') placeBubbleAtHead();
+      if (mode === 'dialog' || mode === 'mentor' || mode === 'info') placeBubbleAtHead();
       renderer.render(scene, camera);
-      requestAnimationFrame(() => { resize(); if (mode === 'dialog' || mode === 'mentor') placeBubbleAtHead(); renderer.render(scene, camera); stats(); });
+      requestAnimationFrame(() => { resize(); if (mode === 'dialog' || mode === 'mentor' || mode === 'info') placeBubbleAtHead(); renderer.render(scene, camera); stats(); });
     };
     if (document.readyState === 'complete') shoot(); else window.addEventListener('load', shoot);
     window.addEventListener('resize', shoot);
@@ -812,7 +886,9 @@ if (SNAP) {
     frameMs = now - last;
     last = now;
     world.huegel.update(now / 1000);
-    const free = mode === 'free' || mode === 'inspect';
+    world.markt?.update?.(now / 1000);
+    if (now > tafelAt) { tafelAt = now + 500; const n = isArrested(game) ? 0 : (game.tageOhneVorfall || 0); if (n !== tafelShown) { tafelShown = n; try { world.markt?.setTafel?.(n); } catch (e) { /* ignorieren */ } } }
+    const free = mode === 'free' || mode === 'inspect'; // dialog/mentor/info/card: stehen bleiben
     if (free) {
       if (keys.rotL) camYaw += 1.5 * dt;
       if (keys.rotR) camYaw -= 1.5 * dt;
@@ -832,6 +908,7 @@ if (SNAP) {
     if (state.moving && Math.floor(state.phase / (Math.PI * 2)) !== Math.floor(lastStepPhase / (Math.PI * 2))) sfx('schritt');
     lastStepPhase = state.phase;
     if (audio && gestureSeen && !audioStarted && now > audioRetryAt) { audioRetryAt = now + 2000; startAudio(); }
+    updateAmbience(now);
     updateKunden(dt);
 
     // Nähe + Prompt
@@ -839,6 +916,7 @@ if (SNAP) {
     const prevNear = nearK;
     nearK = near ? near.ref : null;
     nearMentor = !!mentorRef && Math.hypot(mentorRef.npc.x - state.x, mentorRef.npc.z - state.z) < TALK_DIST + 1;
+    nearPoint = POINTS.find((pt) => Math.hypot(pt.x - state.x, pt.z - state.z) < pt.r) || null;
     if (nearK && nearK !== prevNear && mode === 'free') bark(nearK, 'gruss'); // Gruß beim Näherkommen
     placeBarks();
     if (mode === 'free') updateNearHint();
@@ -859,7 +937,7 @@ if (SNAP) {
     applyCamera();
     camera.updateMatrixWorld();
     updateFade(mode === 'inspect' && talking ? talking.npc : state);
-    if (mode === 'dialog' || mode === 'mentor') placeBubbleAtHead();
+    if (mode === 'dialog' || mode === 'mentor' || mode === 'info') placeBubbleAtHead();
     renderer.render(scene, camera);
     stats();
   });

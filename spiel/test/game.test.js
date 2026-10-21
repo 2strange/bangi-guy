@@ -544,3 +544,12 @@ test('neue Enums (Fischer, lauter Typ, Touristin, Fragesteller): Accessoires und
   assert.deepEqual(t.extras, ['riesenhut', 'faecher', 'kreuzfahrt_baendchen']);
   assert.deepEqual(normalizeKunde({ extras: ['rucksack_leer', 'faehrenticket', 'handschellen_umriss'] }).extras, ['rucksack_leer', 'faehrenticket', 'handschellen_umriss']);
 });
+
+test('chooseOption reicht Posten-Optionen an sell durch (doppelt Heat in Sicht)', () => {
+  const posten = { x: 0, z: 0, r: 15 };
+  const d = advanceDialog(startDialog({ ...zivi, heat: 1 }, initialState()));
+  const r = chooseOption(initialState(), d, { ...zivi, heat: 1 }, 'Verkaufen', 0, { posten, pos: { x: 1, z: 1 } });
+  assert.equal(r.state.heat, 2);
+  const far = chooseOption(initialState(), d, { ...zivi, heat: 1 }, 'Verkaufen', 0, { posten, pos: { x: 50, z: 50 } });
+  assert.equal(far.state.heat, 1);
+});

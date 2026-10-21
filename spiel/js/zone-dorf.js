@@ -1,7 +1,7 @@
 // zone-dorf.js — Zone „Krummgassen“: schiefes Dorf nördlich der Hecke. Verwinkelte Gassen zwischen bunten
 // krummen Häusern, Wäscheleinen quer über die Gassen (Fluchtroute Wäschegasse, Bettlaken-Versteck), Oma auf
 // dem Balkon, Hunde, Katzen, Hühner, Brunnen, Briefkästen. Grundriss + Collider-Daten: zone-dorf-layout.js.
-// Einbau: buildDorf(gruppe, colliders) — hängt alle Props als direkte Kinder an `gruppe` (so greift die
+// Einbau: buildDorf(gruppe, colliders, { exits }) — hängt alle Props als direkte Kinder an `gruppe` (so greift die
 // Verdeckungs-Ausblendung je Prop) und schiebt die Collider in `colliders`.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
@@ -48,7 +48,7 @@ function canvasTex(w, h, draw, { repeat = false } = {}) {
 }
 
 // Kopfsteinpflaster: versetzte Reihen runder Steine, Fugen nur angedeutet
-function cobbleTexture() {
+export function cobbleTexture() {
   return canvasTex(256, 256, (ctx) => {
     ctx.fillStyle = '#cdb28a'; ctx.fillRect(0, 0, 256, 256);
     const rand = rng(5);
@@ -240,7 +240,7 @@ function dog(color = 0xa66b38) {
 }
 
 // Katze, sitzend, Blick nach +z
-function cat(color = 0x333344) {
+export function cat(color = 0x333344) {
   const g = new THREE.Group();
   const body = toonMesh(new THREE.SphereGeometry(0.24, 12, 9), color, { outline: 0.03 });
   body.geometry.scale(1, 1.25, 0.9); body.position.y = 0.32; g.add(body);
@@ -566,7 +566,7 @@ function laundry(a, b, items, { sag = 0.7, seed = 1 } = {}) {
 }
 
 // ---------- Boden: Gassen mit Pflastertextur, Platz ----------
-function paving(parent, cobble) {
+export function paving(parent, cobble, lanes = LANES, platz = { x: 6, z: -41, w: 13, d: 12 }) {
   const strip = (ax, az, bx, bz, width) => {
     const len = Math.hypot(bx - ax, bz - az);
     const tex = cobble.clone(); tex.repeat.set((len + width) / 3.4, width / 3.4); tex.needsUpdate = true;
@@ -579,20 +579,21 @@ function paving(parent, cobble) {
     m.userData.noFade = true;
     parent.add(m);
   };
-  for (const pts of Object.values(LANES)) for (let i = 1; i < pts.length; i++) strip(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], 3.4);
+  for (const pts of Object.values(lanes)) for (let i = 1; i < pts.length; i++) strip(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], 3.4);
   // Platz
-  const tex = cobble.clone(); tex.repeat.set(13 / 3.4, 12 / 3.4); tex.needsUpdate = true;
-  const geo = new THREE.PlaneGeometry(13, 12); geo.rotateX(-Math.PI / 2);
-  const platz = toonMesh(geo, toon(0xffffff, { map: tex }), { outline: 0, shadow: false });
-  platz.receiveShadow = true; platz.position.set(6, 0.028, -41); platz.userData.noFade = true;
-  parent.add(platz);
+  if (!platz) return;
+  const tex = cobble.clone(); tex.repeat.set(platz.w / 3.4, platz.d / 3.4); tex.needsUpdate = true;
+  const geo = new THREE.PlaneGeometry(platz.w, platz.d); geo.rotateX(-Math.PI / 2);
+  const pm = toonMesh(geo, toon(0xffffff, { map: tex }), { outline: 0, shadow: false });
+  pm.receiveShadow = true; pm.position.set(platz.x, 0.028, platz.z); pm.userData.noFade = true;
+  parent.add(pm);
 }
 
 /**
  * Baut das Dorf in `parent` (Gruppe oder Szene) und schiebt die Collider in `colliders`.
  * Gibt Startpunkte, Bettlaken-Verstecke und die nötige Nordgrenze zurück (WORLD.minZ muss auf bounds.minZ).
  */
-export function buildDorf(parent, colliders) {
+export function buildDorf(parent, colliders, { exits = { markt: true, posten: true } } = {}) {
   const rand = rng(31);
   const add = (o) => { parent.add(o); return o; };
   const cobble = cobbleTexture();
@@ -688,7 +689,9 @@ export function buildDorf(parent, colliders) {
     b.position.set(x + (rand() - 0.5) * 0.6, r * 0.5, z + (rand() - 0.5) * 1.0); add(b);
   }
   // Absperrungen an den Ausgängen
-  for (const e of Object.values(EXITS)) {
+  // Absperrungen an den Ausgängen — entfallen, sobald die Nachbarzone (zone-markt.js) eingehängt ist
+  for (const [name, e] of Object.entries(EXITS)) {
+    if (exits[name] === false) continue;
     const b = barrier(e.text); b.position.set(e.x, 0, e.z); b.rotation.y = e.rot; b.scale.setScalar(1.3); add(b);
     colliders.push({ x: e.x, z: e.z, w: e.w, d: e.d });
   }

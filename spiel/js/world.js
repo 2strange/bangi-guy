@@ -6,6 +6,7 @@ import { palm, beachBar, pier, boat, signpost, hammock, parasol, beachBall, coco
 import { shoreZ, WORLD, buildingScale, scaledRect, scaledCircle, BUILDING_POS, buildingFootprints, poolLadderCollider } from './logic.js';
 import { buildDorf } from './zone-dorf.js';
 import { buildHuegel } from './zone-huegel.js';
+import { buildMarkt } from './zone-markt.js';
 
 export const WATER_Y = 0.06;
 
@@ -61,15 +62,17 @@ export function buildWorld() {
   const hill2Geo = hillGeo.clone();
   hill2Geo.scale(0.6, 0.5, 0.7); // vor toonMesh skalieren, sonst passt die Kontur-Hülle nicht
   const hill2 = toonMesh(hill2Geo, 0x4cae3c, { outline: 0.12 });
-  hill2.position.set(60, -2, -48);
+  hill2.position.set(88, -2, -62); // Kokoshain-Hügel weiter nach Osten, der Markt braucht den Platz
   hill2.userData.noFade = true;
   g.add(hill2);
   // Mentor-Hütte oben auf dem Hügel
 
   // Dorf „Krummgassen“ nördlich der Hecke (eigenes Modul): Häuser, Gassen, Wäscheleinen, Collider inkl. Heckenrand
-  const dorf = buildDorf(g, colliders);
+  const dorf = buildDorf(g, colliders, { exits: { markt: false, posten: false } }); // Ausgänge führen jetzt wirklich weiter
   // Mentor-Hügel „Kiffer-Kuppe“ (eigenes Modul): Heightfield, Serpentine, Hütte, Garten, Mentor; liefert height(x, z)
   const huegel = buildHuegel(g, colliders);
+  // Mango-Markt (östlich des Dorfs) + Posten 7 (nördlich) mit Ringstraße (eigenes Modul)
+  const markt = buildMarkt(g, colliders);
 
   // Promenade: gepflasterter Weg am Nordrand des Strands, mit Laternen
   g.add(stripMesh((x) => -12.2 + 0.4 * Math.sin(x / 5), (x) => -9.4 + 0.4 * Math.sin(x / 5 + 1), 0xd9c4a3, 0.03, { x0: -64, x1: 66, step: 2 }));
@@ -248,5 +251,5 @@ export function buildWorld() {
     ost: { x: 58, z: -2, yaw: Math.PI / 2 },
     hecke: { x: 8, z: -17, yaw: 0.3 }, // Strandseite vor der Heckenlücke („nord“ gehört dem Dorf)
   };
-  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots }, hideouts: dorf.hideouts, dorf, huegel };
+  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots, ...markt.spots }, hideouts: [...dorf.hideouts, ...(markt.hideouts || [])], dorf, huegel, markt };
 }

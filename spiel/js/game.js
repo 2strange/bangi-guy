@@ -147,9 +147,9 @@ export function advanceDialog(dialog) {
   if (dialog.phase === 'ergebnis') return null; // Gespräch zu Ende
   return dialog;
 }
-export function chooseOption(state, dialog, kunde, option, lineIdx = 0) {
+export function chooseOption(state, dialog, kunde, option, lineIdx = 0, sellOpts = undefined) {
   if (!dialog || dialog.phase !== 'wahl') return { state, dialog };
-  const r = option === 'Verkaufen' || option === 0 ? sell(state, kunde, lineIdx) : decline(state, kunde, lineIdx);
+  const r = option === 'Verkaufen' || option === 0 ? sell(state, kunde, lineIdx, sellOpts) : decline(state, kunde, lineIdx);
   return { state: r.state, dialog: { ...dialog, phase: 'ergebnis', text: r.text, options: ['Weiter'], result: r.result, geldPlus: r.geldPlus, heatPlus: r.heatPlus } };
 }
 
