@@ -1,0 +1,145 @@
+{
+  "_schema": "English mirror of kunden.json, keyed by customer id (not an array). Only text fields: name, typ, tells[], saetze{gruss[], kauf[], ablehnung[], reveal[]}. List lengths match the German ones so the cyclic line counter stays in sync. Missing ids or fields fall back to German. Tone: Lebowski / surfer, situational comedy.",
+  "kunden": {
+    "stammkunde_1": {
+      "name": "The Walrus Guy", "typ": "Regular slacker",
+      "tells": ["sandals, worn flat", "Hawaiian shirt with a stain", "sunburn", "has been standing in the same spot for hours"],
+      "saetze": {
+        "gruss": ["Duuude.", "You're still here. Me too.", "Was just thinking about clouds."],
+        "kauf": ["You're a saint, man.", "That holds the afternoon together.", "I owe you. Like, even more."],
+        "ablehnung": ["Also fine. Everything's fine.", "Then... I'll keep watching the sea.", "No stress. I'm stress-free anyway."],
+        "reveal": []
+      }
+    },
+    "surfer_1": {
+      "name": "Kai", "typ": "Surfer",
+      "tells": ["barefoot, wet footprints", "tank top, board under the arm", "can't run, doesn't want to"],
+      "saetze": {
+        "gruss": ["Bro. The wave was... yeah.", "You know the trick where you just stay lying down?", "Back in the water in a sec. Or later. Or whatever."],
+        "kauf": ["Bro. Bro. Bro.", "Taking this out with me. Not into the water. But out.", "Best wave of the day, and I'm standing on land."],
+        "ablehnung": ["All good, the sea's still there.", "Tomorrow then. Or the day after. Time is water.", "Chill. I chill."],
+        "reveal": []
+      }
+    },
+    "backpacker_1": {
+      "name": "Jonas from Bielefeld", "typ": "Backpacker",
+      "tells": ["trekking sandals, dusty", "backpack bigger than him", "festival wristband", "too much man bun"],
+      "saetze": {
+        "gruss": ["Hi! I saved for 14 months to do exactly nothing here.", "Got here yesterday and I've already, like, arrived.", "Hey, do you know a good... place? For things?"],
+        "kauf": ["This goes in the travel blog. Well, no. But inside.", "My hostel bed has a name. Now it has a reason too.", "You're the first person here who didn't ask me about the wifi."],
+        "ablehnung": ["Okay, no problem, I just wanted to talk anyway.", "I get it. I probably still look too new.", "Alright. Then I'll go... find myself somewhere."],
+        "reveal": []
+      }
+    },
+    "rentner_1": {
+      "name": "Mr. Pfeiffer", "typ": "Retired tourist",
+      "tells": ["SOCKS in sandals (a clean polo is NOT an undercover sign here)", "straw hat, camera", "only has small change", "is actually looking for the hotel"],
+      "saetze": {
+        "gruss": ["Young man, is this still the hotel?", "My wife says I should do something crazy for once.", "Excuse me, do you sell postcards too?"],
+        "kauf": ["This happened in the sixties too.", "Don't tell Hannelore.", "I pay in coins, the wife has the paper money."],
+        "ablehnung": ["Alright, postcards then.", "Fair enough, I've got the hotel.", "Hannelore wouldn't have allowed it anyway."],
+        "reveal": []
+      }
+    },
+    "oma_1": {
+      "name": "Grandma Lek", "typ": "Grandma (big customer)",
+      "tells": ["flip-flops, smock, walker", "always haggles", "knows every cop by first name", "best customer, pays the most"],
+      "saetze": {
+        "gruss": ["You look thin. Have you eaten?", "For my knees, you understand.", "Psst. Not so loud. I'm known around here."],
+        "kauf": ["My grandson says it's medicine. My grandson is a doctor. Well, almost.", "Hand it over, and don't forget the change.", "Pong never asks me. I changed his diapers."],
+        "ablehnung": ["Then I'll ask the bar.", "Too pricey. Too little. Too young.", "My husband was nicer. God rest him, the rascal."],
+        "reveal": []
+      }
+    },
+    "erstkaeufer_1": {
+      "name": "Timo", "typ": "Nervous first-timer",
+      "tells": ["flip-flops (trips when running)", "looks over his shoulder every 2 seconds", "talks WAY too loud", "phone in hand, flashlight on, in daylight"],
+      "saetze": {
+        "gruss": ["HELLO. I AM TOTALLY NORMAL HERE.", "Is this... so... do you... you know?", "I've never done this. Like, THIS. This here. Buying."],
+        "kauf": ["THANKS. I mean, quiet thanks. THANKS.", "Where do I put it now? In my hand? Is my hand okay?", "I'll walk away normally now. Totally normal. Normal."],
+        "ablehnung": ["Okay. Okay. Okay. Just kidding anyway.", "Fine, I didn't want anything either. Who are you?", "I SAID NOTHING."],
+        "reveal": []
+      }
+    },
+    "jogger_1": {
+      "name": "Sven, always running", "typ": "Harmless jogger",
+      "tells": ["SNEAKERS, but: headband, pulse watch, jersey = athlete, not a cop", "runs on the spot", "happily pays, then tells the next cop about it (heat 1)"],
+      "saetze": {
+        "gruss": ["Quick break. Pulse. Hi.", "Kilometer twelve. I'm rewarding myself.", "I run past here every day, and every day I think: today."],
+        "kauf": ["Perfect for recovery.", "That counts as electrolytes, right?", "Thanks! I won't tell anyone. Except maybe my run club."],
+        "ablehnung": ["No biggie, I'll keep running.", "I get it, you think I'm a cop. I'm just fit.", "Tomorrow again, same time, same pace."],
+        "reveal": []
+      }
+    },
+    "zivi_1": {
+      "name": "Inspector Polo", "typ": "Too-clean tourist",
+      "tells": ["sneakers, blinding white", "polo with an ironed crease", "earpiece", "says 'totally normal' suspiciously often"],
+      "saetze": {
+        "gruss": ["Hello! I'm a totally normal tourist.", "Nice beach. For totally normal activities.", "I'd like what everyone here has. The usual."],
+        "kauf": ["Interesting. Very interesting.", "Thanks. This will be... noted. I mean: enjoyed.", "Could you repeat that, a little louder?"],
+        "ablehnung": ["Shame. For you.", "I see. Same spot tomorrow, then?", "No problem. I'm only here for fun anyway. On duty."],
+        "reveal": ["Control, target has taken the bait.", "Totally normal tourist. With handcuffs.", "You have the right to remain silent. Please use it, I'm tired."]
+      }
+    },
+    "zivi_2": {
+      "name": "Shirt with a Price Tag", "typ": "The costume cop",
+      "tells": ["SANDALS, still undercover: earpiece", "brand-new Hawaiian shirt, price tag still on", "socks in sandals (like a retiree, but 30 years too young)", "secretly takes notes"],
+      "saetze": {
+        "gruss": ["Yo, dude. Bro. Mate. Did I miss one?", "I'm totally relaxed. Look, Hawaiian shirt.", "So what does the... merchandise go for, brother?"],
+        "kauf": ["Nice. Groovy. Further youth words.", "May I quickly note... I mean, enjoy?", "That's exactly the amount I needed. For the file. For me!"],
+        "ablehnung": ["Uncool, man. Very unc... very unfortunate.", "Then I'll ask elsewhere, relaxed. Relaxed.", "No worries, digga. Did I use that right?"],
+        "reveal": ["The shirt was uniform. So were the socks.", "Control? Yeah, the price-tag trick worked. No, no idea why.", "You're under arrest. And my shirt is now tax deductible."]
+      }
+    },
+    "zivi_3": {
+      "name": "The Guy with Rex", "typ": "Dog handler",
+      "tells": ["BAREFOOT and tank top look harmless, but:", "German shepherd with a blue bandana (beach dogs don't wear bandanas)", "radio on the belt, disguised as a 'bottle opener'", "the dog sniffs your bag"],
+      "saetze": {
+        "gruss": ["Rex is just a normal beach dog.", "Sit, Rex. No, not you. I meant the dog.", "Nice day for... whatever you've got on you."],
+        "kauf": ["Rex, mark. I mean: Rex, sit.", "Thanks. Rex has made up his mind anyway.", "That smells... interesting. Says Rex."],
+        "ablehnung": ["Smart kid. Rex, we're leaving.", "Rex is disappointed. Rex has a memory.", "Okay. We're here again tomorrow. Rex and me. Coincidence."],
+        "reveal": ["Rex, attack. No, Rex. ATTACK. Rex!", "Control, the dog found it. I just watched.", "Rex is an officer. You're under arrest. Both of you."]
+      }
+    },
+    "fischer_1": {
+      "name": "Nok from the fish stand", "typ": "Fish-stand customer",
+      "tells": ["RUBBER BOOTS in the sun = fish stand, not monsoon", "apron with scales", "the cat follows him, not the police", "you smell him before you see him"],
+      "saetze": {
+        "gruss": ["Up since four. What've you got?", "The cat stole my fish. Hope it doesn't steal you.", "Not so close. You smell like tourist."],
+        "kauf": ["For after the market. Or during.", "Hand it over before Pong comes by. He always comes at eleven.", "You get a fish with it. Take the fish. Please."],
+        "ablehnung": ["Fine. You don't want fish either, do you?", "Tomorrow then. I'm always here. Always.", "The cat has more business sense than you."],
+        "reveal": []
+      }
+    },
+    "lauter_typ_1": {
+      "name": "Lars, Volume 11", "typ": "The loud guy",
+      "tells": ["sandals, jersey, beer can: harmless", "but: you can hear him across the whole market (heat 2 on sale)", "fanny pack full of change", "sunburn in the shape of a jersey"],
+      "saetze": {
+        "gruss": ["HEY! YOU GOT WEED?!", "YOU! YEAH YOU! ARE YOU THE GUY?!", "DUDE, I'VE HEARD ABOUT YOU! EVERYONE'S HEARD ABOUT YOU!"],
+        "kauf": ["SWEET! GUYS, HE'S GOT IT! HE REALLY HAS!", "THANKS, MAN! WHAT'S YOUR NAME? WHERE DO YOU LIVE?!", "I WON'T TELL ANYONE! YOU HEAR? ANYONE!"],
+        "ablehnung": ["OKAY! GOT IT! NO WEED FROM THIS GUY!", "SHAME! I'LL ASK THAT ONE OVER THERE!", "ALL GOOD! I'M QUIET! QUIET!"],
+        "reveal": []
+      }
+    },
+    "touristin_1": {
+      "name": "Mrs. Dr. Hat", "typ": "Cruise-ship auntie",
+      "tells": ["hat bigger than the market stall", "cruise wristband: has to be back on the ship by five", "pays little, but buys every day", "photographs everything, including you (harmless, but embarrassing)"],
+      "saetze": {
+        "gruss": ["Yoo-hoo! Are you a local? You look so local.", "My husband's asleep on the ship. I'm having experiences.", "May I take a photo? No? I'll take one anyway."],
+        "kauf": ["This goes in the travel diary. As 'spice'.", "Delightful. Do you have postcards of it too?", "I have to be on the ship by five. Will it last till then?"],
+        "ablehnung": ["Oh, I see. Mangoes, then.", "Pity, I would have loved to do something forbidden. Just once.", "Fine. My husband says I overdo it anyway."],
+        "reveal": []
+      }
+    },
+    "zivi_4": {
+      "name": "Backpacker with Questions", "typ": "The question guy",
+      "tells": ["looks like Jonas, BUT: sneakers instead of trekking sandals", "backpack hangs flat: empty (no backpacker travels with an empty backpack)", "ferry ticket from TODAY, stubble from yesterday", "doesn't ask for the goods, asks WHERE they come from", "outline of handcuffs in the pocket"],
+      "saetze": {
+        "gruss": ["Hey! Just got off the ferry. So where does one get... you know?", "Cool market. Who supplies who around here, anyway?", "I collect experiences. And names. I mean, experiences."],
+        "kauf": ["Great. And where exactly is this from? Just curious.", "Thanks! Your supplier, is he this nice too?", "Perfect, that's enough. I mean: that's enough for me today."],
+        "ablehnung": ["Shame. Do you know who else... never mind.", "I see. Then I'll ask up on the hill. Someone lives there, right?", "No problem. I'm here three more days. At least."],
+        "reveal": ["The ferry was official channels. Literally.", "Control, target hinted at a supplier. Hill. I repeat: hill.", "The backpack was empty because your bag goes in it now."]
+      }
+    }
+  }
+}

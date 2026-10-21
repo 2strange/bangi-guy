@@ -295,12 +295,6 @@ export function buildKunde(k, seed = 1, outfit = null) {
         phone.position.copy(hp).add(V(0.05, 0.12, 0.08)); phone.rotation.set(-0.3, 0.3, 0.2); arm.add(phone);
         const screen = toonMesh(new THREE.BoxGeometry(0.12, 0.24, 0.02), 0x6ee7ff, { outline: 0, basic: true });
         screen.position.z = 0.02; phone.add(screen);
-      } else if (k.accessoire === 'surfbrett') {
-        // quer unter dem Arm getragen: lange Achse horizontal (entlang der Laufrichtung), seitlich an der Hüfte
-        const bg = new THREE.SphereGeometry(1, 12, 10); bg.scale(0.28, 1.2, 0.07);
-        const board = toonMesh(bg, 0xff5fa2, { outline: 0.045 });
-        board.position.set(0.38, -0.72, 0.1); board.rotation.set(Math.PI / 2, 0, Math.PI / 2 - 0.1); arm.add(board);
-        const stripe = toonMesh(new THREE.BoxGeometry(0.08, 2.0, 0.17), 0xffffff, { outline: 0.02 }); board.add(stripe);
       } else if (k.accessoire === 'fischkiste') {
         // Fischkiste unterm Arm, zwei Fische gucken raus
         const box = toonMesh(new THREE.BoxGeometry(0.7, 0.35, 0.45), 0xd8a85a, { outline: 0.035 });
@@ -510,7 +504,21 @@ export function buildKunde(k, seed = 1, outfit = null) {
   capPolice.visible = false;
   head.add(capPolice);
 
-  root.userData.parts = { legs, arms, head, decal, capPolice, dog: dogG };
+  // Surfbrett: quer vor dem Körper in beiden Händen (lange Achse links–rechts, ragt beidseitig über den Körper, Deck nach
+  // vorn/leicht oben, Bauchhöhe). Beim Sitzen/Liegen liegt ein zweites Brett daneben im Sand (holdPose).
+  let board = null, boardSand = null;
+  if (k.accessoire === 'surfbrett') {
+    const mk = (sx, sy, sz, stripe) => {
+      const bg = new THREE.SphereGeometry(1, 12, 10); bg.scale(sx, sy, sz);
+      const b = toonMesh(bg, 0xff5fa2, { outline: 0.045 });
+      b.add(toonMesh(new THREE.BoxGeometry(...stripe), 0xffffff, { outline: 0.02 }));
+      return b;
+    };
+    board = mk(1.2, 0.28, 0.07, [2.0, 0.08, 0.17]);
+    board.position.set(0, shoulderY - 0.6, 0.72); board.rotation.x = -0.35; root.add(board);
+    boardSand = mk(1.2, 0.07, 0.28, [2.0, 0.17, 0.08]); boardSand.visible = false; root.add(boardSand);
+  }
+  root.userData.parts = { legs, arms, head, decal, capPolice, dog: dogG, board, boardSand };
   root.userData.faceOpts = faceOpts;
   root.userData.kunde = k;
   root.userData.mood = k.stimmung_start || 'neutral';
@@ -518,6 +526,22 @@ export function buildKunde(k, seed = 1, outfit = null) {
 }
 
 /** Stimmung setzen: tauscht nur die Gesichtstextur (face() ist gecacht, nichts wird weggeworfen). */
+// Surfbrett nach Pose: gehen/stehen/posieren = beide Arme nach vorn, Brett in den Händen (klebt nicht am Arm);
+// sitzen/liegen = Brett liegt neben der Figur im Sand. Nach pose() bzw. der Geh-Animation aufrufen.
+export function holdPose(group, poseName = 'stehen') {
+  const P = group.userData.parts;
+  if (!P?.board) return;
+  const liegt = poseName === 'sitzen' || poseName === 'liegen';
+  P.board.visible = !liegt; P.boardSand.visible = liegt;
+  if (!liegt) { // beide Hände am Brett; Pose-Requisiten (Kamera, Handy) bleiben weg
+    for (const a of P.arms) a.rotation.set(-0.9, 0, 0);
+    for (const m of Object.values(group.userData.poseProps ?? {})) m.visible = false;
+    return;
+  }
+  const hipY = P.legs[0]?.position.y ?? 1.1;
+  if (poseName === 'sitzen') { P.boardSand.position.set(1.05, hipY - 0.32 + 0.07, 0.25); P.boardSand.rotation.set(0, 0.15, 0); } // Boden liegt lokal bei hipY − 0.32
+  else { P.boardSand.position.set(1.05, 0.6, -0.43); P.boardSand.rotation.set(Math.PI / 2, 0, 0); } // Figur liegt (−90° um x): lokal +z = oben, Boden bei z −0.5
+}
 export function setMood(group, mood) {
   const P = group.userData.parts;
   if (!P) return;

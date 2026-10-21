@@ -1,5 +1,5 @@
 {
-  "_schema": "Spieltexte für Bangi Beach (Sprechblasen, HUD, Tagesende). Eigentümer: Content. Alles kurz, Deutsch, Lebowski-Ton. Struktur: ausverkauft[] = Sprüche, wenn die Ware alle ist (zufällig wählen; zeigen auf Mentor/Kuppe tagsüber oder Bar abends). tagesende{lage: []} = Bilanz-Sprüche nach Lage, Schlüssel: gut (viel verkauft, Heat ≤ 1), heat (Heat 2+, Tag überstanden), nichts (kein Verkauf), verhaftet (Heat 3, Tag verloren, Geld bleibt); je Lage zufällig einen wählen. reveal_gags[] = pro Zivi bzw. Falle ein Eintrag: id (Kunde aus kunden.json), wann (kauf = beim Verkauf, ablehnung = bei Ablehnung, immer = Idle-Tick), gag (was man sieht, 1 Satz), mood (Grundgesicht der Mimik-API: neutral|misstrauisch|erschrocken|zufrieden|selig), extra (Requisit, das erscheint, als Kennwort für die Figuren-Bauer: dienstmarke|polizistenaugen|handschellen|funkgeraet|notizblock|pfeife|halstuch_marke|taschenlampe|pulsuhr|null), dauer_s (ungefähre Länge der Kleinanimation). posten7{} = Polizeiposten: mango{gnaedig[], schon_gehabt[], keine_mango[], kein_heat[]}, tafel{zeile1 mit {tage}, zeile2 je Heat 0–3, nachts[]}, pong{heat_0..heat_3[]} (Details in posten7._ablauf). abend_bar{} = Abend-Phase: sonnenuntergang[] (Hinweis-Gags), barkeeper{name, beschreibung, aussehen (Figuren-Felder wie in kunden.json, für den Bau der Figur), gruss[], zwischenruf[], letzte_runde[], gute_nacht[]}, mentor{gut[], heat[], nichts[], verhaftet[]} (Rückblick nach Lage), einschlafen{text[], folge} (Details in abend_bar._ablauf). mentor_szene{} = Ablauf der Kuppe-Szene (siehe _ablauf darin; schritte[] mit id, wer, text[] oder @-Verweis, quelle, blasen[], aktion ware_auffuellen|heat_minus, menge/wert, weiter). mentor[] = Weisheiten für die Kuppe: id, titel, mechanik (welche Regel sie freischaltet), einleitung (Mentor-Gerede, 1–2 Sätze), regel (der eigentliche Merksatz, so steht er später im Hilfe-Menü), pointe (Schluss-Gag), kunden_beispiel (ids aus kunden.json, an denen man die Regel übt).",
+  "_schema": "Spieltexte für Bangi Beach (Sprechblasen, HUD, Tagesende). Eigentümer: Content. Alles kurz, Deutsch, Lebowski-Ton. Struktur: ausverkauft[] = Sprüche, wenn die Ware alle ist (zufällig wählen; zeigen auf Mentor/Kuppe tagsüber oder Bar abends). tagesende{lage: []} = Bilanz-Sprüche nach Lage, Schlüssel: gut (viel verkauft, Heat ≤ 1), heat (Heat 2+, Tag überstanden), nichts (kein Verkauf), verhaftet (Heat 3, Tag verloren, Geld bleibt); je Lage zufällig einen wählen. reveal_gags[] = pro Zivi bzw. Falle ein Eintrag: id (Kunde aus kunden.json), wann (kauf = beim Verkauf, ablehnung = bei Ablehnung, immer = Idle-Tick), gag (was man sieht, 1 Satz), mood (Grundgesicht der Mimik-API: neutral|misstrauisch|erschrocken|zufrieden|selig), extra (Requisit, das erscheint, als Kennwort für die Figuren-Bauer: dienstmarke|polizistenaugen|handschellen|funkgeraet|notizblock|pfeife|halstuch_marke|taschenlampe|pulsuhr|null), dauer_s (ungefähre Länge der Kleinanimation). posten7{} = Polizeiposten: mango{gnaedig[], schon_gehabt[], keine_mango[], kein_heat[]}, tafel{zeile1 mit {tage}, zeile2 je Heat 0–3, nachts[]}, pong{heat_0..heat_3[]} (Details in posten7._ablauf). ui{} = Oberflächen-Texte (ausverkauft_kunde[], bilanz[], polizei, titel{}, optionen{}, dialog{}, heat_label{}), ersetzen die Code-Defaults. tutorial{} = Tag-1-Schritte (schritte[] mit id, trigger, ziel, text, optional; ueberspringen, fertig). woche{} = Wochenbogen über 7 Tage (titel, ziel{muenzen, mittel_ab}, intro[], zwischenstand[], tage[7], finale{gut, mittel, fail}); Details in woche._ablauf. ÜBERSETZUNG: texte.en.json spiegelt diese Datei mit denselben Pfaden, nur String-Felder; fehlende Zweige fallen auf DE zurück. abend_bar{} = Abend-Phase: sonnenuntergang[] (Hinweis-Gags), barkeeper{name, beschreibung, aussehen (Figuren-Felder wie in kunden.json, für den Bau der Figur), gruss[], zwischenruf[], letzte_runde[], gute_nacht[]}, mentor{gut[], heat[], nichts[], verhaftet[]} (Rückblick nach Lage), einschlafen{text[], folge} (Details in abend_bar._ablauf). mentor_szene{} = Ablauf der Kuppe-Szene (siehe _ablauf darin; schritte[] mit id, wer, text[] oder @-Verweis, quelle, blasen[], aktion ware_auffuellen|heat_minus, menge/wert, weiter). mentor[] = Weisheiten für die Kuppe: id, titel, mechanik (welche Regel sie freischaltet), einleitung (Mentor-Gerede, 1–2 Sätze), regel (der eigentliche Merksatz, so steht er später im Hilfe-Menü), pointe (Schluss-Gag), kunden_beispiel (ids aus kunden.json, an denen man die Regel übt).",
 
   "ausverkauft": [
     "Alles weg. Der Mentor hockt auf der Kuppe und gießt. Hoch mit dir.",
@@ -149,6 +149,78 @@
         "„Hände hoch. Oder runter. Wie du willst, ich krieg dich eh nicht, aber die Fähre bringt morgen Leute mit Turnschuhen.“",
         "„Kaffee ist fertig. Du bleibst heute hier. Der Kaffee ist okay, versprochen.“"
       ]
+    }
+  },
+
+  "ui": {
+    "_hinweis": "Oberflächen-Texte, die bisher nur als Defaults im Code standen; hier, damit die Sprachumschaltung sie mitnimmt.",
+    "ausverkauft_kunde": ["Alles leer, Mann. Morgen wieder.", "Nichts mehr da. Frag die Möwe.", "Leer. Der Hügel ruft."],
+    "bilanz": ["Tag {tag}: {weg} Beutel weg{polizei}, {geldHeute} Münzen dazu.", "Kasse: {geld} · Heat: {heatLabel}"],
+    "polizei": " ({anZivis} an die Polizei)",
+    "titel": { "feierabend": "Feierabend.", "verhaftet": "VERHAFTET." },
+    "optionen": { "tag_beenden": "Tag beenden", "weiter": "Weiterbummeln", "neuer_tag": "Neuer Tag" },
+    "dialog": { "was_laeuft": "Was läuft?", "verkaufen": "Verkaufen", "lieber_nicht": "Lieber nicht", "weiter": "Weiter", "hinschauen": "Genauer hinschauen", "beenden": "Beenden" },
+    "heat_label": { "0": "kalt", "1": "lauwarm", "2": "heiß", "3": "FAHNDUNG" }
+  },
+
+  "tutorial": {
+    "_ablauf": "Tag 1, geführt, jederzeit überspringbar (ueberspringen). schritte[] in Reihenfolge; trigger = Ereignis, auf das der Schritt wartet (tag1_start, mentor_szene_ende, kunde_in_reichweite, nach_hinschauen, erster_verkauf, erste_ablehnung, ware_leer, sonnenuntergang, bar_betreten); ziel = Markierung für Pfeil/Leuchtring (huegel|kunde|heat_anzeige|bar|null); text = Sprechblase bzw. Infobox, kurz. Schritte mit optional:true dürfen fehlen, wenn das Ereignis nicht eintritt (z. B. keine Ablehnung am ersten Tag).",
+    "ueberspringen": "Tutorial überspringen",
+    "fertig": "Das war's. Ab jetzt bist du auf dich gestellt. Und auf deine Augen.",
+    "schritte": [
+      { "id": "aufwachen", "trigger": "tag1_start", "ziel": "huegel", "text": "Hängematte, Sonne, leere Taschen. Der Typ mit dem Gras wohnt auf dem Hügel. Hoch mit dir." },
+      { "id": "nachschub", "trigger": "mentor_szene_ende", "ziel": "strand", "text": "Ein Beutel, eine Regel: Sandalen ja, Turnschuhe nein. Runter zum Strand, die Leute warten. Manche davon auf dich." },
+      { "id": "hinschauen", "trigger": "kunde_in_reichweite", "ziel": "kunde", "text": "Erst gucken, dann reden. „Genauer hinschauen“ zeigt dir Schuhe, Hemd und Kram. Schuhe zuerst. Immer." },
+      { "id": "entscheiden", "trigger": "nach_hinschauen", "ziel": null, "text": "Sandalen, Flecken, Sonnenbrand? Verkaufen. Weiße Turnschuhe, Bügelfalte, Ohrknopf? Lieber nicht. Im Zweifel: lieber nicht." },
+      { "id": "heat", "trigger": "erster_verkauf", "ziel": "heat_anzeige", "text": "Siehst du das Thermometer? Das ist dein Heat. Falscher Kunde, lauter Kunde, Hund: steigt. Bei FAHNDUNG holt dich Pong. Mangos helfen." },
+      { "id": "ablehnung", "trigger": "erste_ablehnung", "ziel": null, "optional": true, "text": "Gut so. Ein Nein kostet nichts. Ein falsches Ja kostet den Tag." },
+      { "id": "leer", "trigger": "ware_leer", "ziel": "bar", "optional": true, "text": "Alles weg. Mehr gibt's heute nicht, der Garten hat Feierabend. Du jetzt auch: ab in die Bar." },
+      { "id": "abend", "trigger": "sonnenuntergang", "ziel": "bar", "text": "Die Sonne macht die Augen zu. Der Mentor sitzt schon an der Bar. Er war nie unterwegs. Geh hin, dann ist der Tag rum." },
+      { "id": "bar", "trigger": "bar_betreten", "ziel": null, "text": "Nong nickt. Das ist sein Hallo. Setz dich, der Mentor erzählt dir, was du heute falsch gemacht hast. Liebevoll." }
+    ]
+  },
+
+  "woche": {
+    "_ablauf": "Mehrtagesziel über 7 Tage. ziel.muenzen = Betrag bis Ende Tag 7 (Kasse, nicht Tagesgewinn). tage[] = ein Eintrag je Tag: titel, ziel (Text für die Anzeige), zielwert (prüfbar: verkauft = Beutel am Tag, oma = 1 Verkauf an oma_1, mango = Mangos gekauft, zivi_abgelehnt = erkannte Zivis, ohne_verhaftung = true, kasse = Kassenstand), modifikator (optional: heat_start, kunden_faktor, nur_sandalen), mentor = Satz vom Mentor morgens auf dem Hügel, geschafft/verfehlt = Satz abends an der Bar. finale{} nach Kasse am Ende von Tag 7: gut (>= ziel), mittel (>= mittel_ab), fail (darunter); text[] als Sequenz an der Bar. zwischenstand = Anzeige mit {rest} und {tage_rest}. Tagesziele sind Bonus-Struktur, kein Zwang: das Spiel läuft auch, wenn man sie verfehlt, nur das Finale zählt.",
+    "titel": "Die Hütte am Verleih",
+    "ziel": { "text": "Bis Sonntag 1000 Münzen: dann gehört dir die Hütte neben dem Surfverleih. Eigene Hängematte, eigene Möwe.", "muenzen": 1000, "mittel_ab": 600 },
+    "intro": [
+      "Der Mentor zeigt mit dem Daumen über die Schulter. „Die Hütte da. Neben dem Verleih. Der Besitzer will weg, 1000 Münzen, bis Sonntag. Sonst kauft sie der Typ mit den Fragen.“",
+      "„Du hast eine Woche. Sieben Tage, sieben Regeln, ein Dach. Mehr Plan hatte ich auch nie.“"
+    ],
+    "zwischenstand": ["Noch {rest} Münzen bis zur Hütte. {tage_rest} Tage.", "Hütte: {rest} fehlen. Sonntag ist in {tage_rest} Tagen."],
+    "tage": [
+      { "tag": 1, "titel": "Montag: Sandalen", "ziel": "3 Beutel verkaufen, nur an Sandalen", "zielwert": { "verkauft": 3 }, "modifikator": { "nur_sandalen": true },
+        "mentor": "Heute nur Sandalen. Alles andere ist morgen.", "geschafft": "Drei Beutel, drei Sandalen. Du kannst zählen und gucken. Seltene Kombination.", "verfehlt": "Weniger als drei. Hast du gezählt oder geguckt? Man muss beides." },
+      { "tag": 2, "titel": "Dienstag: Krummgassen", "ziel": "Die Oma finden und an sie verkaufen", "zielwert": { "oma": 1 },
+        "mentor": "Im Dorf wohnt eine Oma. Beste Kundin der Insel. Hat einen Rollator und mehr Geld als Pong.", "geschafft": "Die Oma mag dich. Das ist mehr wert als ihr Geld. Fast.", "verfehlt": "Die Oma wartet nicht. Die Oma hat Zeit, aber sie wartet nicht. Verstehst du den Unterschied?" },
+      { "tag": 3, "titel": "Mittwoch: Mango-Markt", "ziel": "Eine Mango kaufen, 4 Beutel verkaufen, NICHT an den lauten Typ", "zielwert": { "mango": 1, "verkauft": 4 },
+        "mentor": "Markt heute. Kauf eine Mango, die ist deine Versicherung. Und der Typ, der brüllt: lass ihn brüllen.", "geschafft": "Mango in der Tasche, Ohren noch dran. Guter Mittwoch.", "verfehlt": "Entweder keine Mango oder zu laut. Beides kostet morgen." },
+      { "tag": 4, "titel": "Donnerstag: Die Fähre", "ziel": "Einen Zivi erkennen und ablehnen, 5 Beutel verkaufen", "zielwert": { "zivi_abgelehnt": 1, "verkauft": 5 },
+        "mentor": "Fähre kommt um zehn. Frische Hemden, frische Rucksäcke. Einer davon ist leer. Finde ihn.", "geschafft": "Du hast den Leeren gefunden. Der hat jetzt einen vollen Notizblock und nichts drin.", "verfehlt": "Einer ist dir durchgerutscht. Oder du hast allen misstraut. Beides ist teuer." },
+      { "tag": 5, "titel": "Freitag: Razzia", "ziel": "Tag ohne Verhaftung überstehen (Heat startet bei 1)", "zielwert": { "ohne_verhaftung": true }, "modifikator": { "heat_start": 1 },
+        "mentor": "Pong hat Besuch von oben. Heute pfeift er öfter. Verkauf trotzdem, aber mit Augen im Nacken. Mango bereit?", "geschafft": "Razzia überstanden. Pong hat niemanden erwischt, die Mango war gut.", "verfehlt": "Freitag bei Pong. Der Kaffee war okay, sagst du. Ich hab's gehört." },
+      { "tag": 6, "titel": "Samstag: Großer Markt", "ziel": "8 Beutel verkaufen", "zielwert": { "verkauft": 8 }, "modifikator": { "kunden_faktor": 2 },
+        "mentor": "Samstag. Doppelt so viele Leute, doppelt so viele Schuhe. Ich hab doppelt geerntet. Mach was draus.", "geschafft": "Acht Beutel. Der Strand hat heute dich gelesen, nicht umgekehrt.", "verfehlt": "Unter acht. Der Strand war voll, deine Tasche nicht leer. Morgen ist Sonntag, Mann." },
+      { "tag": 7, "titel": "Sonntag: Abrechnung", "ziel": "Bis Sonnenuntergang 1000 Münzen in der Kasse", "zielwert": { "kasse": 1000 },
+        "mentor": "Letzter Tag. Verkauf, was geht, an wen es geht. Nein, nicht an wen es geht. An wen es GEHT.", "geschafft": "Tausend. Die Hütte ist deine. Geh zur Bar, Nong hat den Schlüssel. Nong hat alle Schlüssel.", "verfehlt": "Nicht ganz. Komm trotzdem zur Bar. Ende ist Ende, und Ende ist an der Bar." }
+    ],
+    "finale": {
+      "gut": { "text": [
+        "Nong legt einen Schlüssel auf den Tresen. Er ist verbogen. Er passt.",
+        "„Die Hütte ist deine“, sagt der Mentor. „Ich nehm die Hängematte auf der Veranda. Du nimmst alles andere. Die Möwe zieht mit ein, das ist nicht verhandelbar.“",
+        "Vom Hügel kommt kein Rauch mehr. Der Mentor gärtnert jetzt hinter deiner Hütte. Pong hat das Schild umgedreht: POLIZEI 2km. Jetzt stimmt es."
+      ] },
+      "mittel": { "text": [
+        "Nong zählt. Nong zählt noch mal. „Reicht nicht. Reicht fast.“",
+        "„Ich streck den Rest vor“, sagt Nong, und das ist der längste Satz, den du je von ihm gehört hast. „Du polierst eine Woche Gläser. Dasselbe Glas.“",
+        "Die Hütte ist halb deine. Die Möwe sitzt schon drauf. Nächste Woche gehört der Rest dir, oder Nong."
+      ] },
+      "fail": { "text": [
+        "Die Hütte hat ein neues Schild: POSTEN 8. Der Typ mit den Fragen steht davor, Rucksack endlich voll.",
+        "„1994 bis 1997“, sagt der Mentor. „Nennt sich Pause. Du hast jetzt auch eine. Montag fangen wir von vorn an.“",
+        "Nong stellt dir das leere Glas hin. Das ist bei Nong Mitgefühl."
+      ] }
     }
   },
 

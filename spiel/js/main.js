@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { buildWorld } from './world.js';
 import { schluffi } from './figures.js';
-import { buildKunde, setMood, setRevealed } from './kunden.js';
+import { buildKunde, setMood, setRevealed, holdPose } from './kunden.js';
 import { pose as figurePose, updateNong, setNongMood } from './figures.js';
 import { initLicht } from './licht.js';
 import { mentorBarSpot } from './zone-huegel.js';
@@ -221,6 +221,7 @@ function applyKunde(k) {
     // steht am Platz: Tätigkeits-Pose aus figures.js (einmal gesetzt), nur der Kopf folgt dem Spieler
     if (!k.group.userData.pose) {
       const { offsetY } = figurePose(k.group, POSE_NAME(k.anchor));
+      holdPose(k.group, POSE_NAME(k.anchor)); // Surfbrett in den Händen oder im Sand
       k.group.userData.poseOffset = offsetY;
       k.group.position.y = offsetY;
     }
@@ -232,6 +233,7 @@ function applyKunde(k) {
   const pose = waddlePose(k.npc.phase, k.npc.speed);
   parts.legs[0].rotation.x = pose.legL; parts.legs[1].rotation.x = pose.legR;
   parts.arms[0].rotation.x = pose.armL; parts.arms[1].rotation.x = pose.armR;
+  holdPose(k.group, 'gehen'); // Surfbrett: Arme bleiben vorn
   parts.head.rotation.y = k.look;
   if (parts.dog) parts.dog.userData.head.rotation.y = k.look * 0.6;
 }
@@ -976,6 +978,12 @@ function updateKunden(dt) {
 }
 
 // ---------- Snap: einmal rendern an fester Stelle ----------
+// Kunde per id, notfalls aus einem späteren Tag (Zivis rotieren)
+function kundeById(id) {
+  let k = kunden.find((x) => x.id === id);
+  for (let day = 2; !k && day <= 3; day++) { spawnKunden(day); k = kunden.find((x) => x.id === id); }
+  return k;
+}
 function setupScene() {
   // ?t= (Uhr-t) gilt auch ohne Szene; HUD mit Uhr auffrischen, bevor eine Szene früh zurückkehrt
   if (T01) { tagesuhr = { t01: Math.max(0, Math.min(1, parseFloat(T01))) }; applyTageszeit(); placeMentor(barBeendetTag(tagesuhr.t01)); }
@@ -983,9 +991,7 @@ function setupScene() {
   if (!SCENE || kunden.length === 0) return;
   if (SCENE === 'gag') {
     // Kunde mitten im Kauf-Gag: ggf. Tag wechseln, bis der Kunde dran ist (Zivis rotieren)
-    let k = kunden.find((x) => x.id === SCENE_ID);
-    for (let day = 2; !k && day <= 3; day++) { spawnKunden(day); k = kunden.find((x) => x.id === SCENE_ID); }
-    k = k || kunden[0];
+    const k = kundeById(SCENE_ID) || kunden[0];
     const p = k.npc.points[0];
     k.npc = { ...k.npc, x: p.x, z: p.z, yaw: 0, moving: false, pause: 99 };
     state = { ...state, x: p.x + 1.7, z: p.z - 1.8, yaw: Math.PI, speed: 0 };
@@ -1099,8 +1105,19 @@ function setupScene() {
     showSoldOut();
     return;
   }
+  if (SCENE === 'figur') {
+    // Einzelfigur auf offenem Sand, Blick zur Kamera: ?scene=figur&id=surfer_1[&cy=50]
+    const k = (SCENE_ID && kundeById(SCENE_ID)) || kunden[0];
+    state = { ...state, x: 7, z: 4, yaw: -Math.PI / 2, speed: 0 };
+    let c = cam; for (let i = 0; i < 300; i++) c = followCamera(c, state, 1 / 60, camYaw);
+    k.npc = { ...k.npc, x: 4, z: 6, yaw: Math.atan2(c.x - 4, c.z - 6), moving: false, pause: 99 };
+    k.look = 0; applyKunde(k);
+    mode = 'free';
+    return;
+  }
   if (SCENE === 'lineup') {
-    // Gruppenbild: alle Kunden in einer Reihe, Blick zur Kamera (Kamera von Süden, tief)
+    // Gruppenbild: alle Kunden in einer Reihe, Blick zur Kamera (Kamera von Süden, tief); ?id= holt den Tag dieses Kunden
+    if (SCENE_ID) kundeById(SCENE_ID);
     const n = kunden.length, x0 = -(n - 1) * 1.7, z0 = 6;
     kunden.forEach((k, i) => {
       k.npc = { ...k.npc, x: x0 + i * 3.4, z: z0, yaw: 0, moving: false, pause: 99 };
@@ -1111,7 +1128,7 @@ function setupScene() {
     return;
   }
   // Gespräch mit dem ersten Kunden / Hinschauen beim zweiten (dem Zivi, falls vorhanden)
-  const k = SCENE === 'inspect' ? (kunden.find((x) => x.def.zivi) || kunden[1] || kunden[0]) : kunden[0];
+  const k = SCENE === 'inspect' ? ((SCENE_ID && kundeById(SCENE_ID)) || kunden.find((x) => x.def.zivi) || kunden[1] || kunden[0]) : kunden[0];
   const p = k.npc.points[0];
   k.npc = { ...k.npc, x: p.x, z: p.z, yaw: 0, moving: false, pause: 99 };
   // Spieler schräg nördlich vom Kunden, damit das Kundengesicht zur (nördlichen) Kamera zeigt
