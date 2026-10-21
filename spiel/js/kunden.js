@@ -498,39 +498,3 @@ export function setRevealed(group, on) {
   const P = group.userData.parts;
   if (P) P.capPolice.visible = !!on;
 }
-
-/**
- * Tätigkeits-Pose (ohne Rig, über die Pivot-Gruppen): sitzt | telefoniert | fotografiert | schaut | steht.
- * Wird nur gesetzt, wenn kein Gag läuft und der Kunde steht. Gibt zurück, ob die Figur tiefer sitzt (y-Offset).
- */
-export function setActivity(group, activity) {
-  const P = group.userData.parts;
-  if (!P) return 0;
-  const [L, R] = P.legs, [aL, aR] = P.arms;
-  // Grundstellung
-  L.rotation.set(0, 0, 0); R.rotation.set(0, 0, 0); aL.rotation.set(0, 0, 0); aR.rotation.set(0, 0, 0);
-  P.head.rotation.set(0, P.head.rotation.y, 0);
-  switch (activity) {
-    case 'sitzt': // Beine nach vorn, Körper tiefer (auf Liege/Hocker)
-      L.rotation.x = -1.35; R.rotation.x = -1.35;
-      aL.rotation.x = -0.4; aR.rotation.x = -0.4;
-      group.userData.sitOffset = -0.55;
-      return -0.55;
-    case 'telefoniert': // rechte Hand ans Ohr, Kopf leicht geneigt
-      aR.rotation.set(-2.6, 0, -0.55); aL.rotation.x = 0.15;
-      P.head.rotation.z = -0.18;
-      break;
-    case 'fotografiert': // beide Hände vors Gesicht
-      aL.rotation.set(-2.2, 0, 0.5); aR.rotation.set(-2.2, 0, -0.5);
-      P.head.rotation.x = 0.12;
-      break;
-    case 'schaut': // Hand über die Augen, Blick zum Meer
-      aR.rotation.set(-2.9, 0, -0.3); aL.rotation.x = 0.1;
-      P.head.rotation.x = -0.08;
-      break;
-    default: // steht: eine Hand lässig in der Hüfte
-      aL.rotation.set(-0.3, 0, 0.6);
-  }
-  group.userData.sitOffset = 0;
-  return 0;
-}
