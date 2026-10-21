@@ -7,7 +7,7 @@ import { buildKunde, setMood, setRevealed, holdPose } from './kunden.js';
 import { pose as figurePose, updateNong, setNongMood } from './figures.js';
 import { initLicht } from './licht.js';
 import { zielMarker, updateMarker } from './marker.js';
-import { setHuetteZiel, setHuette } from './props.js';
+import { setHuetteZiel, setHuette, setWegweiserText } from './props.js';
 import { mentorBarSpot } from './zone-huegel.js';
 import { createUI, isTouchDevice, hintSeen, markHint } from './ui.js';
 import { prepareGags, playGag, stopGag } from './gags.js';
@@ -21,7 +21,7 @@ import {
   normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE, gagFor, nextIdleGagDelay,
   mergeTexte, mergeKundenKatalog, normalizeOptionen, toSave, fromSave, hatFortschritt, fillText,
   normalizeTutorial, tutorialStart, tutorialEvent, tutorialSkip,
-  normalizeWoche, tagesziel, tagModifikator, hudZiel, finaleStufe, KUNDEN_PRO_TAG,
+  normalizeWoche, tagesziel, tagModifikator, hudZiel, finaleStufe, KUNDEN_PRO_TAG, kalibriereWoche, neueWoche, finaleKarte,
   normalizeStimmen, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
   normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
@@ -132,7 +132,8 @@ const POSTEN_ZONE = world.markt?.posten || { x: POSTEN_LAYOUT.pong.x, z: POSTEN_
 const MARKT_ZONE = { x: (MARKT_AREA.minX + MARKT_AREA.maxX) / 2, z: (MARKT_AREA.minZ + MARKT_AREA.maxZ) / 2, r: 22 };
 const PIER_ZONE = { x: HAFENPLATZ.x, z: HAFENPLATZ.z, r: 22 }; // Hafen: Tuk-Tuk-Leerlauf-Knattern
 const BAR_ZONE = { x: BUILDING_POS.bar.x, z: BUILDING_POS.bar.z, r: 12 }; // Gläserklirren + Gemurmel
-const ZONE_DEFS = () => ({ markt: MARKT_ZONE, posten: POSTEN_ZONE, pier: PIER_ZONE, bar: BAR_ZONE });
+const REISFELD_ZONE = { x: -36.75, z: -85.25, r: 16 }; // Frösche, Wasser (Mitte des Reisfeld-Layouts)
+const ZONE_DEFS = () => ({ markt: MARKT_ZONE, posten: POSTEN_ZONE, pier: PIER_ZONE, bar: BAR_ZONE, reisfeld: REISFELD_ZONE });
 function updateAmbience(now) {
   if (!audio?.ambience?.setZone || now < ambienceAt) return;
   ambienceAt = now + 250;
@@ -172,7 +173,12 @@ async function fetchJson(url) { try { const res = await fetch(url, { cache: 'no-
 let texte = normalizeTexte(null);
 let abendTexte = normalizeAbend(null);
 let tutorialTexte = normalizeTutorial(null);
-let woche = normalizeWoche(null); // Wochenbogen: Tagesziele + Finale (texte.json → woche{})
+let woche = normalizeWoche(null); // Wochenbogen: Tagesziele + Finale (texte.json → woche{}), Ziel kalibriert am Kundenkatalog
+let wocheRoh = woche;
+function applyWoche() {
+  woche = kalibriereWoche(wocheRoh, katalog);
+  try { setHuetteZiel(world.huette, woche.ziel.muenzen); } catch (e) { /* ohne Hütte */ }
+}
 let tutorial = null; // Tutorial-Zustand (nur im ersten Spiel, Tag 1)
 let tagesuhr = initialClock();
 let phase = phaseFor(0);
@@ -188,10 +194,15 @@ function applyTageszeit() {
   }
 }
 applyTageszeit();
-function refreshHud() { ui.setHud({ ...game, clockLabel: clockLabel(tagesuhr.t01), ziel: hudZiel(game, woche, game.tag) }); }
+let zielGemeldet = false; // Tagesziel-Jingle einmal pro Tag
+function refreshHud() {
+  const ziel = hudZiel(game, woche, game.tag);
+  ui.setHud({ ...game, clockLabel: clockLabel(tagesuhr.t01), ziel, hud: texte.hud });
+  if (ziel?.erreicht && !zielGemeldet) { zielGemeldet = true; sfx('ziel'); }
+}
 function applyFinale(stufe) {
   try { setHuette(world.huette, { gut: 'deine', mittel: 'halb', fail: 'posten8' }[stufe] || 'verkauf'); } catch (e) { /* ohne Hütte */ }
-  try { if (stufe === 'gut') world.huegel.mentorAnHuette?.(world.huette, true); } catch (e) { /* ohne Mentor */ }
+  try { if (stufe === 'gut') { world.huegel.mentorAnHuette?.(world.huette, true); setWegweiserText(world.wegweiser, 2, 'POLIZEI 2km. Jetzt stimmt es.', { font: 'bold 44px sans-serif' }); } } catch (e) { /* ohne Mentor */ }
 }
 let stimmen = normalizeStimmen(null);
 const barkPrev = {}; // `${id}/${kind}` -> zuletzt gesagter Index (nie zweimal dieselbe Zeile)
@@ -279,8 +290,7 @@ async function loadTexte() {
   posten7 = normalizePosten7(json);
   abendTexte = normalizeAbend(json);
   tutorialTexte = normalizeTutorial(json);
-  woche = normalizeWoche(json);
-  try { setHuetteZiel(world.huette, woche.ziel.muenzen); } catch (e) { /* ohne Hütte */ }
+  wocheRoh = normalizeWoche(json); applyWoche();
   game = { ...game, texte };
   refreshHud();
 }
@@ -339,6 +349,7 @@ async function loadKunden() {
   let json = await fetchJson('./data/kunden.json'); // Datei fehlt oder kaputt → Fallback unten
   if (json && optionen.sprache === 'en') { const en = await fetchJson('./data/kunden.en.json'); if (en) json = mergeKundenKatalog(json, en); }
   katalog = normalizeKatalog(json);
+  applyWoche(); // Wochenziel hängt an den Kundenpreisen
   // schon gespawnte Kunden: Namen/Sätze nachziehen (Sprachwechsel mitten im Tag)
   for (const k of kunden) { const d = katalog.find((x) => x.id === k.id); if (d) k.def = { ...k.def, name: d.name, typ: d.typ, tells: d.tells, saetze: d.saetze }; }
   if (katalog.length === 0) {
@@ -598,7 +609,8 @@ window.addEventListener('keydown', (e) => {
   if (mode === 'menu') { if (e.code === 'Escape') closeMenu(); e.preventDefault(); return; }
   if (mode === 'start') { if (['Enter', 'Space', 'Digit1'].includes(e.code)) startChoice(0); else if (e.code === 'Digit2') startChoice(1); e.preventDefault(); return; }
   if (e.code === 'Escape' && (mode === 'free')) { openMenu(); e.preventDefault(); return; }
-  if (mode === 'arrest' || mode === 'card') { if (e.code === 'Enter' || e.code === 'Space') { startNewDay(); e.preventDefault(); } return; }
+  if (mode === 'finale') { if (['Enter', 'Space', 'Digit1'].includes(e.code)) finaleChoice(0); else if (e.code === 'Digit2') finaleChoice(1); e.preventDefault(); return; }
+  if (mode === 'arrest' || mode === 'card') { if (e.code === 'Enter' || e.code === 'Space') { cardWeiter(); e.preventDefault(); } return; }
   if (mode === 'dialog') { dialogKey(e); return; }
   if (mode === 'mentor') { if (['Enter', 'Space', 'KeyE', 'Digit1'].includes(e.code)) advanceMentor(); else if (e.code === 'Escape') advanceMentor(); e.preventDefault(); return; }
   if (mode === 'info') { if (['Enter', 'Space', 'KeyE', 'Digit1', 'Escape'].includes(e.code)) endInfo(); e.preventDefault(); return; }
@@ -641,7 +653,7 @@ function tutorialFire(trigger) {
   ui.showTutorial({ text: r.schritt.text, skip: tutorialTexte.ueberspringen });
   tutorialBis = performance.now() + 10000;
   setTutorialZiel(r.schritt.ziel);
-  sfx('talk');
+  sfx(tutorial.idx > 1 ? 'ui_schritt' : 'ui_oeffnen'); // erster Schritt öffnet, danach „Schritt erledigt“
 }
 function setTutorialZiel(ziel) {
   markerZiel = ziel;
@@ -701,8 +713,9 @@ function openMenu() {
   clickTarget = null;
   mode = 'menu';
   ui.showMenu(menuModel());
+  sfx('ui_oeffnen');
 }
-function closeMenu() { if (mode !== 'menu') return; ui.hideMenu(); mode = menuPrev; sfx('talk'); }
+function closeMenu() { if (mode !== 'menu') return; ui.hideMenu(); mode = menuPrev; sfx('ui_schliessen'); }
 ui.createOptionsButton(() => { if (mode === 'menu') closeMenu(); else openMenu(); });
 ui.onMenu({
   close: closeMenu,
@@ -710,14 +723,14 @@ ui.onMenu({
     const val = id === 'sprache' ? raw : raw === 'true';
     if (optionen[id] === val) return;
     optionen = normalizeOptionen({ ...optionen, [id]: val });
-    saveOptionen(); sfx('talk');
+    saveOptionen(); sfx('ui_umschalten');
     if (id === 'sprache') { await loadTexte(); await loadKunden(); refreshHud(); } else applyAudioOptionen();
     if (mode === 'menu') ui.showMenu(menuModel());
   },
 });
 ui.onOptionClick((i, where) => {
   sfx('talk');
-  if (where === 'card') { if (mode === 'start') startChoice(i); else startNewDay(); }
+  if (where === 'card') { if (mode === 'start') startChoice(i); else if (mode === 'finale') finaleChoice(i); else cardWeiter(); }
   else if (mode === 'mentor') advanceMentor();
   else if (mode === 'info') endInfo();
   else if (mode === 'bar') advanceBar(i);
@@ -819,10 +832,40 @@ function endDay(vorspann = null, { fuss = null } = {}) {
   const c = dayEndCard(game, texte, lineIdx++);
   ui.showCard({ titel: c.titel, zeilen: [...(vorspann ? [vorspann] : []), c.spruch, ...c.zeilen, ...(fuss ? [fuss] : [])], button: c.button, rot: c.lage === 'verhaftet' });
 }
+// Bilanz-Karte bestätigt: am letzten Wochentag erst die Finale-Karte (Weiterspielen / Neue Woche), sonst neuer Tag
+let finaleKarteOffen = null;
+function cardWeiter() {
+  if (game.finale && tagesziel(woche, game.tag) && game.tag === woche.tage.length) { showFinaleKarte(); return; }
+  startNewDay();
+}
+function showFinaleKarte() {
+  finaleKarteOffen = finaleKarte(game, woche, texte);
+  mode = 'finale';
+  ui.showCard({ titel: finaleKarteOffen.titel, zeilen: finaleKarteOffen.zeilen, buttons: finaleKarteOffen.buttons, rot: finaleKarteOffen.stufe === 'fail' });
+  sfx(finaleKarteOffen.stufe === 'fail' ? 'woche_fail' : 'woche_gut');
+}
+function finaleChoice(i) {
+  if (!finaleKarteOffen) return;
+  const neu = i === finaleKarteOffen.neueWocheIdx;
+  finaleKarteOffen = null;
+  if (neu) startNeueWoche(); else startNewDay();
+}
+function startNeueWoche() {
+  game = neueWoche(game);
+  try { setHuette(world.huette, 'verkauf'); world.huegel.mentorAnHuette?.(world.huette, false); } catch (e) { /* ohne Hütte */ }
+  nachtArt = 'bar';
+  saveGame();
+  morgen();
+}
 function startNewDay() {
   game = newDay(game, { nacht: nachtArt, modifikator: tagModifikator(woche, game.tag + 1) });
   nachtArt = 'bar';
   saveGame(); // Morgenstand des neuen Tages
+  morgen();
+}
+// Morgen-Routine: Uhr, Mentor, Streifen, Kundschaft des Tages, Spieler am Start
+function morgen() {
+  zielGemeldet = false;
   tagesuhr = initialClock();
   applyTageszeit();
   placeMentor(false);
@@ -833,6 +876,7 @@ function startNewDay() {
   spawnKunden(game.tag); // neue Kundschaft, Zivis rotieren
   state = { ...state, x: world.spots.start.x, z: world.spots.start.z, yaw: world.spots.start.yaw, speed: 0 };
   mode = 'free';
+  sfx('morgen');
 }
 
 // ---------- Genau hinschauen ----------
@@ -1235,6 +1279,7 @@ function setupScene() {
     return;
   }
   if (SCENE === 'menue') { openMenu(); return; }
+  if (SCENE === 'finale') { game = { ...game, tag: woche.tage.length, geld: 710, finale: 'gut' }; refreshHud(); applyFinale('gut'); showFinaleKarte(); return; }
   if (SCENE === 'huette') { state = { ...state, x: -57, z: 10, yaw: Math.PI, speed: 0 }; camYaw += Math.PI; mode = 'free'; return; } // Finale-Hütte am Weststrand, Kamera von der Meerseite
   if (SCENE === 'tutorial') {
     // Schritt „hinschauen“: Kunde in Reichweite, Zielmarker am Kunden, Hinweiskasten oben
@@ -1313,6 +1358,8 @@ if (SNAP) {
     world.huegel.update(3.2);
     world.markt?.update?.(3.2);
     world.pier?.update?.(3.2);
+    world.reis?.update?.(3.2);
+    world.hain?.update?.(3.2);
     try { updateNong(world.nong, 3.2); } catch (e) { /* ohne Figur */ }
     if (SCENE !== 'streife' && SCENE !== 'verfolgung' && SCENE !== 'streife2') applyCops();
     try { world.markt?.setTafel?.(0); } catch (e) { /* ignorieren */ }
@@ -1341,6 +1388,8 @@ if (SNAP) {
     if (!mentorAmTresen) world.huegel.update(now / 1000);
     world.markt?.update?.(now / 1000);
     world.pier?.update?.(now / 1000);
+    world.reis?.update?.(now / 1000);
+    world.hain?.update?.(now / 1000);
     try { updateNong(world.nong, now / 1000); } catch (e) { /* ohne Figur */ }
     if (nongMoodAt && now > nongMoodAt) nongSag(nongBaseMood());
     updateFerry(now / 1000);

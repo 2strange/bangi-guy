@@ -27,7 +27,7 @@ export const EXTRAS = ['socken', 'preisschild', 'stirnband', 'halstuch_hund', 'f
 export const SPAWNS = ['K1', 'K2', 'K3', 'K4', 'K5', 'K6'];
 
 export function initialState() {
-  return { geld: 0, ware: START_WARE, heat: 0, tag: 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, mangos: 0, tageOhneVorfall: 0, verkaeufeHeute: [], zivisAbgelehntHeute: 0, mangosHeute: 0, finale: null };
+  return { geld: 0, ware: START_WARE, heat: 0, tag: 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, mangos: 0, tageOhneVorfall: 0, verkaeufeHeute: [], zivisAbgelehntHeute: 0, mangosHeute: 0, finale: null, woche: 1 };
 }
 
 // ---------- Kundschaft: fehlende/kaputte Felder robust auffüllen ----------
@@ -295,6 +295,9 @@ export const DEFAULT_TEXTE = {
   menue: { titel: 'Optionen', sprache: 'Textsprache', beschlagnahme: 'Zivi nimmt die Ware ab', musik: 'Musik', ton: 'Ton', an: 'an', aus: 'aus', schliessen: 'Schließen', hinweis: 'Stimmen bleiben Englisch.' },
   // Startkarte bei vorhandenem Spielstand
   start: { titel: 'Bangi Beach', stand: 'Spielstand: Tag {tag} · {geld} Münzen · {ware} Beutel', weiter: 'Weiter', neu: 'Neues Spiel' },
+  hud: { tag: 'Tag', heat: 'Heat', ware: 'Ware', geld: 'Kasse', mangos: 'Mangos', ziel: 'Ziel' },
+  // Karte nach dem Finale: weiterspielen (Tag 8 ff.) oder die Woche neu starten
+  finale: { titel: 'Die Woche ist rum.', kasse: 'Kasse: {geld} Münzen · Ziel: {muenzen}', weiterspielen: 'Weiterspielen', neue_woche: 'Neue Woche' },
   reveal_gags: [],
 };
 const strList = (v, fallback) => (Array.isArray(v) && v.length && v.every((x) => typeof x === 'string' && x.trim()) ? v : fallback);
@@ -306,7 +309,7 @@ export function normalizeTexte(json) {
   const pick = (key) => (u[key] !== undefined ? u[key] : t[key]);
   const obj = (v) => (v && typeof v === 'object' ? v : {});
   const te = obj(t.tagesende);
-  const op = obj(pick('optionen')), ti = obj(pick('titel')), di = obj(pick('dialog')), hl = obj(pick('heat_label')), me = obj(pick('menue')), sta = obj(pick('start')), vh = obj(pick('verhandeln'));
+  const op = obj(pick('optionen')), ti = obj(pick('titel')), di = obj(pick('dialog')), hl = obj(pick('heat_label')), me = obj(pick('menue')), sta = obj(pick('start')), vh = obj(pick('verhandeln')), hu = obj(pick('hud')), fi = obj(pick('finale'));
   const tagesende = {};
   for (const l of LAGEN) tagesende[l] = strList(te[l], DEFAULT_TEXTE.tagesende[l]);
   const strMap = (src, defaults) => Object.fromEntries(Object.keys(defaults).map((k) => [k, str(src[k], defaults[k])]));
@@ -324,6 +327,8 @@ export function normalizeTexte(json) {
     menue: strMap(me, DEFAULT_TEXTE.menue),
     start: strMap(sta, DEFAULT_TEXTE.start),
     verhandeln: { angenommen: strList(vh.angenommen, DEFAULT_TEXTE.verhandeln.angenommen), weg: strList(vh.weg, DEFAULT_TEXTE.verhandeln.weg) },
+    hud: strMap(hu, DEFAULT_TEXTE.hud),
+    finale: strMap(fi, DEFAULT_TEXTE.finale),
   };
 }
 
@@ -430,6 +435,45 @@ export function hudZiel(state, woche, lineIdx = 0) {
   return { titel: tz.titel, ziel: tz.ziel, fortschritt, erreicht: f.every((e) => e.ok), woche: fillText(pickLine(woche.zwischenstand, lineIdx), st), ...st };
 }
 
+// ---------- Kalibrierung des Wochenziels: was ein guter Spieler in der Woche einnimmt, davon ein Anteil ----------
+export const WOCHENZIEL = { anteil: 0.7, quote: 0.9, kostenProTag: 10, schritt: 50, mittelAnteil: 0.6 }; // kostenProTag = eine Mango (MANGO_PREIS)
+/**
+ * Erwarteter Erlös: je Tag die Kundschaft wie im Spiel gezogen (inkl. kunden_faktor), Summe der Preise der Harmlosen ×
+ * Trefferquote, minus Tageskosten (eine Mango). Ziel = anteil davon, auf `schritt` gerundet; mittel_ab proportional.
+ */
+export function wochenziel(katalog, woche, o = WOCHENZIEL) {
+  const tage = woche ? woche.tage : DEFAULT_WOCHE.tage;
+  let erloes = 0;
+  for (const t of tage) {
+    const n = KUNDEN_PRO_TAG * (t.modifikator?.kunden_faktor || 1);
+    const harmlos = pickKunden(katalog, n, 2, t.tag).filter((k) => !k.zivi);
+    erloes += harmlos.reduce((a, k) => a + k.zahlt, 0) * o.quote - o.kostenProTag;
+  }
+  const rund = (v) => Math.max(o.schritt, Math.round(v / o.schritt) * o.schritt);
+  const muenzen = rund(erloes * o.anteil);
+  return { erloes: Math.round(erloes), muenzen, mittel_ab: rund(muenzen * o.mittelAnteil) };
+}
+/** Woche mit kalibriertem Ziel; {muenzen} in Zieltext/Intro/Zwischenstand wird gefüllt */
+export function kalibriereWoche(woche, katalog, o = WOCHENZIEL) {
+  if (!katalog || !katalog.length) return woche;
+  const z = wochenziel(katalog, woche, o);
+  const f = (t) => fillText(t, { muenzen: z.muenzen });
+  // Tagesziel „Kasse“ (Sonntag) folgt dem kalibrierten Betrag; Tagestexte dürfen {muenzen} nutzen
+  const tage = woche.tage.map((t) => ({ ...t, ziel: f(t.ziel), mentor: f(t.mentor), geschafft: f(t.geschafft), verfehlt: f(t.verfehlt), zielwert: t.zielwert.kasse ? { ...t.zielwert, kasse: z.muenzen } : t.zielwert }));
+  return { ...woche, ziel: { ...woche.ziel, muenzen: z.muenzen, mittel_ab: z.mittel_ab, text: f(woche.ziel.text) }, intro: woche.intro.map(f), zwischenstand: woche.zwischenstand.map(f), tage };
+}
+/** Neue Woche nach dem Finale: Tag 1, Kasse/Tasche/Heat auf Start, Hütte wieder zu verkaufen; Wochenzähler +1, Tafel bleibt */
+export function neueWoche(state) {
+  return { ...initialState(), woche: (state.woche || 1) + 1, tageOhneVorfall: state.tageOhneVorfall || 0 };
+}
+/** Karte nach dem Finale: bei fail steht „Neue Woche“ vorn (vorausgewählt) */
+export function finaleKarte(state, woche, texte = null) {
+  const T = (texte || DEFAULT_TEXTE).finale;
+  const stufe = state.finale || finaleStufe(state, woche);
+  const buttons = stufe === 'fail' ? [T.neue_woche, T.weiterspielen] : [T.weiterspielen, T.neue_woche];
+  return { titel: T.titel, zeilen: [woche.titel, fillText(T.kasse, { geld: state.geld, muenzen: woche.ziel.muenzen })], buttons, neueWocheIdx: stufe === 'fail' ? 0 : 1, stufe };
+}
+
 // ---------- Tutorial Tag 1 (data/texte.json → tutorial{}): geführte Schritte, folgen dem Spieler, überspringbar ----------
 export const TUTORIAL_TRIGGER = ['tag1_start', 'mentor_szene_ende', 'kunde_in_reichweite', 'nach_hinschauen', 'erster_verkauf', 'erste_ablehnung', 'ware_leer', 'sonnenuntergang', 'bar_betreten'];
 export const TUTORIAL_ZIELE = ['huegel', 'strand', 'kunde', 'heat_anzeige', 'bar'];
@@ -471,11 +515,11 @@ export function tutorialEvent(tut, T, trigger) {
 
 // ---------- Spielstand: automatisch am Tagesende (Morgenstand des neuen Tages), „Weiter“/„Neues Spiel“ beim Start ----------
 export const SAVE_VERSION = 1;
-export const SAVE_FELDER = ['tag', 'geld', 'ware', 'heat', 'mangos', 'tageOhneVorfall', 'finale'];
+export const SAVE_FELDER = ['tag', 'geld', 'ware', 'heat', 'mangos', 'tageOhneVorfall', 'finale', 'woche'];
 /** Nur das, was über Nacht zählt: Tag, Kasse, Tasche, Heat, Mangos, Tafel. Tagesinternes (status, verkauftHeute …) ist morgens ohnehin frisch. */
 export function toSave(state) {
   const n = (v, d = 0) => (Number.isFinite(v) ? v : d);
-  return { version: SAVE_VERSION, tag: Math.max(1, Math.round(n(state.tag, 1))), geld: Math.max(0, n(state.geld)), ware: Math.max(0, Math.min(MAX_WARE, n(state.ware))), heat: Math.max(0, Math.min(MAX_HEAT, n(state.heat))), mangos: Math.max(0, n(state.mangos)), tageOhneVorfall: Math.max(0, n(state.tageOhneVorfall)), finale: FINALE_STUFEN.includes(state.finale) ? state.finale : null };
+  return { version: SAVE_VERSION, tag: Math.max(1, Math.round(n(state.tag, 1))), geld: Math.max(0, n(state.geld)), ware: Math.max(0, Math.min(MAX_WARE, n(state.ware))), heat: Math.max(0, Math.min(MAX_HEAT, n(state.heat))), mangos: Math.max(0, n(state.mangos)), tageOhneVorfall: Math.max(0, n(state.tageOhneVorfall)), finale: FINALE_STUFEN.includes(state.finale) ? state.finale : null, woche: Math.max(1, Math.round(n(state.woche, 1))) };
 }
 /** Gespeicherter Stand → Spielzustand (auf initialState gelegt); null bei fremder Version, Müll oder Tag 1 ohne Fortschritt. */
 export function fromSave(json) {

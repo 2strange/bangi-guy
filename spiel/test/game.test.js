@@ -824,3 +824,42 @@ test('Preise je Kundschaft: zahlt aus kunden.json; „Mehr verlangen“ = +50 % 
   assert.equal(chooseOption(s, d, k, 0, 0).dialog.geldPlus, 60, 'normaler Verkauf zum Kundenpreis');
   assert.equal(chooseOption(s, d, k, 'Lieber nicht', 0).dialog.result, 'ablehnung', 'Beschriftung geht weiter');
 });
+
+import { wochenziel, kalibriereWoche, neueWoche, finaleKarte, WOCHENZIEL, KUNDEN_PRO_TAG as KPT } from '../js/game.js';
+import { readFileSync } from 'node:fs';
+test('Wochenziel-Kalibrierung: Erlös = Σ Tage (Preise der Harmlosen × Quote − Mango), Ziel = 70 % gerundet auf 50, mittel_ab 60 %', () => {
+  const kat = normalizeKatalog({ kunden: [
+    { id: 'a', zahlt: 20 }, { id: 'b', zahlt: 30 }, { id: 'c', zahlt: 40 }, { id: 'd', zahlt: 10 }, { id: 'e', zahlt: 50 },
+    { id: 'z1', zivi: true, zahlt: 70 }, { id: 'z2', zivi: true, zahlt: 70 },
+  ] });
+  const W = normalizeWoche({ woche: { tage: [{ tag: 1 }, { tag: 2, modifikator: { kunden_faktor: 2 } }] } });
+  // Tag 1: 7 gezogen = alle 5 Harmlosen (150) + 2 Zivis; Tag 2 (×2): wieder alle 5 Harmlosen → 2 × (150 × 0.9 − 10) = 250
+  const z = wochenziel(kat, W);
+  assert.equal(z.erloes, 250); assert.equal(z.muenzen, 200, '70 % von 250 = 175 → 200'); assert.equal(z.mittel_ab, 100, '60 % von 200 = 120 → 100');
+  assert.equal(WOCHENZIEL.anteil, 0.7);
+  const K = kalibriereWoche(normalizeWoche({ woche: { ziel: { text: 'Bis Sonntag {muenzen} Münzen.', muenzen: 1000 }, intro: ['{muenzen}!'], tage: W.tage } }), kat);
+  assert.equal(K.ziel.muenzen, 200); assert.equal(K.ziel.mittel_ab, 100); assert.equal(K.ziel.text, 'Bis Sonntag 200 Münzen.'); assert.equal(K.intro[0], '200!');
+  assert.equal(kalibriereWoche(W, []).ziel.muenzen, W.ziel.muenzen, 'ohne Katalog unverändert');
+  const K2 = kalibriereWoche(normalizeWoche({ woche: { tage: [{ tag: 1, ziel: 'Bis abends {muenzen}', zielwert: { kasse: 1000 } }, { tag: 2, zielwert: { verkauft: 3 } }] } }), kat);
+  assert.equal(K2.tage[0].zielwert.kasse, K2.ziel.muenzen, 'Kassen-Tagesziel folgt der Kalibrierung'); assert.equal(K2.tage[0].ziel, `Bis abends ${K2.ziel.muenzen}`); assert.deepEqual(K2.tage[1].zielwert, { verkauft: 3 });
+  // mit der echten Kundschaft: Rechnung nachvollziehbar und im erwarteten Rahmen
+  const echt = normalizeKatalog(JSON.parse(readFileSync(new URL('../data/kunden.json', import.meta.url), 'utf8')));
+  const W7 = normalizeWoche(JSON.parse(readFileSync(new URL('../data/texte.json', import.meta.url), 'utf8')));
+  const e = wochenziel(echt, W7);
+  assert.ok(e.muenzen >= 400 && e.muenzen <= 1000, `Ziel ${e.muenzen} (Erlös ${e.erloes})`);
+  assert.equal(e.muenzen % 50, 0); assert.ok(e.mittel_ab < e.muenzen);
+});
+test('Neue Woche und Finale-Karte: Start auf Tag 1 mit Wochenzähler +1; bei fail steht „Neue Woche“ vorn; Spielstand nimmt woche mit', () => {
+  const s = { ...initialState(), tag: 7, geld: 730, ware: 9, heat: 2, finale: 'gut', woche: 1, tageOhneVorfall: 4 };
+  const n = neueWoche(s);
+  assert.equal(n.tag, 1); assert.equal(n.geld, 0); assert.equal(n.ware, START_WARE); assert.equal(n.heat, 0); assert.equal(n.finale, null); assert.equal(n.woche, 2); assert.equal(n.tageOhneVorfall, 4);
+  const W = normalizeWoche(null);
+  const kg = finaleKarte(s, W);
+  assert.deepEqual(kg.buttons, ['Weiterspielen', 'Neue Woche']); assert.equal(kg.neueWocheIdx, 1); assert.equal(kg.stufe, 'gut');
+  const kf = finaleKarte({ ...s, geld: 10, finale: 'fail' }, W);
+  assert.deepEqual(kf.buttons, ['Neue Woche', 'Weiterspielen']); assert.equal(kf.neueWocheIdx, 0);
+  assert.ok(kf.zeilen[1].includes('10') && kf.zeilen[1].includes(String(W.ziel.muenzen)));
+  assert.equal(finaleKarte({ ...s, finale: null, geld: 650 }, W).stufe, 'mittel', 'ohne gesetzte Stufe nach Kasse');
+  assert.equal(fromSave(toSave(n)).woche, 2); assert.equal(fromSave(toSave({ ...s, woche: 'x' })).woche, 1);
+  assert.equal(nT(null).hud.tag, 'Tag'); assert.equal(nT({ ui: { hud: { tag: 'Day' } } }).hud.tag, 'Day');
+});

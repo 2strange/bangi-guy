@@ -31,11 +31,12 @@ export function createUI() {
 
   function setHud(state) {
     if (!hud) return;
+    const L = { tag: 'Tag', heat: 'Heat', ...(state.hud || {}) }; // Beschriftungen aus texte.json → ui.hud{}
     hud.innerHTML = `
-      <span class="hud-item"><b>Tag ${state.tag}</b>${state.clockLabel ? ` <span class="clock">${state.clockLabel}</span>` : ''}</span>
+      <span class="hud-item"><b>${escapeHtml(L.tag)} ${state.tag}</b>${state.clockLabel ? ` <span class="clock">${state.clockLabel}</span>` : ''}</span>
       <span class="hud-item">💰 <b>${state.geld}</b></span>
       <span class="hud-item${state.ware === 0 ? ' empty' : ''}">🌿 <b>${state.ware}</b></span>
-      <span class="hud-item heat-${state.heat}${hudPulse.heat ? ' pulse' : ''}">Heat <b>${heatLabel(state.heat)}</b></span>${state.mangos > 0 ? `<span class="hud-item">🥭 <b>${state.mangos}</b></span>` : ''}`;
+      <span class="hud-item heat-${state.heat}${hudPulse.heat ? ' pulse' : ''}">${escapeHtml(L.heat)} <b>${heatLabel(state.heat)}</b></span>${state.mangos > 0 ? `<span class="hud-item">🥭 <b>${state.mangos}</b></span>` : ''}`;
     // Ziel-Zeile: Tagesziel + Fortschritt + Wochenstand (null = keine Woche mehr)
     if (zielEl) {
       const z = state.ziel;

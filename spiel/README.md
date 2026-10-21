@@ -234,8 +234,14 @@ Unter dem HUD steht das Tagesziel mit Fortschritt (grün = erreicht) und der Woc
 Satz zum Tagesziel (Tag 1 vorher die Einleitung), abends an der Bar `geschafft`/`verfehlt`. Am letzten Tag folgt das
 Finale nach Kassenstand (`gut` ≥ Ziel, `mittel` ≥ `mittel_ab`, sonst `fail`): die Hütte auf den Felsen am Weststrand
 wechselt in den passenden Zustand (deine / halb / posten8), bei `gut` gärtnert der Mentor fortan hinter der Hütte.
-Danach läuft das Spiel ohne Wochenziel weiter. Alles reine Logik in `js/game.js` (`normalizeWoche`, `zielFortschritt`,
-`hudZiel`, `finaleStufe`, getestet); der Spielstand merkt sich das Finale.
+Nach der Bilanz folgt die Finale-Karte: **Weiterspielen** (freies Spiel ab Tag 8, Hütte bleibt) oder **Neue Woche**
+(Tag 1, Kasse/Tasche/Heat auf Start, Hütte wieder zu verkaufen, Wochenzähler +1; bei `fail` vorausgewählt).
+**Kalibrierung:** das Wochenziel wird nicht geraten, sondern aus der Kundschaft gerechnet (`wochenziel` in `js/game.js`):
+je Tag die Kundschaft wie im Spiel gezogen (inkl. `kunden_faktor`), Summe der Preise der Harmlosen × Trefferquote 0,9
+minus eine Mango pro Tag = erwarteter Erlös eines guten Spielers; Ziel = 70 % davon, auf 50 gerundet, `mittel_ab` = 60 %
+des Ziels. `{muenzen}` in Zieltext/Intro/Zwischenstand wird damit gefüllt, das Hüttenschild auch. Alles reine Logik
+(`normalizeWoche`, `zielFortschritt`, `hudZiel`, `finaleStufe`, `kalibriereWoche`, `neueWoche`, `finaleKarte`,
+getestet); der Spielstand merkt sich Finale und Wochenzähler. HUD-Beschriftungen kommen aus `ui.hud{}`.
 
 ## Tutorial (Tag 1)
 Beim ersten Spiel führt Tag 1 in Schritten: zum Mentor (Ware), Kunde ansehen, erster Verkauf (Heat erklärt), abends

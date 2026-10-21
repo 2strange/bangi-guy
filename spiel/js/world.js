@@ -2,13 +2,14 @@
 // Bauten und Deko mit passenden Collidern (Kreise für Stämme/Pfosten, Rechtecke für Gebäude).
 import * as THREE from 'three';
 import { toonMesh, toon, basicMat, deform, rng } from './toon.js';
-import { palm, beachBar, pier, boat, signpost, hammock, parasol, beachBall, coconut, crab, cloud, sun, footprints, limb, hut, mailbox, hotel, lounger, rental, sleepingSurfer, barrier, finaleHuette, setHuette, lamp, hedge, shell, starfish, sandcastle, driftwood } from './props.js';
+import { palm, beachBar, pier, boat, signpost, hammock, parasol, beachBall, coconut, crab, cloud, sun, footprints, limb, hut, mailbox, hotel, lounger, rental, sleepingSurfer, barrier, finaleHuette, setHuette, setWegweiserText, lamp, hedge, shell, starfish, sandcastle, driftwood } from './props.js';
 import { shoreZ, WORLD, buildingScale, scaledRect, scaledCircle, BUILDING_POS, buildingFootprints, poolLadderCollider } from './logic.js';
 import { buildDorf } from './zone-dorf.js';
 import { buildHuegel } from './zone-huegel.js';
 import { buildMarkt } from './zone-markt.js';
 import { buildPier } from './zone-pier.js';
 import { lichterkette } from './licht.js';
+import { buildReisfeld, buildKokoshain } from './zone-reisfeld.js';
 import { buildNong } from './figures.js';
 
 export const WATER_Y = 0.06;
@@ -71,6 +72,8 @@ export function buildWorld() {
   const markt = buildMarkt(g, colliders, { exits: { pier: false, stadt: true } }); // Pier-Ausgang ist offen, Stadt bleibt gesperrt
   // Tuk-Tuk-Pier (Hafen) östlich von x 66: Steg, Fähre, Tuk-Tuk, Furt zum Hotelstrand (eigenes Modul)
   const hafen = buildPier(g, colliders); // nicht `pier` nennen: so heißt der Steg-Baustein aus props.js
+  const reis = buildReisfeld(g, colliders);   // Reisfeld mit Bauer Nok (zwischen Kuppe und Posten)
+  const hain = buildKokoshain(g, colliders);  // Kokoshain-Ecke im Osten (Versteck)
 
   // Promenade: gepflasterter Weg am Nordrand des Strands, mit Laternen
   g.add(stripMesh((x) => -12.2 + 0.4 * Math.sin(x / 5), (x) => -9.4 + 0.4 * Math.sin(x / 5 + 1), 0xd9c4a3, 0.03, { x0: -64, x1: 66, step: 2 }));
@@ -133,8 +136,8 @@ export function buildWorld() {
 
   // Finale-Hütte auf den Felsen am Weststrand (Zustand aus dem Wochenbogen: verkauf → deine / halb / posten8)
   const huette = finaleHuette(); setHuette(huette, 'verkauf');
-  huette.position.set(-61.5, 0.6, 5.5); huette.rotation.y = 0.55; huette.scale.setScalar(1.5); g.add(huette);
-  rect(-61.5, 5.5, 5, 4.6);
+  huette.position.set(-62.5, 0, 8.5); huette.rotation.y = Math.PI / 2; huette.scale.setScalar(1.5); g.add(huette); // Tür nach Osten
+  rect(-62.5, 8.5, 3.8, 3.5);
 
   // Palmen entlang des Strands (Position, Neigung, Seed)
   const palms = [
@@ -259,5 +262,5 @@ export function buildWorld() {
     ost: { x: 58, z: -2, yaw: Math.PI / 2 },
     hecke: { x: 8, z: -17, yaw: 0.3 }, // Strandseite vor der Heckenlücke („nord“ gehört dem Dorf)
   };
-  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots, ...markt.spots, ...hafen.spots }, hideouts: [...dorf.hideouts, ...(markt.hideouts || []), ...(hafen.hideouts || [])], dorf, huegel, markt, pier: hafen, sonne, nong, huette };
+  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots, ...markt.spots, ...hafen.spots, ...reis.spots, ...hain.spots }, hideouts: [...dorf.hideouts, ...(markt.hideouts || []), ...(hafen.hideouts || []), ...(hain.hideouts || [])], dorf, huegel, markt, pier: hafen, reis, hain, sonne, nong, huette, wegweiser: sp };
 }
