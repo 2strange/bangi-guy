@@ -572,6 +572,9 @@ export function tukTukRide(state, { mangos = TUKTUK_PREIS_MANGOS, geld = TUKTUK_
 export const DAY_LENGTH = 420;            // Sekunden Spielzeit pro Tag
 export const PHASES = ['morgen', 'mittag', 'abend', 'nacht'];
 export const PHASE_AT = { mittag: 0.28, abend: 0.66, nacht: 0.9 }; // Anteile des Tages (t01)
+// Lichtpalette (licht.js) ist 24-h-basiert (0 = Mitternacht, 0.25 = 06:00, 0.5 = Mittag, ~0.74 = Sonnenuntergang);
+// die Spieluhr läuft 06:00–24:00 als 0…1. Umrechnung Uhr-t → Palette-t.
+export const lichtT = (t01) => 0.25 + Math.max(0, Math.min(1, t01)) * 0.75;
 export const phaseFor = (t01) => (t01 >= PHASE_AT.nacht ? 'nacht' : t01 >= PHASE_AT.abend ? 'abend' : t01 >= PHASE_AT.mittag ? 'mittag' : 'morgen');
 export const initialClock = () => ({ t01: 0 });
 // Uhr weiterdrehen (läuft nur im freien Spiel; in Gesprächen/Karten pausiert der Aufrufer)

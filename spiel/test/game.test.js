@@ -636,3 +636,11 @@ test('Streife P2 läuft erst ab Tag 2', () => {
   assert.equal(streifeP2Aktiv(newDay(initialState())), true);
   assert.equal(streifeP2Aktiv({ tag: 5 }), true);
 });
+
+import { lichtT, PHASE_AT } from '../js/game.js';
+test('lichtT: Spieluhr 06:00–24:00 wird auf die 24-h-Lichtpalette abgebildet', () => {
+  assert.equal(lichtT(0), 0.25, '06:00 = Morgen');
+  assert.equal(lichtT(1), 1, '24:00 = Mitternacht');
+  assert.ok(Math.abs(lichtT(PHASE_AT.abend) - 0.745) < 0.01, 'Abend-Phase beginnt beim Sonnenuntergang der Palette (~0.74)');
+  assert.equal(lichtT(-1), 0.25); assert.equal(lichtT(2), 1);
+});

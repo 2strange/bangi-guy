@@ -20,7 +20,7 @@ import {
   normalizeStimmen, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
   normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
-  initialClock, clockStep, clockLabel, phaseFor, abendBeginnt, nachtBeginnt, barBeendetTag, inBar, normalizeAbend, zwischenrufLine, STREIFE_P2_AB_TAG, barAbend, guteNacht, sonnenuntergangLine, einschlafenLine,
+  initialClock, clockStep, clockLabel, phaseFor, abendBeginnt, nachtBeginnt, barBeendetTag, inBar, normalizeAbend, zwischenrufLine, STREIFE_P2_AB_TAG, lichtT, barAbend, guteNacht, sonnenuntergangLine, einschlafenLine,
 } from './game.js';
 import { POSTEN as POSTEN_LAYOUT, MARKT as MARKT_AREA, STAENDE, LANES as MARKT_LANES } from './zone-markt-layout.js';
 import { HAFENPLATZ } from './zone-pier-layout.js';
@@ -154,7 +154,7 @@ let phase = phaseFor(0);
 // Licht über den Tag (licht.js: Himmel, Nebel, Sonnen-/Hemisphärenlicht, Nachtlichter, Sonne/Mond) + Musik-/Ambience-Stimmung
 const licht = initLicht(scene, { sonne: world.sonne });
 function applyTageszeit() {
-  try { licht.set(tagesuhr.t01); } catch (e) { /* ignorieren */ }
+  try { licht.set(lichtT(tagesuhr.t01)); } catch (e) { /* ignorieren */ } // Uhr-t (06–24 h) → 24-h-Palette
   const ph = phaseFor(tagesuhr.t01);
   if (ph !== phase) {
     phase = ph;
@@ -744,7 +744,7 @@ function applyCamera() {
   const hy = groundY(cam.tx, cam.tz);
   camera.position.set(cam.x, cam.y + hy, cam.z);
   camera.lookAt(cam.tx, cam.ty + hy, cam.tz);
-  const o = licht.sunOffset(tagesuhr.t01); // Sonne wandert über den Tag (abends flach aus Westen)
+  const o = licht.sunOffset(lichtT(tagesuhr.t01)); // Sonne wandert über den Tag (abends flach aus Westen)
   sunLight.position.set(state.x + o.x, o.y, state.z + o.z);
   sunLight.target.position.set(state.x, 0, state.z);
 }

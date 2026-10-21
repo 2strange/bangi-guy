@@ -78,7 +78,8 @@ Dann `http://localhost:8000/` öffnen.
   Vorbeigehen am Tresen etwas (`barkeeper.zwischenruf`, höchstens alle 30 s). Nong steht als Figur hinter der Theke
   (`figures.js`: Tuch kreist, Glas dreht, Möwe „Chef“ flattert); er schaut tagsüber neutral, abends müde und hebt beim
   Gruß eine Braue. Snap: `?snap=1&scene=nong`.
-  Licht: `licht.js → initLicht(scene, { sonne }).set(t01)` + `sunOffset(t01)` für die Schattensonne; Ton: `audio.setMood('tag'|'abend')`. `?t=0.72` setzt die Tageszeit,
+  Licht: `licht.js → initLicht(scene, { sonne }).set(p)` + `sunOffset(p)` für die Schattensonne, wobei `p = lichtT(t)` die
+  Uhr auf die 24-h-Palette abbildet (Uhr 0…1 = 06:00…24:00 → Palette 0.25…1.0); Ton: `audio.setMood('tag'|'abend')`. `?t=0.72` setzt die **Uhr**-Zeit (0 = 06:00, 0.5 = 15:00, 0.66 = Abendbeginn, 1 = 24:00),
   `?snap=1&scene=abend` / `scene=bar`.
 - **Ausverkauft:** Bei Ware 0 meldet sich der Schluffi selbst in einer Sprechblase: **Tag beenden** zeigt die
   Tagesbilanz (verkauft, Geld, Heat) und startet den nächsten Tag; **Weiterbummeln** lässt einen die Leute weiter
