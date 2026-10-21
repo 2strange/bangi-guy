@@ -275,7 +275,7 @@ export function buildKunde(k, seed = 1, outfit = null) {
   const holds = k.accessoire === 'gehstock' || k.accessoire === 'handy' || k.accessoire === 'surfbrett' || extras.has('cocktail') || extras.has('einkaufskorb');
   for (const s of [-1, 1]) {
     const arm = new THREE.Group();
-    arm.position.set(s * 0.5, shoulderY, 0);
+    arm.position.set(s * (belly ? 0.64 : 0.5), shoulderY, 0); // Bauchkugel r 0.56–0.58: Schulter nach außen, sonst steckt der Oberarm in der Flanke
     const bent = s === 1 && k.accessoire === 'handy';
     const handPos = bent ? V(0.05, -0.35, 0.3) : V(s * 0.18, -0.8, 0.08);
     arm.add(limb(V(0, 0, 0), handPos, 0.1, skin, { outline: 0.04 }));
