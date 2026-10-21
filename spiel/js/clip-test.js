@@ -4,7 +4,7 @@
 // Gekippt wird das Objekt, die Kamera bleibt orthografisch — so passen viele Nahansichten in ein Bild.
 // ?set=kunden1|kunden2|kunden3 → Kundschaft mit Extras · leute1|leute2 → Spieler, Mentor, Nong, Pong, Nok, Statisten
 //      posen → alle Posen an einem Kunden · gags1|gags2|gags3 → Reveal-Gags im Endzustand · daecher → Gebäude mit Dachrequisiten
-//      bar → die Strandbar mit Nong groß, drei Ansichten
+//      bar → die Strandbar mit Nong groß, drei Ansichten · schleier → helle Gesichter (Oma, Rentner, Tante, Mentor, Nong) vorn und schräg oben
 import * as THREE from 'three';
 import { textTexture } from './toon.js';
 import { schluffi, runner, pose, POSES, buildNong, updateNong, setNongMood, kundenExtras, updateKundenExtras } from './figures.js';
@@ -125,6 +125,10 @@ if (SET.startsWith('kunden')) {
     { label: 'von hinten oben', make: barMitNong(0.78, Math.PI - 0.4) },
     { label: 'von der Seite', make: barMitNong(0, -Math.PI / 2 + 0.1) },
   ], ['roh'], { cw: 10, ch: 8, maxFactor: 2 });
+} else if (SET === 'schleier') { // helle Gesichter (Brille, weißes Haar, weißer Bart) vorn und schräg oben — Augenweiß/Gläser müssen weiß bleiben
+  const kunden = await ladeKunden();
+  const k = (id, seed) => { const d = kunden.find((x) => x.id === id); return { label: d.name || id, make: () => { const f = buildKunde(d, seed); kundenExtras(f, d); return f; } }; };
+  grid([k('oma_1', 11), k('rentner_1', 5), k('touristin_1', 9), { label: 'Mentor', make: mentor }, { label: 'Nong', make: () => { const n = buildNong(); setNongMood(n, 'neutral'); updateNong(n, 1.1); return n; } }], ['vorn', 'oben']);
 } else if (SET === 'daecher') {
   grid([
     { label: 'Bar', make: () => { const b = beachBar(); b.scale.setScalar(buildingScale('bar')); return b; } },

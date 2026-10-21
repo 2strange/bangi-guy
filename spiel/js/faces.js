@@ -477,12 +477,22 @@ export const sunFace = () => face('sun', 'selig');
  * Decal-Mesh: vorderes Kugel-Segment, Radius r (minimal größer als der Kopf).
  * shape(geometry) wendet dieselben Transformationen an wie beim Kopf (Scale/Deform).
  */
+// Gesichter bekommen eine flachere Stufung als der Rest: Augenweiß, Brillengläser und heller Bart würden mit den
+// normalen Toon-Stufen (27 % / 59 %) im Schatten grau — das wirkt wie ein Schleier überm Gesicht. Zwei Stufen,
+// die hellste bei 100 %, die Schattenseite bei 80 %; Tag/Nacht wirken über die Lichtstärke trotzdem.
+const FACE_STEPS = new Uint8Array([205, 205, 255, 255]);
+export const faceGradientMap = new THREE.DataTexture(FACE_STEPS, FACE_STEPS.length, 1, THREE.RedFormat);
+faceGradientMap.minFilter = THREE.NearestFilter;
+faceGradientMap.magFilter = THREE.NearestFilter;
+faceGradientMap.generateMipmaps = false;
+faceGradientMap.needsUpdate = true;
+
 export function faceDecal(texture, r, shape, { basic = false } = {}) {
   const geo = new THREE.SphereGeometry(r, 40, 32, Math.PI / 2 - 1.05, 2.1, Math.PI * 0.22, Math.PI * 0.62);
   if (shape) shape(geo);
   const mat = basic
     ? new THREE.MeshBasicMaterial({ map: texture, transparent: true, alphaTest: 0.02, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 })
-    : toon(0xffffff, { map: texture, transparent: true, alphaTest: 0.02, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+    : toon(0xffffff, { map: texture, gradientMap: faceGradientMap, transparent: true, alphaTest: 0.02, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
   const m = new THREE.Mesh(geo, mat);
   m.castShadow = false;
   m.receiveShadow = true;
