@@ -128,6 +128,21 @@ export function prepareGags(figur) {
   G.tag = findBox(figur, 0.3, 0.2, 0.03);
   if (G.tag) G.tagRot = G.tag.rotation.clone();
   G.radio = findBox(figur, 0.16, 0.3, 0.12);
+  // neue Kunden: Reissack am Boden + Kuhreiher, fallende Kokosnuss + zweite Delle, Pfeife im Mund, Selfie-Blitz
+  addProp('sackBoden', (() => { const m = toonMesh(new THREE.SphereGeometry(0.34, 10, 8), 0xd8a85a, { outline: 0.035 }); m.geometry.scale(1, 1.3, 0.8); return m; })(), figur, V(0.9, 0.45, 0.6));
+  addProp('reiher', (() => {
+    const e = new THREE.Group();
+    const eb = toonMesh(new THREE.SphereGeometry(0.2, 10, 8), 0xffffff, { outline: 0.03 }); eb.geometry.scale(1.5, 1, 1); e.add(eb);
+    e.add(limb(V(0.2, 0.1, 0), V(0.35, 0.65, 0), 0.04, 0xffffff, { outline: 0.015 }));
+    const eh = toonMesh(new THREE.SphereGeometry(0.11, 8, 6), 0xffffff, { outline: 0.02 }); eh.position.set(0.37, 0.7, 0); e.add(eh);
+    const beak = toonMesh(new THREE.ConeGeometry(0.03, 0.3, 5), 0xffd54a, { outline: 0.012 }); beak.position.set(0.55, 0.68, 0); beak.rotation.z = -Math.PI / 2; e.add(beak);
+    for (const sd of [-1, 1]) e.add(limb(V(0, -0.15, sd * 0.06), V(0, -0.45, sd * 0.07), 0.02, 0x222222, { outline: 0.01 }));
+    return e;
+  })(), figur, V(0.9, 1.3, 0.6));
+  addProp('nussFall', (() => { const m = toonMesh(new THREE.SphereGeometry(0.24, 10, 8), 0x6b4423, { outline: 0.035 }); return m; })(), figur, V(0.1, 6, 0.1));
+  addProp('delle2', (() => { const m = toonMesh(new THREE.SphereGeometry(0.16, 8, 6), 0xe8a034, { outline: 0.02 }); m.geometry.scale(1, 0.5, 1); return m; })(), P.head, V(-0.2, 0.5, 0.2));
+  addProp('pfeifeMund', (() => { const m = toonMesh(new THREE.CylinderGeometry(0.06, 0.06, 0.2, 8), 0xc9cfdc, { outline: 0.015 }); m.rotation.z = Math.PI / 2; return m; })(), P.head, V(0.05, -0.22, 0.6));
+  addProp('blitz', flash(), armR, handR.clone().add(V(0.05, 0.15, 0.3)));
   if (P.dog) {
     const dh = P.dog.userData.head;
     const db = badge(0.11); db.visible = false; db.position.set(0.5, -0.18, 0); db.rotation.y = Math.PI / 2;
@@ -149,6 +164,7 @@ export function stopGag(figur) {
   if (P.dog && G.base.dog) { P.dog.rotation.copy(G.base.dog.rot); P.dog.position.y = G.base.dog.y; }
   if (P.dog && G.dogHead) P.dog.userData.head.rotation.copy(G.dogHead.rot);
   for (const [name, m] of Object.entries(G.props)) if (name !== 'watch') m.visible = false;
+  if (figur.userData.extrasObj?.sack) figur.userData.extrasObj.sack.visible = true;
   for (const s of G.sunglasses) { s.m.position.y = s.y; s.m.position.z = s.z; }
   if (G.tag) G.tag.rotation.copy(G.tagRot);
   if (figur.userData.mood !== G.baseMood) setMood(figur, G.baseMood);
@@ -263,6 +279,65 @@ export function playGag(figur, g, t) {
       const j = win(t, 1.1, 1.3);
       armL.rotation.x = -2.9 * j; armR.rotation.x = -2.9 * j; armL.rotation.z = 0.4 * j; armR.rotation.z = -0.4 * j;
       head.rotation.y = -0.8 * j; head.rotation.x = -0.2 * j;
+      break;
+    }
+    case 'zivi_5/kauf': { // Sonnenbrille hoch, Mützen-Streifen leuchtet, Pfeife in den Mund, pfeift mit geschlossenen Augen
+      const up = win(t, 0, 0.5);
+      for (const s of G.sunglasses) { s.m.position.y = s.y + 0.32 * up; s.m.position.z = s.z - 0.12 * up; }
+      armR.rotation.x = -2.4 * up; armR.rotation.z = -0.4 * up;
+      if (t > 0.9) { armR.rotation.x = -2.0; armR.rotation.z = -0.3; pr.pfeifeMund.visible = true; head.rotation.x = -0.2 + 0.05 * Math.sin(t * 25); }
+      if (t > 1.0 && t < D && figur.userData.mood !== 'schlaeft') setMood(figur, 'schlaeft');
+      if (t >= D && figur.userData.mood !== 'zufrieden') setMood(figur, 'zufrieden');
+      break;
+    }
+    case 'zivi_5/ablehnung': { // nickt, richtet sich noch gerader auf, tippt sich an die Stirn
+      head.rotation.x = 0.25 * bump(t, 0, 0.5) - 0.15 * win(t, 0.5, 0.8);
+      armR.rotation.x = -2.7 * win(t, 0.6, 1.0); armR.rotation.z = -0.55 * win(t, 0.6, 1.0);
+      armL.rotation.z = 0.2 * win(t, 0.5, 0.8); armR.rotation.z -= 0.0;
+      break;
+    }
+    case 'zivi_5/immer': { // greift ans Band, prüft die Pfeife; steht stramm
+      const b = bump(t, 0, D);
+      armR.rotation.x = -1.7 * b; armR.rotation.z = -0.5 * b;
+      head.rotation.x = -0.1;
+      break;
+    }
+    case 'bauer_nok/kauf': { // stellt den Reissack ab, der Kuhreiher landet drauf, Blick zum Himmel
+      const down = win(t, 0, 0.6);
+      armL.rotation.x = -1.2 * (1 - down) * bump(t, 0, 0.6) + 0.4 * down;
+      if (G.props.sackBoden) { pr.sackBoden.visible = t > 0.3; }
+      if (figur.userData.extrasObj?.sack) figur.userData.extrasObj.sack.visible = t < 0.3;
+      pr.reiher.visible = t > 0.8; pr.reiher.position.y = 0.9 + 1.4 * (1 - win(t, 0.8, 1.3)); pr.reiher.rotation.y = -0.6 + 0.3 * Math.sin(t * 2);
+      head.rotation.x = 0.25 * bump(t, 0.4, 1.0) - 0.45 * win(t, 1.2, 1.6);
+      break;
+    }
+    case 'kletterer_1/kauf': { // schaut hoch, Nuss fällt auf den Helm, zweite Delle, hebt sie auf: „Gratis.“
+      head.rotation.x = -0.6 * bump(t, 0, 0.9);
+      pr.nussFall.visible = t < 0.95; pr.nussFall.position.y = 6 - 5.9 * Math.min(1, (t / 0.85) ** 2) + 2.6;
+      pr.delle2.visible = t > 0.85;
+      if (t > 0.85) { head.rotation.x = 0.1 * Math.sin(t * 30) * bump(t, 0.85, 1.1); }
+      armR.rotation.x = 0.9 * win(t, 1.1, 1.5) - 1.6 * win(t, 1.5, 1.8); // runter, dann hochhalten
+      pr.nussFall.visible = pr.nussFall.visible || t > 1.5; if (t > 1.5) pr.nussFall.position.set(0.3, 2.1, 0.5);
+      break;
+    }
+    case 'kletterer_1/ablehnung': { // umarmt die nächste Palme, in drei Zügen oben, winkt von dort
+      const zug = Math.floor(t / 0.5);
+      armL.rotation.x = -2.6 + 0.5 * ((zug + 1) % 2); armR.rotation.x = -2.6 + 0.5 * (zug % 2);
+      P.legs[0].rotation.x = -0.9 * (zug % 2); P.legs[1].rotation.x = -0.9 * ((zug + 1) % 2);
+      head.rotation.x = -0.6;
+      if (t > 1.6) { armR.rotation.x = -2.9; armR.rotation.z = -0.3 + 0.3 * Math.sin(t * 14); head.rotation.x = 0.3; }
+      break;
+    }
+    case 'paar_1/kauf': { // Handy hoch, Selfie mit Blitz, dann aufs Display schauen: „perfekt“
+      armR.rotation.x = -2.2 * win(t, 0, 0.4); armR.rotation.z = -0.5 * win(t, 0, 0.4);
+      pr.blitz.visible = t > 0.8 && t < 0.95;
+      if (t > 1.1) { armR.rotation.x = -1.5; armR.rotation.z = -0.2; head.rotation.x = 0.4; }
+      break;
+    }
+    case 'paar_1/ablehnung': { // Mundwinkel runter, gegenseitiges Schulterklopfen, trotzdem ein Foto
+      armL.rotation.x = -1.2 * bump(t, 0.2, 0.9); armL.rotation.z = 0.8 * bump(t, 0.2, 0.9);
+      head.rotation.z = 0.15 * bump(t, 0, 0.8);
+      armR.rotation.x = -2.2 * win(t, 1.0, 1.3); pr.blitz.visible = t > 1.35 && t < 1.5;
       break;
     }
     case 'rentner_1/kauf': { // Blitz ins eigene Gesicht, Socken hochziehen, strahlen

@@ -7,6 +7,7 @@
 // ?what=nong  → Barkeeper Nong hinter der Theke (links neutral/tagsüber, rechts müde/abends), t über ?t=
 // ?what=huette → Finale-Hütte in allen Zuständen + Wegweiser normal/„Jetzt stimmt es.“
 // ?what=neue  → die neuen Kunden (Fischhändler, lauter Typ, Kreuzfahrt-Tante, Fragesteller) mit kundenExtras()
+// ?what=neue2 → Bauer Nok, Kletterer Dao, Frau Trillerpfeife (Zivi), Flitterwochen-Paar
 import * as THREE from 'three';
 import { toonMesh, textTexture } from './toon.js';
 import { schluffi, runner, sandal, sneaker, pose, POSES, buildNong, updateNong, setNongMood, kundenExtras, updateKundenExtras } from './figures.js';
@@ -52,10 +53,10 @@ if (WHAT === 'feet') {
   for (const [shoe, x] of items) { shoe.position.set(x, 0, 0); shoe.scale.setScalar(1.6); scene.add(shoe); }
   camera.position.set(0, 4.2, 4.5);
   camera.lookAt(0, 0.3, 0);
-} else if (WHAT === 'neue') {
+} else if (WHAT === 'neue' || WHAT === 'neue2') {
   const kat = await fetch('./data/kunden.json').then((r) => r.json());
   const kunden = normalizeKatalog(kat);
-  const ids = ['fischer_1', 'lauter_typ_1', 'touristin_1', 'zivi_4'];
+  const ids = q('what') === 'neue2' ? ['bauer_nok', 'kletterer_1', 'zivi_5', 'paar_1'] : ['fischer_1', 'lauter_typ_1', 'touristin_1', 'zivi_4'];
   ids.forEach((id, i) => {
     const k = kunden.find((x) => x.id === id); if (!k) return;
     const fig = buildKunde(k, 7 + i); kundenExtras(fig, k); updateKundenExtras(fig, 1.3);
@@ -108,13 +109,13 @@ if (WHAT === 'feet') {
   const kunden = normalizeKatalog(kat);
   const byId = new Map(kunden.map((k) => [k.id, k]));
   const gags = texte.reveal_gags;
-  const cols = 5, dx = 4.6, dz = 7.5;
+  const cols = 5, dx = 4.6, dz = 7.5, rows = Math.ceil(gags.length / cols);
   gags.forEach((g, i) => {
     const k = byId.get(g.id);
     if (!k) return;
-    const fig = buildKunde(k, 3);
+    const fig = buildKunde(k, 3); kundenExtras(fig, k);
     const col = i % cols, row = Math.floor(i / cols);
-    fig.position.set((col - (cols - 1) / 2) * dx, 0, (row - 1) * dz);
+    fig.position.set((col - (cols - 1) / 2) * dx, 0, (row - (rows - 1) / 2) * dz);
     scene.add(fig);
     // Endzustand; immer-Gags auf dem Höhepunkt
     playGag(fig, g, g.wann === 'immer' ? g.dauer_s * 0.5 : g.dauer_s);
@@ -122,7 +123,7 @@ if (WHAT === 'feet') {
     const label = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.3), new THREE.MeshBasicMaterial({ map: tex }));
     label.position.set(fig.position.x, 4.4, fig.position.z); label.rotation.x = -0.6; scene.add(label);
   });
-  camera.position.set(0, 15, 19);
+  camera.position.set(0, 7 + 4.2 * rows, 8 + 5.5 * rows);
   camera.lookAt(0, 0.5, 0.5);
 } else {
   const h = hotel();

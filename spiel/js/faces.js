@@ -10,7 +10,7 @@
 //         glasses (true/'lese' = Lesebrille, 'sonnen' = Sonnenbrille, 'sport' = Sportbrille), wrinkles (Oma),
 //         seed (kleine Abweichungen bei Augenabstand/-größe und Mundbreite, damit Kunden sich unterscheiden), look [px, py],
 //         lids [links, rechts] (Lid je Auge 0…1, überschreibt die Stimmung — z. B. ein Auge halb zu),
-//         brows [links, rechts] mit 'hoch' | 'normal' (eine Braue gerissen, z. B. beim Gruß).
+//         brows [links, rechts] mit 'hoch' | 'normal' (eine Braue gerissen, z. B. beim Gruß), stirnstreifen (blasser Mützen-Streifen).
 //   Katalog-Felder aus data/kunden.json gehen direkt rein: hautton (hell|mittel|dunkel|sonnenbrand), bart
 //   (keiner|stoppel|vollbart|schnauzer), brille (keine|sonnenbrille|lesebrille|sportbrille), haare (weiss → graue
 //   Brauen + Falten). kundeFace(datensatz, mood) nimmt den ganzen Datensatz; kundeSkin(datensatz) liefert die Kopffarbe.
@@ -112,6 +112,7 @@ function normalize(o) {
     look: o.look ?? null,
     lids: o.lids ?? null,
     brows: o.brows ?? null,
+    stirnstreifen: !!o.stirnstreifen,
     beardColor: cssColor(o.beardColor, weiss ? '#d8d8e0' : '#6b4423'),
     browColor: weiss ? '#d8d8e0' : null,
   };
@@ -395,6 +396,11 @@ function paint(kind, mood, o) {
   const lidColor = K.lid ?? skin;
 
   const [c, ctx] = makeCanvas();
+  if (o.stirnstreifen) { // blasser Streifen auf der Stirn, wo sonst die Dienstmütze sitzt (Zivi-Tell)
+    ctx.fillStyle = 'rgba(255, 236, 214, 0.85)';
+    ctx.beginPath(); ctx.moveTo(130, 70); ctx.quadraticCurveTo(512, 20, 894, 70); ctx.lineTo(884, 185); ctx.quadraticCurveTo(512, 150, 140, 185); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(120, 60, 40, 0.35)'; ctx.lineWidth = 5; ctx.stroke();
+  }
   if (K.blush) {
     ctx.fillStyle = 'rgba(255, 110, 120, 0.55)';
     ctx.beginPath(); ctx.arc(215, 600, 70, 0, Math.PI * 2); ctx.fill();
@@ -424,7 +430,7 @@ function paint(kind, mood, o) {
 
 const canvasCache = new Map();
 const texCache = new Map();
-const key = (kind, mood, o) => `${kind}|${mood}|${o.skin}|${o.beard}|${o.glasses}|${o.wrinkles ? 1 : 0}|${o.seed}|${o.look ? o.look.join(',') : ''}|${o.lids ? o.lids.join(',') : ''}|${o.brows ? o.brows.join(',') : ''}|${o.beardColor}|${o.browColor ?? ''}`;
+const key = (kind, mood, o) => `${kind}|${mood}|${o.skin}|${o.beard}|${o.glasses}|${o.wrinkles ? 1 : 0}|${o.seed}|${o.look ? o.look.join(',') : ''}|${o.lids ? o.lids.join(',') : ''}|${o.brows ? o.brows.join(',') : ''}|${o.stirnstreifen ? 'S' : ''}|${o.beardColor}|${o.browColor ?? ''}`;
 
 /** Rohes Canvas (gecacht) — für 2D-Vorschauen oder eigene Texturen. */
 export function faceCanvas(kind, mood = 'neutral', opts = {}) {
@@ -448,6 +454,9 @@ export const FACE_EXTRAS = {
   touristin_1: { lids: [0.72, 0.72], wrinkles: true }, // Augen nur als Lachfalten
   lauter_typ_1: { look: [0, -8] },                     // Augen weit, alles ein Ausrufezeichen
   zivi_4: { look: [-34, 0] },                          // scannt den Markt statt dich anzuschauen
+  bauer_nok: { lids: [0.5, 0.5] },                     // Augen zu Schlitzen gegen die Sonne
+  kletterer_1: { lids: [0.2, 0.85] },                  // ein Auge zugekniffen (Kokosnuss von gestern)
+  zivi_5: { stirnstreifen: true },                     // Mützen-Streifen auf der Sonnenbrand-Stirn
 };
 
 /** Kundengesicht direkt aus einem Datensatz von data/kunden.json; mood fehlt → stimmung_start. */

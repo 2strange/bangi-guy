@@ -3,7 +3,8 @@
 import * as THREE from 'three';
 import { buildWorld } from './world.js';
 import { schluffi } from './figures.js';
-import { buildKunde, setMood, setRevealed, holdPose } from './kunden.js';
+import { buildKunde, setMood, setRevealed, holdPose, setRegen } from './kunden.js';
+import { kundenExtras, updateKundenExtras } from './figures.js';
 import { pose as figurePose, updateNong, setNongMood } from './figures.js';
 import { initLicht } from './licht.js';
 import { zielMarker, updateMarker } from './marker.js';
@@ -22,7 +23,7 @@ import {
   mergeTexte, mergeKundenKatalog, normalizeOptionen, toSave, fromSave, hatFortschritt, fillText,
   normalizeTutorial, tutorialStart, tutorialEvent, tutorialSkip,
   normalizeWoche, tagesziel, tagModifikator, hudZiel, finaleStufe, KUNDEN_PRO_TAG, kalibriereWoche, neueWoche, finaleKarte,
-  normalizeEreignisse, ereignisFuerTag, ereignisKundenFaktor, ereignisZiviExtra, kundenFuerTag, figurDef,
+  normalizeEreignisse, ereignisFuerTag, ereignisKundenFaktor, ereignisZiviExtra, kundenFuerTag, ereignisFenster,
   normalizeStimmen, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
   normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
@@ -239,13 +240,17 @@ function spawnKunden(day = 1) {
     const a = anchors[def.id];
     const n = seen[a.id] = (seen[a.id] || 0) + 1; // Notnagel: geteilter Platz versetzt
     const pos = { x: a.x + (n - 1) * 2.2, z: a.z + (n - 1) * 1.3 };
-    const group = buildKunde(figurDef(def, game.ereignis), idSeed(def.id), outfits[def.id]); // Regen: alle in Gummistiefeln, Logik bleibt am Original
+    const group = buildKunde(def, idSeed(def.id), outfits[def.id]);
+    kundenExtras(group, def); // Kleinkram je Kunde (figures.js)
     kundenGroup.add(group);
     if (def.figuren === 2) { // Paar: zweite Figur im Partnerlook daneben, ein Dialog, ein Verkauf
-      const partner = buildKunde(figurDef(def, game.ereignis), idSeed(def.id) + 1, outfits[def.id]);
+      const partner = buildKunde(def, idSeed(def.id) + 1, outfits[def.id]);
+      kundenExtras(partner, def);
       partner.position.set(1.1, 0, 0.15); partner.rotation.y = -0.2; group.add(partner);
       setMood(partner, def.stimmung_start || 'neutral');
+      group.userData.partner = partner;
     }
+    if (regenAktiv) { setRegen(group, true); if (group.userData.partner) setRegen(group.userData.partner, true); } // Regen läuft schon: Gummistiefel
     setMood(group, def.stimmung_start || 'neutral');
     // kein Kreisen: ein Punkt, der Kunde bleibt an seinem Platz und tut etwas
     const pts = [pos];
@@ -812,7 +817,8 @@ function confirmDialog() {
 }
 function endDialog() {
   // der Kunde ruft noch etwas hinterher (englischer Bark), je nach Ausgang
-  if (dialog && talking && (dialog.result === 'kauf' || dialog.result === 'reveal')) bark(talking, 'kauf');
+  if (dialog && talking && dialog.result === 'reveal' && talking.def.stimme === 'zivi_pfeife') sfx('pfeife'); // Frau Trillerpfeife: ihr Reveal ist der Pfiff
+  else if (dialog && talking && (dialog.result === 'kauf' || dialog.result === 'reveal')) bark(talking, 'kauf');
   else if (dialog && talking && dialog.result === 'ablehnung') bark(talking, 'ablehnung');
   dialog = null;
   ui.hideBubble();
@@ -834,6 +840,7 @@ function showSoldOut() {
 }
 // Tagesbilanz-Karte, danach neuer Tag
 function endDay(vorspann = null, { fuss = null } = {}) {
+  if (game.ereignis && game.ereignisAktiv) ereignisEnde(game.ereignis, { leise: true }); // Tag rum: Requisite aus, Wetter klar
   dialog = null;
   ui.hideBubble();
   ui.showPrompt(null);
@@ -877,23 +884,43 @@ function startNewDay() {
 }
 // Morgen-Routine: Uhr, Mentor, Streifen, Kundschaft des Tages, Spieler am Start
 let hinweisBis = 0; // Einblendung zum Tagesereignis
-let musikWiederAt = 0; // Stromausfall: Musik setzt kurz aus
-// Ereignis-Klang je id (audio.js): Regen als Wetter, Schiffshorn, Möwen-Gezeter, Party, Stromausfall
-function ereignisTon(ev) {
-  const id = ev?.id || '';
-  try { audio?.ambience?.setWetter?.(id === 'regenschauer' || id === 'regen' ? 'regen' : 'klar'); } catch (e) { /* ohne Ton */ }
-  if (id === 'kreuzfahrtschiff' || id === 'kreuzfahrt') sfx('schiffshorn_fern', { pan: 0.3 });
-  else if (id === 'moewe_klaut' || id === 'moewe') sfx('moewe_klaut');
-  else if (id === 'pong_geburtstag') sfx('party');
-  else if (id === 'stromausfall') { sfx('stromausfall'); try { audio?.music?.stop?.(); musikWiederAt = performance.now() + 6000; } catch (e) { /* ohne Ton */ } }
+let regenAktiv = false;
+// Ereignis starten/beenden: Zeitfenster (zeitpunkt/dauer_s), Requisite (ereignisse.js, Party, Stromausfall), Klang (audio.ereignis), Gummistiefel
+function ereignisStart(ev) {
+  game = { ...game, ereignisAktiv: true };
+  ui.showPrompt(ev.hinweis); hinweisBis = performance.now() + 8000;
+  setEreignisRequisite(ev, true);
+  try { audio?.ereignis?.(ev.sound, 'start', { pan: 0.3 }); } catch (e) { /* ohne Ton */ }
+  if ((ev.wirkung.tells_verdeckt || []).includes('schuhe')) setAlleRegen(true);
+}
+function ereignisEnde(ev, { leise = false } = {}) {
+  game = { ...game, ereignisAktiv: false };
+  if (!leise && ev.ende) { ui.showPrompt(ev.ende); hinweisBis = performance.now() + 8000; }
+  setEreignisRequisite(ev, false);
+  try { audio?.ereignis?.(ev.sound, 'ende'); } catch (e) { /* ohne Ton */ }
+  setAlleRegen(false);
+}
+function setAlleRegen(an) {
+  regenAktiv = an;
+  for (const k of kunden) { setRegen(k.group, an); if (k.group.userData.partner) setRegen(k.group.userData.partner, an); }
+}
+function setEreignisRequisite(ev, an) {
+  const P = world.ereignisProps || {};
+  try {
+    if (ev.requisite === 'moewe') { if (an) P.moewe?.userData.start({ x: state.x, z: state.z }, 1); else P.moewe?.userData.stop(); }
+    else if (ev.requisite === 'wolke') { if (an) P.wolke?.userData.start(); else P.wolke?.userData.stop(); }
+    else if (ev.requisite === 'schiff') { if (an) P.schiff?.userData.start(); else P.schiff?.userData.stop(); }
+    else if (ev.requisite === 'kuchen') world.markt?.party?.(an);
+    else if (ev.requisite === 'kerze') licht.stromausfall?.(an);
+    world.setEreignis?.(an ? ev.id : null);
+  } catch (e) { /* ohne Requisite */ }
 }
 function morgen() {
   zielGemeldet = false;
   // Tagesereignis: Einblendung, Requisite (world.setEreignis, falls vorhanden), Sound (audio.ereignis, falls vorhanden)
   const ev = game.ereignis;
-  if (ev) { ui.showPrompt(ev.hinweis); hinweisBis = performance.now() + 8000; } else ui.showPrompt(null);
-  try { world.setEreignis?.(ev?.requisite || ev?.id || null); } catch (e) { /* ohne Requisite */ }
-  ereignisTon(ev);
+  ui.showPrompt(null);
+  if (ev && game.ereignisAktiv) ereignisStart(ev); // morgen: sofort; mittag/abend: der Loop startet es im Zeitfenster
   tagesuhr = initialClock();
   applyTageszeit();
   placeMentor(false);
@@ -1307,6 +1334,18 @@ function setupScene() {
     return;
   }
   if (SCENE === 'menue') { openMenu(); return; }
+  if (SCENE === 'ereignis') { // ?scene=ereignis&id=regenschauer: Tag 2, Ereignis läuft sofort
+    const ev = ereignisse.find((e) => e.id === SCENE_ID) || ereignisse[0];
+    game = { ...game, tag: 2, ereignis: ev, ereignisAktiv: false }; refreshHud();
+    ereignisStart(ev);
+    for (const p of Object.values(world.ereignisProps || {})) if (p.userData.an) { p.userData.update(1); p.userData.update(31); }
+    const k = kunden[0]; const pk = k.npc.points[0]; // neben dem ersten Kunden stehen (Gummistiefel im Bild)
+    k.npc = { ...k.npc, x: pk.x, z: pk.z, yaw: 0, moving: false, pause: 99 };
+    state = { ...state, x: pk.x + 1.7, z: pk.z - 1.8, yaw: Math.atan2(-1.7, 1.8), speed: 0 };
+    k.npc.yaw = Math.atan2(state.x - k.npc.x, state.z - k.npc.z); k.look = 0; applyKunde(k);
+    mode = 'free';
+    return;
+  }
   if (SCENE === 'finale') { game = { ...game, tag: woche.tage.length, geld: 710, finale: 'gut' }; refreshHud(); applyFinale('gut'); showFinaleKarte(); return; }
   if (SCENE === 'huette') { state = { ...state, x: -57, z: 10, yaw: Math.PI, speed: 0 }; camYaw += Math.PI; mode = 'free'; return; } // Finale-Hütte am Weststrand, Kamera von der Meerseite
   if (SCENE === 'tutorial') {
@@ -1444,6 +1483,8 @@ if (SNAP) {
       tagesuhr = clockStep(tagesuhr, dt);
       applyTageszeit();
       if (abendBeginnt(prev, tagesuhr.t01)) { placeMentor(true); sunsetAt = 0; tutorialFire('sonnenuntergang'); }
+      // Ereignis-Zeitfenster (Regenschauer mittags für 120 s): Start und Ende an der Uhr
+      if (game.ereignis) { const f = ereignisFenster(game.ereignis); if (!game.ereignisAktiv && prev < f.start && tagesuhr.t01 >= f.start && f.ende > f.start) ereignisStart(game.ereignis); else if (game.ereignisAktiv && tagesuhr.t01 >= f.ende && f.ende < 1) ereignisEnde(game.ereignis); }
       // Nong tagsüber: ein Zwischenruf pro Vorbeigehen am Tresen, höchstens alle 30 s
       const amTresen = inBar(state, BUILDING_POS.bar, 5);
       if (amTresen && !warAmTresen && !barBeendetTag(tagesuhr.t01) && now > zwischenrufAt) { zwischenrufAt = now + 30000; ui.showBark('barkeeper', zwischenrufLine(abendTexte, lineIdx++), 3.2); nongSag('gruss', now); try { audio?.bark?.('barkeeper', 'zwischenruf', { pan: panFor(barkeeperObj) }); } catch (e) { /* ohne Ton */ } }
@@ -1454,7 +1495,8 @@ if (SNAP) {
     }
     if (nearK) tutorialFire('kunde_in_reichweite');
     if (hinweisBis && now > hinweisBis) { hinweisBis = 0; if (mode === 'free') ui.showPrompt(null); }
-    if (musikWiederAt && now > musikWiederAt) { musikWiederAt = 0; try { if (optionen.musik) audio?.music?.start?.(); } catch (e) { /* ohne Ton */ } }
+    for (const p of Object.values(world.ereignisProps || {})) if (p.userData.an) p.userData.update(now / 1000);
+    for (const k of kunden) updateKundenExtras(k.group, now / 1000);
     updateTutorial(now);
     updatePatrol(dt, now);
     // Schritt im Sand: jede volle Watschel-Periode (1.6 Einheiten ≈ 0.4 s Gehen)

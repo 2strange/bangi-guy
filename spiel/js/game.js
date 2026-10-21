@@ -97,7 +97,7 @@ export function pickLine(list, idx = 0) {
 export function kundeStatus(state, id) { return state.status[id] || 'neutral'; }
 
 export function sell(state, kunde, lineIdx = 0, { beschlagnahmt = ZIVI_BESCHLAGNAHMT, posten = null, pos = null, preis = null } = {}) {
-  const faktor = Number.isFinite(state.ereignis?.wirkung?.preis_faktor) ? state.ereignis.wirkung.preis_faktor : 1; // Tagesereignis (Markttag, Flaute)
+  const faktor = Number.isFinite(wirkungAktiv(state).preis_faktor) ? wirkungAktiv(state).preis_faktor : 1; // Tagesereignis (Stromausfall), nur im Zeitfenster
   const zahlt = Math.round((Number.isFinite(preis) ? preis : kunde.zahlt) * faktor); // Verhandlung kann den Preis anheben
   if (state.verhaftet) return { state, result: 'verhaftet', text: '' };
   if (kundeStatus(state, kunde.id) !== 'neutral') return { state, result: 'schon_erledigt', text: '' };
@@ -145,7 +145,7 @@ export function newDay(state, { nacht = 'bar', modifikator = null, ereignis = nu
   const heat = Math.min(MAX_HEAT - 1, Math.max(0, Math.max(gekuehlt, Number.isFinite(modifikator?.heat_start) ? modifikator.heat_start : 0) + (w.heat || 0))); // Tagesmodifikator „Razzia“ + Ereignis
   // Restware bleibt über Nacht in der Tasche (Nachschub gibt es morgens beim Mentor obendrauf); nach einer Verhaftung ist sie weg
   const ware = Math.max(0, Math.min(MAX_WARE, (isArrested(state) ? 0 : state.ware) + (w.ware || 0))); // Ereignis: Möwe klaut / Geschenk
-  return { ...state, geld: state.geld, ware, heat, ereignis: ereignis || null, tag: state.tag + 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, tageOhneVorfall, verkaeufeHeute: [], zivisAbgelehntHeute: 0, mangosHeute: 0 };
+  return { ...state, geld: state.geld, ware, heat, ereignis: ereignis || null, ereignisAktiv: !!ereignis && ereignisFenster(ereignis).start === 0, tag: state.tag + 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, tageOhneVorfall, verkaeufeHeute: [], zivisAbgelehntHeute: 0, mangosHeute: 0 };
 }
 
 // Heat als Text/Icons für das HUD
@@ -492,7 +492,7 @@ export function normalizeEreignisse(json) {
 }
 /** Heat-Deckel des Tages (Pongs Geburtstag): Anstiege gehen nicht über heat_max hinaus, was schon drüber ist, bleibt */
 export function heatCap(state, heat) {
-  const cap = state.ereignis?.wirkung?.heat_max;
+  const cap = wirkungAktiv(state).heat_max;
   return Number.isFinite(cap) ? Math.min(heat, Math.max(state.heat, cap)) : heat;
 }
 /** Kundschaft des Tages mit Ereignis: Spawns aus spawn_aus fehlen, kunden_typen_plus kommen zusätzlich (falls im Katalog) */
@@ -530,7 +530,17 @@ export function ereignisFuerTag(ereignisse, { seed = 1, woche = 1, tag = 1, tuto
   return list[list.length - 1];
 }
 export const ereignisKundenFaktor = (ereignis) => (Number.isFinite(ereignis?.wirkung?.kunden_faktor) ? ereignis.wirkung.kunden_faktor : 1);
-export const ereignisZiviExtra = (ereignis) => (Number.isFinite(ereignis?.wirkung?.zivi_extra) ? Math.max(0, Math.round(ereignis.wirkung.zivi_extra)) : 0);
+export const ereignisZiviExtra = (ereignis) => (Number.isFinite(ereignis?.wirkung?.zivi_extra) ? Math.round(ereignis.wirkung.zivi_extra) : 0); // auch negativ (Fähre fällt aus)
+/** Zeitfenster des Ereignisses im Tag (t01): morgen = 0, mittag/abend = Phasenbeginn; dauer_s 0 = bis Tagesende */
+export function ereignisFenster(ereignis) {
+  if (!ereignis) return null;
+  const start = ereignis.zeitpunkt === 'mittag' ? PHASE_AT.mittag : ereignis.zeitpunkt === 'abend' ? PHASE_AT.abend : 0;
+  const ende = ereignis.dauer_s > 0 ? Math.min(1, start + ereignis.dauer_s / DAY_LENGTH) : 1;
+  return { start, ende };
+}
+export const ereignisAktiv = (ereignis, t01) => { const f = ereignisFenster(ereignis); return !!f && t01 >= f.start && t01 < f.ende; };
+/** Wirkung, die gerade gilt: Spielzustand merkt sich per ereignisAktiv, ob das Fenster offen ist (morgen: sofort) */
+export const wirkungAktiv = (state) => (state?.ereignis && state.ereignisAktiv !== false ? state.ereignis.wirkung : {});
 
 // ---------- Kalibrierung des Wochenziels: was ein guter Spieler in der Woche einnimmt, davon ein Anteil ----------
 export const WOCHENZIEL = { anteil: 0.7, quote: 0.9, kostenProTag: 10, schritt: 50, mittelAnteil: 0.6 }; // kostenProTag = eine Mango (MANGO_PREIS)

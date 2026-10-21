@@ -545,10 +545,13 @@ export function setNongMood(g, mood) {
 // fischgeruch (Stinklinien + Fliege), bauchtasche, sonnenbrand_streifen (helle Trägerränder auf den Armen),
 // kreuzfahrt_baendchen (Armband „DECK 7“), rucksack_leer (baumelnder Riemen + Anhänger „0 kg“),
 // faehrenticket (Ticket in der Gesäßtasche), handschellen_umriss (Umriss unterm Hemd an der Hüfte).
-export function kundenExtras(figur, k) {
+// opts.index: bei Kunden mit figuren: 2 die Nummer der Figur (0/1) — das Paar teilt sich Kranz (0) und Cap (1),
+// damit die Silhouetten unterscheidbar bleiben.
+export function kundenExtras(figur, k, { index = 0 } = {}) {
   if (!figur || figur.userData.extrasDran) return figur;
   const P = figur.userData.parts; if (!P) return figur;
   const extras = new Set(k?.extras ?? []);
+  if ((k?.figuren ?? 1) === 2 && extras.has('blumenkranz') && extras.has('just_married_cap')) { if (index === 0) extras.delete('just_married_cap'); else extras.delete('blumenkranz'); }
   const hipY = P.legs?.[0]?.position.y ?? 1.1, shoulderY = P.arms?.[0]?.position.y ?? hipY + 0.85;
   const E = figur.userData.extrasObj = {};
   const plateTex = (text, w = 384, h = 128) => textTexture(text, { bg: '#fff1c2', fg: '#2b1b0b', font: 'bold 70px sans-serif', w, h });
@@ -588,9 +591,81 @@ export function kundenExtras(figur, k) {
     for (const dz of [-0.07, 0.07]) { const c = toonMesh(new THREE.TorusGeometry(0.075, 0.022, 5, 10), 0x6a6a7a, { outline: 0.012 }); c.position.z = dz; c.rotation.y = Math.PI / 2; g.add(c); }
     figur.add(g);
   }
+  // --- Accessoires, die buildKunde() nicht kennt ---
+  if (k?.accessoire === 'kegelhut' && P.head) {
+    const hat = toonMesh(new THREE.ConeGeometry(0.95, 0.55, 14), 0xe3b04b, { outline: 0.04 }); hat.position.set(0, 0.5, 0); hat.rotation.z = 0.06; P.head.add(hat);
+    const band = toonMesh(new THREE.TorusGeometry(0.12, 0.02, 6, 10, Math.PI), 0x222222, { outline: 0.01 }); band.position.set(0, -0.3, 0.2); band.rotation.x = 0.4; P.head.add(band);
+  }
+  if (k?.accessoire === 'helm_delle' && P.head) {
+    const helm = toonMesh(new THREE.SphereGeometry(0.56, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), 0xffd54a, { outline: 0.045 }); helm.position.set(0, 0.1, 0); helm.rotation.z = 0.12; P.head.add(helm);
+    const brim = toonMesh(new THREE.BoxGeometry(0.5, 0.05, 0.3), 0xffd54a, { outline: 0.03 }); brim.position.set(0, 0.18, 0.55); P.head.add(brim);
+    const dent = toonMesh(new THREE.SphereGeometry(0.16, 8, 6), 0xe8a034, { outline: 0.02 }); dent.geometry.scale(1, 0.5, 1); dent.position.set(0.22, 0.52, 0.15); dent.rotation.z = -0.6; P.head.add(dent);
+    E.helm = helm;
+  }
+  if (extras.has('schlamm_bis_knie')) {
+    for (const [i, s] of [[0, -1], [1, 1]]) { const leg = P.legs?.[i]; if (!leg) continue; const mud = toonMesh(new THREE.CylinderGeometry(0.16, 0.19, 0.5, 10), 0x6b4a2a, { outline: 0.03 }); mud.position.set(s * 0.18, -hipY + 0.42, -0.03); leg.add(mud); }
+  }
+  if (extras.has('hose_hochgekrempelt')) {
+    for (const [i, s] of [[0, -1], [1, 1]]) { const leg = P.legs?.[i]; if (!leg) continue; const cuff = toonMesh(new THREE.CylinderGeometry(0.19, 0.2, 0.12, 10), 0x55667a, { outline: 0.025 }); cuff.position.set(s * 0.18, -hipY + 0.68, -0.03); leg.add(cuff); }
+  }
+  if (extras.has('reissack')) {
+    const sack = toonMesh(new THREE.SphereGeometry(0.34, 10, 8), 0xd8a85a, { outline: 0.035 }); sack.geometry.scale(1, 1.3, 0.8); sack.position.set(-0.6, shoulderY + 0.25, -0.15); sack.rotation.z = 0.3; figur.add(sack);
+    const tie = toonMesh(new THREE.TorusGeometry(0.12, 0.03, 6, 10), 0x8b5a2b, { outline: 0.012 }); tie.position.set(-0.68, shoulderY + 0.66, -0.15); tie.rotation.x = Math.PI / 2; figur.add(tie);
+    E.sack = sack;
+  }
+  if (extras.has('kokosnuss') && P.arms?.[1]) {
+    const nut = toonMesh(new THREE.SphereGeometry(0.26, 10, 8), 0x6b4423, { outline: 0.035 }); nut.position.set(0.32, -0.55, 0.3); P.arms[1].add(nut);
+    for (let i = 0; i < 3; i++) { const dot = toonMesh(new THREE.SphereGeometry(0.04, 6, 5), 0x3a2211, { outline: 0 }); dot.position.set(0.32 + Math.cos(i * 2.1) * 0.1, -0.5, 0.52 + Math.sin(i * 2.1) * 0.08); P.arms[1].add(dot); }
+  }
+  if (extras.has('seil_um_huefte')) {
+    const rope = toonMesh(new THREE.TorusGeometry(0.5, 0.06, 6, 20), 0xd8a85a, { outline: 0.02 }); rope.position.set(0, hipY + 0.12, 0); rope.rotation.x = Math.PI / 2 + 0.1; figur.add(rope);
+    const loop = toonMesh(new THREE.TorusGeometry(0.2, 0.05, 6, 14), 0xd8a85a, { outline: 0.02 }); loop.position.set(0.5, hipY - 0.2, 0.1); loop.rotation.y = Math.PI / 2; figur.add(loop);
+  }
+  if (extras.has('pflaster_stirn') && P.head) {
+    const pl = toonMesh(new THREE.BoxGeometry(0.3, 0.12, 0.04), 0xf2d2b0, { outline: 0.015 }); pl.position.set(0.15, 0.3, 0.47); pl.rotation.set(-0.5, 0.2, -0.4); P.head.add(pl);
+    for (const dx of [-0.07, 0.07]) { const l = toonMesh(new THREE.BoxGeometry(0.03, 0.12, 0.045), 0xe8463a, { outline: 0, basic: true }); l.position.set(dx, 0, 0); pl.add(l); }
+  }
+  if (extras.has('pfeife_am_band')) {
+    figur.add(limb(V(-0.22, shoulderY + 0.25, 0.2), V(0.02, shoulderY - 0.4, 0.45), 0.015, 0x222222, { outline: 0.008 }));
+    figur.add(limb(V(0.22, shoulderY + 0.25, 0.2), V(0.02, shoulderY - 0.4, 0.45), 0.015, 0x222222, { outline: 0.008 }));
+    const w = toonMesh(new THREE.CylinderGeometry(0.06, 0.06, 0.2, 8), 0xc9cfdc, { outline: 0.015 }); w.position.set(0.02, shoulderY - 0.5, 0.47); w.rotation.z = Math.PI / 2; figur.add(w);
+    E.pfeife = w;
+  }
+  if (extras.has('haltung_gerade')) { // steht stramm: Arme leicht nach außen, Kinn hoch (Geh-Pose setzt nur rotation.x)
+    for (const [i, s] of [[0, -1], [1, 1]]) if (P.arms?.[i]) P.arms[i].rotation.z = -s * 0.14;
+    if (P.head) P.head.rotation.x = -0.08;
+  }
+  if (extras.has('just_married_cap') && P.head) {
+    const capTop = toonMesh(new THREE.SphereGeometry(0.56, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), 0xffffff, { outline: 0.045 }); capTop.position.set(0, 0.2, 0); P.head.add(capTop);
+    const brim = toonMesh(new THREE.BoxGeometry(0.6, 0.07, 0.55), 0xffffff, { outline: 0.035 }); brim.position.set(0, 0.36, 0.62); brim.rotation.x = -0.2; P.head.add(brim);
+    const t = tag('JUST MARRIED', 0.56, 0.16); t.position.set(0, 0.48, 0.5); t.rotation.x = -0.3; P.head.add(t);
+  }
+  if (extras.has('blumenkranz') && P.head) {
+    const ring = toonMesh(new THREE.TorusGeometry(0.5, 0.05, 6, 20), 0x3bb84a, { outline: 0.02 }); ring.position.set(0, 0.34, 0); ring.rotation.x = Math.PI / 2 + 0.12; P.head.add(ring);
+    [0xe8463a, 0xffd54a, 0xff5fa2, 0xffffff, 0xff7f3f, 0xc9a0ff].forEach((c, i) => { const a = i / 6 * Math.PI * 2; const f = toonMesh(new THREE.SphereGeometry(0.09, 8, 6), c, { outline: 0.02 }); f.position.set(Math.cos(a) * 0.5, 0.36 + Math.sin(a) * 0.06, Math.sin(a) * 0.5); P.head.add(f); });
+  }
   figur.userData.extrasDran = true;
   return figur;
 }
+
+// Regenschauer: Plastiktüten über allen Schuhen (Schuhe unlesbar), an/aus — für jede Figur mit parts.legs
+export function regenTueten(figur, an) {
+  const P = figur?.userData.parts; if (!P?.legs) return;
+  if (!figur.userData.tueten) {
+    figur.userData.tueten = [];
+    for (const leg of P.legs) {
+      for (const ch of leg.children) {
+        if (!ch.isGroup) continue; // Schuh-Gruppen
+        const bag = toonMesh(new THREE.SphereGeometry(0.5, 10, 8), toon(0xeaf4ff, { transparent: true, opacity: 0.8 }), { outline: 0.035 });
+        bag.geometry.scale(0.75, 0.55, 1.1); bag.position.copy(ch.position).add(V(0, 0.22, 0.05)); bag.rotation.copy(ch.rotation);
+        const knot = toonMesh(new THREE.SphereGeometry(0.08, 6, 5), 0xeaf4ff, { outline: 0.015 }); knot.position.set(0, 0.3, -0.2); bag.add(knot);
+        bag.visible = false; leg.add(bag); figur.userData.tueten.push(bag);
+      }
+    }
+  }
+  for (const b of figur.userData.tueten) b.visible = !!an;
+}
+
 // Animation der Extras (Fliege kreist um den Fischhändler)
 export function updateKundenExtras(figur, t) {
   const E = figur?.userData.extrasObj; if (!E) return;

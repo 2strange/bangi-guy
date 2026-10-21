@@ -961,3 +961,25 @@ test('Ereignisse nach Content-Schema: liste[], ware_minus, heat_max, tells_verde
   const echt = normalizeEreignisse(JSON.parse(readFileSync(new URL('../data/texte.json', import.meta.url), 'utf8')));
   assert.ok(echt.length >= 5 && echt.every((e) => e.id && e.ankuendigung));
 });
+
+import { ereignisFenster, ereignisAktiv, wirkungAktiv, DAY_LENGTH as DL, PHASE_AT as PA } from '../js/game.js';
+test('Ereignis-Zeitfenster: morgen = ganzer Tag, mittag + 120 s = Fenster; Wirkung gilt nur im Fenster; zivi_extra darf negativ sein', () => {
+  const E = normalizeEreignisse({ ereignisse: [
+    { id: 'regen', zeitpunkt: 'mittag', dauer_s: 120, wirkung: { tells_verdeckt: ['schuhe'] } },
+    { id: 'strom', zeitpunkt: 'morgen', dauer_s: 0, wirkung: { preis_faktor: 1.2 } },
+    { id: 'faehre', wirkung: { zivi_extra: -1 } }, { id: 'abend', zeitpunkt: 'abend', dauer_s: 0, wirkung: { heat_max: 1 } },
+  ] });
+  assert.deepEqual(ereignisFenster(E[1]), { start: 0, ende: 1 });
+  const f = ereignisFenster(E[0]); assert.equal(f.start, PA.mittag); assert.ok(Math.abs(f.ende - (PA.mittag + 120 / DL)) < 1e-9);
+  assert.equal(ereignisAktiv(E[0], 0.1), false); assert.equal(ereignisAktiv(E[0], PA.mittag + 0.1), true); assert.equal(ereignisAktiv(E[0], 0.9), false);
+  assert.deepEqual(ereignisFenster(E[3]), { start: PA.abend, ende: 1 }); assert.equal(ereignisFenster(null), null);
+  // Zustand: morgen-Ereignis sofort aktiv, mittag-Ereignis erst, wenn der Loop es startet
+  const strom = newDay(initialState(), { ereignis: E[1] }), regen = newDay(initialState(), { ereignis: E[0] });
+  assert.equal(strom.ereignisAktiv, true); assert.equal(regen.ereignisAktiv, false);
+  assert.equal(sell(strom, schluffi).state.geld, 24); assert.equal(sell({ ...strom, ereignisAktiv: false }, schluffi).state.geld, 20, 'außerhalb des Fensters normaler Preis');
+  assert.deepEqual(wirkungAktiv(regen), {}); assert.deepEqual(wirkungAktiv({ ...regen, ereignisAktiv: true }), { tells_verdeckt: ['schuhe'] });
+  assert.equal(heatCap({ ...newDay(initialState(), { ereignis: E[3] }), ereignisAktiv: false }, 3), 3, 'Deckel erst abends');
+  assert.equal(ereignisZiviExtra(E[2]), -1);
+  const kat = normalizeKatalog({ kunden: [{ id: 'a' }, { id: 'b' }, { id: 'z1', zivi: true }, { id: 'z2', zivi: true }] });
+  assert.equal(pickKunden(kat, 4, Math.max(0, 2 + ereignisZiviExtra(E[2])), 2).filter((k) => k.zivi).length >= 1, true);
+});

@@ -47,7 +47,7 @@
       "kommentar": { "text": "'Ship day. Forty hats, forty photos, zero tips. Chef took a nap on one of the hats.'" } },
     { "id": "pong_geburtstag", "titel": "Pong's Birthday",
       "ankuendigung": "It's Pong's birthday. The board says: 'No incidents today. Please.' He sits outside the station with cake and whistles only out of politeness.",
-      "hinweis": "Pong's birthday: heat starts one notch lower today.",
+      "hinweis": "Pong's birthday: heat won't rise above 1 today.",
       "kommentar": { "text": "'I gave him a mango. He cried. He cries every year. It's always the same kind of mango.'" } },
     { "id": "stromausfall", "titel": "Power Cut",
       "ankuendigung": "No power since last night. The bar can't chill anything, the music's silent, Nong has a candle. Chef is afraid of candles. People buy from you because nothing else works.",

@@ -121,3 +121,38 @@ export function kreuzfahrtschiff() {
     },
   });
 }
+
+// ---------- Steuerung für die Spiel-Logik: ein Aufruf pro Ereignis-id, Rest läuft hier ----------
+// Nimmt die Ereignis-ids aus der Logik (regenschauer, kreuzfahrtschiff, moewe_klaut, pong_geburtstag, stromausfall,
+// faehre_faellt_aus) und die Daten-Slugs (wolke, schiff, moewe, kuchen, kerze, leerer_pier).
+// figuren(): liefert die Figuren (Spieler + Kunden) für die Regentüten. update(t) jeden Frame (t in Sekunden).
+import { regenTueten } from './figures.js';
+export function ereignisSteuerung({ scene, markt = null, pier = null, licht = null, figuren = () => [] }) {
+  const E = { moewe: moeweMitBeutel(), wolke: regenwolke(), schiff: kreuzfahrtschiff() };
+  Object.values(E).forEach((e) => scene.add(e));
+  const ALIAS = { regenschauer: 'wolke', kreuzfahrtschiff: 'schiff', moewe_klaut: 'moewe', pong_geburtstag: 'kuchen', stromausfall: 'kerze', faehre_faellt_aus: 'leerer_pier' };
+  const aktiv = new Set();
+  let regenBis = 0, uhr = 0;
+  const tueten = (an) => { for (const f of figuren()) regenTueten(f, an); };
+  function setEreignis(id, an = true, opts = {}) {
+    const slug = ALIAS[id] ?? id;
+    an ? aktiv.add(slug) : aktiv.delete(slug);
+    switch (slug) {
+      case 'moewe': an ? E.moewe.userData.start(opts.from ?? { x: 0, z: 0 }, opts.dir ?? { x: 0.3, z: 1 }) : E.moewe.userData.stop(); break;
+      case 'wolke': if (an) { E.wolke.userData.start(); tueten(true); regenBis = uhr + (opts.dauer ?? 120); } else { E.wolke.userData.stop(); tueten(false); regenBis = 0; } break;
+      case 'schiff': an ? E.schiff.userData.start() : E.schiff.userData.stop(); break;
+      case 'kuchen': markt?.party?.(an); break;
+      case 'kerze': licht?.stromausfall?.(an); break;
+      case 'leerer_pier': pier?.faehreAusfall?.(an); break;
+      default: return false;
+    }
+    return true;
+  }
+  function update(t) {
+    uhr = t;
+    Object.values(E).forEach((e) => e.userData.update(t));
+    if (regenBis && t >= regenBis) { tueten(false); regenBis = 0; aktiv.delete('wolke'); }
+    if (aktiv.has('wolke') && !E.wolke.userData.an && regenBis === 0) aktiv.delete('wolke');
+  }
+  return { setEreignis, update, aktiv, requisiten: E, alleAus: () => ['moewe', 'wolke', 'schiff', 'kuchen', 'kerze', 'leerer_pier'].forEach((s) => setEreignis(s, false)) };
+}

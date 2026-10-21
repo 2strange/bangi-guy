@@ -12,7 +12,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { toonMesh, toon, deform, rng, BLACK, textTexture, stripeTexture } from './toon.js';
 import { limb } from './props.js';
 import { sandal, sneaker, hawaiiTexture } from './figures.js';
-import { face, faceDecal, setFace } from './faces.js';
+import { face, faceDecal, setFace, FACE_EXTRAS } from './faces.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const SKIN = { hell: 0xf4c9a4, mittel: 0xe8a773, dunkel: 0x8d5a3a, sonnenbrand: 0xf0907a };
@@ -156,6 +156,7 @@ export function buildKunde(k, seed = 1, outfit = null) {
 
   // Beine als Pivot-Gruppen (Hüfte) mit Schuh
   const legs = [];
+  const schuhPaare = []; // { shoe, boot } je Bein
   for (const s of [-1, 1]) {
     const leg = new THREE.Group();
     leg.position.set(s * 0.28, hipY, 0);
@@ -170,6 +171,10 @@ export function buildKunde(k, seed = 1, outfit = null) {
     shoe.position.set(fx, -hipY, 0);
     shoe.rotation.y = s * 0.3;
     leg.add(shoe);
+    // Regen-Ereignis: Gummistiefel liegen bereit und werden per setRegen() eingeblendet (der Schuh-Tell verschwindet)
+    const boot = k.schuhe === 'gummistiefel' ? null : rubberBoot(bootColor);
+    if (boot) { boot.position.copy(shoe.position); boot.rotation.y = shoe.rotation.y; boot.visible = false; leg.add(boot); }
+    schuhPaare.push({ shoe, boot });
     if (longPants) {
       leg.add(limb(V(fx, 0.35 - hipY, -0.05), V(0, 0, 0), 0.16, pantsColor, { outline: 0.04 }));
       if (hose === 'jogginghose') {
@@ -386,6 +391,7 @@ export function buildKunde(k, seed = 1, outfit = null) {
     wrinkles: k.haare === 'weiss',
     seed: seed,
     beardColor: css(hairColor),
+    ...(FACE_EXTRAS[k.id] ?? {}), // Gesichts-Eigenheiten je Kunde (faces.js)
   };
   const decal = faceDecal(face('kunde', k.stimmung_start || 'neutral', faceOpts), 0.527, shape);
   head.add(decal);
@@ -518,7 +524,7 @@ export function buildKunde(k, seed = 1, outfit = null) {
     board.position.set(0, shoulderY - 0.6, 0.72); board.rotation.x = -0.35; root.add(board);
     boardSand = mk(1.2, 0.07, 0.28, [2.0, 0.17, 0.08]); boardSand.visible = false; root.add(boardSand);
   }
-  root.userData.parts = { legs, arms, head, decal, capPolice, dog: dogG, board, boardSand };
+  root.userData.parts = { legs, arms, head, decal, capPolice, dog: dogG, board, boardSand, schuhPaare };
   root.userData.faceOpts = faceOpts;
   root.userData.kunde = k;
   root.userData.mood = k.stimmung_start || 'neutral';
@@ -528,6 +534,11 @@ export function buildKunde(k, seed = 1, outfit = null) {
 /** Stimmung setzen: tauscht nur die Gesichtstextur (face() ist gecacht, nichts wird weggeworfen). */
 // Surfbrett nach Pose: gehen/stehen/posieren = beide Arme nach vorn, Brett in den Händen (klebt nicht am Arm);
 // sitzen/liegen = Brett liegt neben der Figur im Sand. Nach pose() bzw. der Geh-Animation aufrufen.
+/** Regen: alle Füße in Gummistiefeln (Schuh-Tell verdeckt) oder zurück zu den eigenen Schuhen */
+export function setRegen(group, an) {
+  for (const p of group.userData.parts?.schuhPaare ?? []) { if (!p.boot) continue; p.boot.visible = !!an; p.shoe.visible = !an; }
+  group.userData.regen = !!an;
+}
 export function holdPose(group, poseName = 'stehen') {
   const P = group.userData.parts;
   if (!P?.board) return;

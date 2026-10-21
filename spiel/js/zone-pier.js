@@ -370,8 +370,15 @@ export function buildPier(parent, colliders) {
     for (const sp of sparkles) sp.material.opacity = Math.max(0, Math.sin(t * 2.6 + sp.userData.phase)) ** 3 * 0.9;
   }
   update(0);
+  // Ereignis „leerer Pier“: keine Fähre, Schild am Steg
+  const ausfallSchild = plate('FÄHRE FÄLLT AUS · WIND (SAGT DER KAPITÄN)', 2.8, 0.42, { font: 'bold 50px sans-serif', tw: 1024, th: 160, thick: 0.05 });
+  ausfallSchild.position.set(STEG.x + 1.2, 1.9, STEG.z0 + 4); ausfallSchild.rotation.set(0, Math.PI / 2, 0.06); ausfallSchild.visible = false; add(ausfallSchild);
+  let ausfall = false;
+  function faehreAusfall(an) { ausfall = !!an; ausfallSchild.visible = ausfall; if (ausfall) fahre.visible = false; }
+  const baseUpdate = update;
+  const updateMitAusfall = (t) => { baseUpdate(t); if (ausfall) { fahre.visible = false; fahre.userData.horn.visible = false; } };
   return {
-    spots: PIER_SPOTS, update, ferry: ferryAt, anchors: PIER_ANCHORS, hideouts,
+    spots: PIER_SPOTS, update: updateMitAusfall, ferry: (t) => (ausfall ? { ...ferryAt(t), state: 'away', horn: false } : ferryAt(t)), faehreAusfall, anchors: PIER_ANCHORS, hideouts,
     tuktuk: { x: PROPS[0].x, z: PROPS[0].z, r: 2.2 }, ferrySpawn: { ...FERRY_SPAWN },
     furt: { ...FURT }, steg: { ...STEG }, bounds: { maxX: WORLD_MAX_X },
   };

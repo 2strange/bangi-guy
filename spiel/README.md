@@ -235,13 +235,16 @@ Spiel anders. Wirkungen (`wirkung{}`): `kunden_faktor` (weniger/mehr Gäste), `p
 auch beim Verhandeln), `heat` (+/− am Morgen, nie direkt Verhaftung), `ware`/`ware_minus` (Möwe klaut / Geschenk),
 `zivi_extra`, `heat_max` (Deckel für den Tag: Pongs Geburtstag), `tells_verdeckt: ["schuhe"]` (Regen: alle tragen
 Gummistiefel, man muss Hemden lesen; Preise/Logik bleiben am Original), `kunden_typen_plus` (bestimmte Gäste kommen
-zusätzlich), `spawn_aus` (z. B. keine Fähren-Gäste). `zeitpunkt`/`dauer_s` werden gelesen, Ereignisse gelten aber den
-ganzen Tag; `kommentar{wer,text}` ist der Satz abends an der Bar (Mentor oder Nong). Das Flitterwochen-Paar
+zusätzlich), `spawn_aus` (z. B. keine Fähren-Gäste). `zeitpunkt` (morgen | mittag | abend) und `dauer_s` spannen ein Zeitfenster
+auf: der Regenschauer zieht mittags für 120 s als Wolke über den Strand, alle Figuren tragen solange Gummistiefel
+(`setRegen`), danach kommt die `ende`-Einblendung; Preis- und Heat-Wirkungen gelten nur im Fenster, Möwe/Geschenk am
+Morgen; `kommentar{wer,text}` ist der Satz abends an der Bar (Mentor oder Nong). Das Flitterwochen-Paar
 (`figuren: 2`) steht als zwei Figuren an einem Platz, ein Dialog, ein Verkauf; Bauer Nok (K7) steht im Reisfeld, der
 Kokos-Kletterer (K8) im Hain.
 Der Mentor kündigt das Ereignis morgens an, beim Tagesstart gibt es eine Einblendung, abends an der Bar optional
-einen Satz. Klang je Ereignis über `audio.js` (Regen als Wetter, Schiffshorn, Möwen-Gezeter, Party, Stromausfall mit kurzer
-Musikpause); Requisiten über `world.setEreignis(id)`, falls vorhanden. Reine Logik mit Tests; der Seed liegt im Spielstand.
+einen Satz. Klang über `audio.ereignis(sound, 'start'|'ende')`; Requisiten aus `ereignisse.js` (Möwe mit Beutel, Regenwolke,
+Kreuzfahrtschiff am Horizont), Party am Posten (`markt.party`) und dunkle Bar mit Kerzen (`licht.stromausfall`).
+`?snap=1&scene=ereignis&id=regenschauer` startet ein Ereignis sofort. Reine Logik mit Tests; der Seed liegt im Spielstand.
 
 ## Ziele: Tagesziel und Wochenbogen
 `texte.json → woche{}` beschreibt die Woche (7 Tage): `ziel.muenzen` bis zum letzten Tag, je Tag `titel`, `ziel`,
