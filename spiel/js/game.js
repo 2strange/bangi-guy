@@ -641,7 +641,8 @@ export function fromSave(json) {
 export const hatFortschritt = (json) => { const s = fromSave(json); return !!s && (s.tag > 1 || s.geld > 0 || s.mangos > 0); };
 
 // ---------- Optionen (⚙): Textsprache, Zivi-Beschlagnahme, Musik, Ton — Ablage im Browser, robust gegen Müll ----------
-export const DEFAULT_OPTIONEN = { sprache: 'de', beschlagnahme: ZIVI_BESCHLAGNAHMT, musik: true, ton: true };
+export const NEIGUNG = { min: 15, max: 80, standard: 38 }; // Kamera-Neigung in Grad (Grenzen wie logic.CAM_PITCH)
+export const DEFAULT_OPTIONEN = { sprache: 'de', beschlagnahme: ZIVI_BESCHLAGNAHMT, musik: true, ton: true, neigung: NEIGUNG.standard };
 export function normalizeOptionen(json) {
   const o = json && typeof json === 'object' ? json : {};
   const bool = (v, d) => (typeof v === 'boolean' ? v : d);
@@ -650,6 +651,7 @@ export function normalizeOptionen(json) {
     beschlagnahme: bool(o.beschlagnahme, DEFAULT_OPTIONEN.beschlagnahme),
     musik: bool(o.musik, DEFAULT_OPTIONEN.musik),
     ton: bool(o.ton, DEFAULT_OPTIONEN.ton),
+    neigung: Number.isFinite(o.neigung) ? Math.max(NEIGUNG.min, Math.min(NEIGUNG.max, Math.round(o.neigung))) : DEFAULT_OPTIONEN.neigung,
   };
 }
 // Reveal-Gags (gags.js spielt sie): id, wann (kauf|ablehnung|immer), gag, mood, extra, dauer_s — kaputte Einträge fliegen raus

@@ -179,7 +179,9 @@ export function buildWorld() {
   // Lichterkette rundherum an der Dachkante (abends glühen die Birnchen, siehe licht.js); dreht mit der Bar mit
   { const c = Math.cos(bar.rotation.y), sn = Math.sin(bar.rotation.y);
     const V = (lx, ly, lz) => new THREE.Vector3(barPos.x + (lx * c + lz * sn) * bs, ly * bs, barPos.z + (-lx * sn + lz * c) * bs);
-    g.add(lichterkette([V(-2.5, 3.2, -1.3), V(-2.5, 3.2, 1.3), V(2.5, 3.2, 1.3), V(2.5, 3.2, -1.3), V(-2.5, 3.2, -1.3)])); }
+    // unter der Traufe (Dachsaum endet bei y 2.75, Radius ≈ 4.1 × 3.4): knapp darunter, nicht im Dach. Drei Seiten (Rückwand + Flanken),
+    // die Tresenseite bleibt frei: von der Meerseite (Bar-Kamera) hingen die Birnen sonst vor den Gesichtern
+    g.add(lichterkette([V(-3.4, 2.6, 2.7), V(-3.4, 2.6, -2.7), V(3.4, 2.6, -2.7), V(3.4, 2.6, 2.7)])); }
   for (const f of buildingFootprints()) if (f.name === 'bar') rect(f.x, f.z, f.w, f.d); // Theke + Rückwand
   bCircle(barPos, bs, -2.1, -1.1, 0.25); bCircle(barPos, bs, 2.1, -1.1, 0.25); bCircle(barPos, bs, -1.9, 1.0, 0.25); bCircle(barPos, bs, 2.1, 1.0, 0.25);
   bCircle(barPos, bs, -1.1, 1.9, 0.4); bCircle(barPos, bs, 0.5, 1.9, 0.4); // Hocker

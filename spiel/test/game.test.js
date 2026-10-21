@@ -686,7 +686,8 @@ test('normalizeOptionen: Defaults (DE, Beschlagnahme an, Musik/Ton an), nur gül
   assert.deepEqual(normalizeOptionen(null), DEFAULT_OPTIONEN);
   assert.equal(DEFAULT_OPTIONEN.beschlagnahme, ZB);
   const o = normalizeOptionen({ sprache: 'en', beschlagnahme: false, musik: 'nein', ton: 0, extra: 1 });
-  assert.deepEqual(o, { sprache: 'en', beschlagnahme: false, musik: true, ton: true });
+  assert.deepEqual(o, { sprache: 'en', beschlagnahme: false, musik: true, ton: true, neigung: 38 });
+  assert.equal(normalizeOptionen({ neigung: 200 }).neigung, 80); assert.equal(normalizeOptionen({ neigung: 2 }).neigung, 15); assert.equal(normalizeOptionen({ neigung: 50.4 }).neigung, 50);
   assert.equal(normalizeOptionen({ sprache: 'fr' }).sprache, 'de');
 });
 

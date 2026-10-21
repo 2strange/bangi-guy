@@ -16,6 +16,7 @@ import { prepareGags, playGag, stopGag } from './gags.js';
 import {
   inputToDir, dirToTarget, stepPlayer, followCamera, waddlePose, CAM_OFFSET, DEFAULT_CAM_YAW, isOccluder, joystickInput, rotateDir,
   ANCHORS, assignAnchors, zoneMix, patrolStart, seesTarget, chaseStep, inHideout, CHASE_SPEED, PATROL_SPEED, WORLD, BUILDING_POS, STREIFE_P2_ROUTE,
+  CAM_PITCH, clampPitch,
 } from './logic.js';
 import {
   initialState, normalizeKatalog, pickKunden, startDialog, advanceDialog, chooseOption, isArrested, newDay, moodFor,
@@ -38,6 +39,8 @@ const KEY_TALK = 'KeyE';
 const KEY_LOOK = 'KeyF';
 const KEY_CAM_LEFT = 'KeyQ';
 const KEY_CAM_RIGHT = 'KeyR';
+const KEY_CAM_UP = 'KeyT';   // Kamera steiler (Draufsicht)
+const KEY_CAM_DOWN = 'KeyG'; // Kamera flacher (mehr Welt)
 
 // Parameter per Regex, weil der Screenshot-Aufruf „?snap=1“ hinter andere Parameter hängt (…?at=bar?snap=1)
 const q = (name) => (location.search.match(new RegExp('[?&]' + name + '=([-a-z0-9._]+)')) || [])[1];
@@ -47,6 +50,7 @@ const AT = q('at');
 const CY = q('cy'); // Kamera-Gierung in Grad relativ zum Standard, z. B. ?at=hotel&cy=-90 (Kamera im Osten, Blick nach Westen)
 const SCENE = q('scene'); // dialog | inspect | lineup | ausverkauft | bilanz | gag | mentor | mango | streife | abend (nur Snap)
 const T01 = q('t'); // Tageszeit 0..1 für Snaps
+const PITCH = q('pitch'); // Kamera-Neigung in Grad für Snaps
 const SCENE_ID = q('id'); // Kunde für scene=gag
 const TOUCH = q('touch') === '1' || isTouchDevice(); // Touch-Steuerung einblenden
 
@@ -168,6 +172,11 @@ let optionen = normalizeOptionen((() => { try { return JSON.parse(localStorage.g
 const LANG = q('lang'); // ?lang=en für Snaps
 if (LANG) optionen = { ...optionen, sprache: LANG === 'en' ? 'en' : 'de' };
 function saveOptionen() { try { localStorage.setItem(OPT_KEY, JSON.stringify(optionen)); } catch (e) { /* privat/gesperrt */ } }
+// Kamera-Neigung: aus den Optionen (Grad), ?pitch= für Snaps; Änderungen werden gesammelt gespeichert
+let camPitch = clampPitch((PITCH ? parseFloat(PITCH) : optionen.neigung) * Math.PI / 180);
+let pitchSaveAt = 0;
+function setPitch(p) { camPitch = clampPitch(p); pitchSaveAt = performance.now() + 800; }
+function flushPitch(now) { if (pitchSaveAt && now > pitchSaveAt) { pitchSaveAt = 0; const g = Math.round(camPitch * 180 / Math.PI); if (g !== optionen.neigung) { optionen = { ...optionen, neigung: g }; saveOptionen(); } } }
 // Spielstand: automatisch beim Tageswechsel (Morgenstand), Startkarte „Weiter“/„Neues Spiel“ wenn einer da ist
 const SAVE_KEY = 'bangi.spielstand';
 function saveGame() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ ...toSave(game), zeit: new Date().toISOString() })); } catch (e) { /* privat/gesperrt */ } }
@@ -382,10 +391,10 @@ async function loadKunden() {
 }
 
 // ---------- Eingabe ----------
-const keys = { up: false, down: false, left: false, right: false, run: false, rotL: false, rotR: false };
+const keys = { up: false, down: false, left: false, right: false, run: false, rotL: false, rotR: false, pitchUp: false, pitchDown: false };
 const KEYMAP = {
   KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down', KeyA: 'left', ArrowLeft: 'left',
-  KeyD: 'right', ArrowRight: 'right', ShiftLeft: 'run', ShiftRight: 'run', [KEY_CAM_LEFT]: 'rotL', [KEY_CAM_RIGHT]: 'rotR',
+  KeyD: 'right', ArrowRight: 'right', ShiftLeft: 'run', ShiftRight: 'run', [KEY_CAM_LEFT]: 'rotL', [KEY_CAM_RIGHT]: 'rotR', [KEY_CAM_UP]: 'pitchUp', [KEY_CAM_DOWN]: 'pitchDown',
 };
 let nearK = null; // nächster Kunde in Reichweite (jeden Frame neu)
 // Mentor auf der Kuppe: eigener Gesprächspartner (kein Kunde), Szene einmal pro Tag
@@ -650,13 +659,39 @@ window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; }
 // Klick auf den Boden = hinlaufen
 const ray = new THREE.Raycaster(); ray.camera = camera; // Sprites (Lichterketten-Halos) brauchen die Kamera beim Raycast
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+// Maus: Ziehen dreht (waagerecht) und neigt (senkrecht) die Kamera, ein Klick ohne Ziehen läuft hin; Rad neigt; zwei Finger neigen
+const drag = { id: null, x: 0, y: 0, moved: false, fingers: new Map(), pinchY: null };
 renderer.domElement.addEventListener('pointerdown', (e) => {
-  if (e.button !== 0 || mode !== 'free') return;
+  if (e.pointerType === 'touch') { drag.fingers.set(e.pointerId, e.clientY); drag.pinchY = drag.fingers.size === 2 ? [...drag.fingers.values()].reduce((a, b) => a + b, 0) / 2 : null; }
+  if (e.button !== 0 || mode !== 'free' || e.pointerType === 'touch') return;
+  drag.id = e.pointerId; drag.x = e.clientX; drag.y = e.clientY; drag.moved = false;
+});
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (e.pointerType === 'touch') {
+    if (drag.fingers.has(e.pointerId)) drag.fingers.set(e.pointerId, e.clientY);
+    if (drag.fingers.size === 2 && drag.pinchY !== null) { const y = [...drag.fingers.values()].reduce((a, b) => a + b, 0) / 2; setPitch(camPitch - (y - drag.pinchY) * 0.004); drag.pinchY = y; }
+    return;
+  }
+  if (drag.id !== e.pointerId) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (!drag.moved && Math.hypot(dx, dy) < 6) return;
+  drag.moved = true;
+  camYaw -= dx * 0.005; setPitch(camPitch - dy * 0.005); // hochziehen = steiler
+  drag.x = e.clientX; drag.y = e.clientY;
+});
+const dragEnd = (e) => {
+  if (e.pointerType === 'touch') { drag.fingers.delete(e.pointerId); drag.pinchY = null; return; }
+  if (drag.id !== e.pointerId) return;
+  drag.id = null;
+  if (drag.moved || mode !== 'free') return;
   const ndc = new THREE.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
   ray.setFromCamera(ndc, camera);
   const hit = new THREE.Vector3();
   if (ray.ray.intersectPlane(groundPlane, hit)) clickTarget = { x: hit.x, z: hit.z };
-});
+};
+renderer.domElement.addEventListener('pointerup', dragEnd);
+renderer.domElement.addEventListener('pointercancel', dragEnd);
+renderer.domElement.addEventListener('wheel', (e) => { if (mode === 'free' || mode === 'inspect') { setPitch(camPitch + e.deltaY * 0.0015); e.preventDefault(); } }, { passive: false });
 // ---------- Tutorial Tag 1: Schritte aus texte.json → tutorial{}, Zielmarker (marker.js), nur im ersten Spiel, überspringbar ----------
 const TUT_KEY = 'bangi.tutorial';
 const TUT_PARAM = q('tutorial'); // ?tutorial=1 erzwingt, =0 unterdrückt (Snaps/Tests)
@@ -1378,7 +1413,7 @@ function setupScene() {
     // Einzelfigur auf offenem Sand, Blick zur Kamera: ?scene=figur&id=surfer_1[&cy=50]
     const k = (SCENE_ID && kundeById(SCENE_ID)) || kunden[0];
     state = { ...state, x: 7, z: 4, yaw: -Math.PI / 2, speed: 0 };
-    let c = cam; for (let i = 0; i < 300; i++) c = followCamera(c, state, 1 / 60, camYaw);
+    let c = cam; for (let i = 0; i < 300; i++) c = followCamera(c, state, 1 / 60, camYaw, 4, camPitch);
     k.npc = { ...k.npc, x: 4, z: 6, yaw: Math.atan2(c.x - 4, c.z - 6), moving: false, pause: 99 };
     k.look = 0; applyKunde(k);
     mode = 'free';
@@ -1423,7 +1458,7 @@ if (SNAP) {
     const overview = AT === 'overview';
     setupScene();
     applyPose(state);
-    for (let i = 0; i < 300; i++) cam = followCamera(cam, state, 1 / 60, camYaw);
+    for (let i = 0; i < 300; i++) cam = followCamera(cam, state, 1 / 60, camYaw, 4, camPitch);
     if (overview) { cam = { x: 12, y: 135, z: -160, tx: 12, ty: 0, tz: -22 }; scene.fog = null; camera.near = 20; camera.updateProjectionMatrix(); } // Übersicht ohne Nebel; near 20 gegen Tiefen-Streifen (Gras über Sand) in der Ferne
     if (mode === 'inspect') {
       cam = inspectCamera(talking.npc, state, inspectOpts(talking));
@@ -1477,6 +1512,8 @@ if (SNAP) {
     if (free) {
       if (keys.rotL) camYaw += 1.5 * dt;
       if (keys.rotR) camYaw -= 1.5 * dt;
+      if (keys.pitchUp) setPitch(camPitch + 1.0 * dt);
+      if (keys.pitchDown) setPitch(camPitch - 1.0 * dt);
       let dir = inputToDir(keys, camYaw);
       let run = keys.run;
       if (joy && joy.active) { dir = rotateDir(joy, camYaw); run = joy.run; }
@@ -1507,6 +1544,7 @@ if (SNAP) {
     }
     if (nearK) tutorialFire('kunde_in_reichweite');
     if (hinweisBis && now > hinweisBis) { hinweisBis = 0; if (mode === 'free') ui.showPrompt(null); }
+    flushPitch(now);
     try { ereignisSteuer.update(now / 1000); } catch (e) { /* ohne Requisiten */ }
     for (const k of kunden) updateKundenExtras(k.group, now / 1000);
     updateTutorial(now);
@@ -1539,7 +1577,7 @@ if (SNAP) {
       const t = 1 - Math.exp(-5 * dt);
       for (const key of ['x', 'y', 'z', 'tx', 'ty', 'tz']) cam[key] += (want[key] - cam[key]) * t;
     } else {
-      cam = followCamera(cam, state, dt, camYaw);
+      cam = followCamera(cam, state, dt, camYaw, 4, camPitch);
     }
     applyCamera();
     camera.updateMatrixWorld();

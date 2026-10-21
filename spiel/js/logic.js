@@ -146,11 +146,21 @@ export function stepPlayer(state, input, dt, colliders = [], world = WORLD, { sa
  * sanft nachgezogen (exponentiell). cam: { x, y, z, tx, ty, tz }
  */
 export const CAM_OFFSET = { back: 13, up: 13, lookAhead: 3.0, targetY: 1.0 };
+// Kamera-Neigung (Pitch, Radiant): flach = mehr Welt, steil = Draufsicht. Grenzen: nicht unter den Boden, nicht senkrecht
+export const CAM_DIST = Math.hypot(CAM_OFFSET.back, CAM_OFFSET.up - CAM_OFFSET.targetY); // Abstand Kamera ↔ Blickpunkt bleibt
+export const CAM_PITCH = { min: 15 * Math.PI / 180, max: 80 * Math.PI / 180, standard: 38 * Math.PI / 180 }; // Standard flacher als die alten 42,7°
+export const clampPitch = (p) => Math.max(CAM_PITCH.min, Math.min(CAM_PITCH.max, Number.isFinite(p) ? p : CAM_PITCH.standard));
+/** Kamera-Versatz für eine Neigung: zurück (waagerecht) und hoch (über dem Blickpunkt), Abstand konstant */
+export function camOffsetFor(pitch = CAM_PITCH.standard, dist = CAM_DIST) {
+  const p = clampPitch(pitch);
+  return { back: dist * Math.cos(p), up: CAM_OFFSET.targetY + dist * Math.sin(p) };
+}
 export const DEFAULT_CAM_YAW = Math.PI; // Kamera steht im Norden und schaut übers Land aufs Meer (Q/E dreht)
-export function followCamera(cam, player, dt, camYaw = 0, k = 4) {
+export function followCamera(cam, player, dt, camYaw = 0, k = 4, pitch = CAM_PITCH.standard) {
   const c = Math.cos(camYaw), s = Math.sin(camYaw);
-  const ox = s * CAM_OFFSET.back, oz = c * CAM_OFFSET.back;
-  const want = { x: player.x + ox, y: CAM_OFFSET.up, z: player.z + oz };
+  const off = camOffsetFor(pitch);
+  const ox = s * off.back, oz = c * off.back;
+  const want = { x: player.x + ox, y: off.up, z: player.z + oz };
   const wantT = { x: player.x - s * CAM_OFFSET.lookAhead, y: CAM_OFFSET.targetY, z: player.z - c * CAM_OFFSET.lookAhead };
   const t = 1 - Math.exp(-k * dt);
   const lerp = (a, b) => a + (b - a) * t;

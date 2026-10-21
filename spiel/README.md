@@ -209,6 +209,14 @@ Standbild (für die PNGs in `shots/`).
   Meshes zusammengeführt — mit `?stats=1` lässt sich der Draw-Call-Stand ablesen, das ist der erste Hebel, wenn
   es auf einem Laptop ruckelt. Pixel-Ratio ist auf 1.5 gedeckelt.
 
+## Kamera-Neigung
+Die Kamera lässt sich hoch- und runterneigen: **T/G**, **Mausrad**, **Maus-Ziehen** (senkrecht neigt, waagerecht dreht
+wie Q/R; ein Klick ohne Ziehen läuft weiter hin) und mobil **Zwei-Finger-Wisch**. Grenzen 15°…80° (nicht unter den
+Boden, nicht senkrecht), Standard 38° – etwas flacher als früher, man sieht mehr Welt. Der Abstand zum Blickpunkt bleibt
+gleich (`CAM_PITCH`, `clampPitch`, `camOffsetFor`, `followCamera` in `js/logic.js`, getestet). Die Neigung wird als
+Option `neigung` (Grad) gespeichert; `?pitch=15` bzw. `?pitch=80` setzt sie für Snaps. Hinschau- und Bar-Kamera sind
+davon unabhängig, der Sicht-Fade arbeitet mit der echten Kameraposition.
+
 ## Optionen (⚙)
 Der Zahnrad-Knopf im HUD (oder Esc) öffnet das Optionen-Menü und pausiert das Spiel: **Textsprache** DE/EN,
 **Zivi nimmt die Ware ab** (an/aus, Default an), **Musik**, **Ton**. Die Wahl liegt im Browser (`localStorage`, im

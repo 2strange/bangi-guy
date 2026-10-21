@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   inputToDir, dirToTarget, stepPlayer, resolveCollisions, pushOutCircle, pushOutRect,
-  followCamera, waddlePose, npcHeadYaw, shoreZ, angleLerp,
+  followCamera, waddlePose, npcHeadYaw, shoreZ, angleLerp, CAM_PITCH, CAM_DIST, clampPitch, camOffsetFor,
   WALK_SPEED, RUN_SPEED, PLAYER_RADIUS, WADE_DEPTH, WORLD, CAM_OFFSET, DEFAULT_CAM_YAW,
 } from '../js/logic.js';
 
@@ -134,16 +134,17 @@ test('followCamera: konvergiert auf Offset hinter/über dem Spieler, schaut aufs
   let cam = { x: 0, y: 0, z: 0, tx: 0, ty: 0, tz: 0 };
   const p = { x: 10, z: 5 };
   for (let i = 0; i < 600; i++) cam = followCamera(cam, p, 1 / 60);
-  close(cam.x, 10, 1e-3); close(cam.z, 5 + CAM_OFFSET.back, 1e-3); close(cam.y, CAM_OFFSET.up, 1e-3);
+  const off = camOffsetFor(CAM_PITCH.standard); // Standard-Neigung
+  close(cam.x, 10, 1e-3); close(cam.z, 5 + off.back, 1e-3); close(cam.y, off.up, 1e-3);
   close(cam.tx, 10, 1e-3); close(cam.tz, 5 - CAM_OFFSET.lookAhead, 1e-3);
   // mit Kamera-Gierung 90°: Kamera steht seitlich
   let c2 = { ...cam };
   for (let i = 0; i < 600; i++) c2 = followCamera(c2, p, 1 / 60, Math.PI / 2);
-  close(c2.x, 10 + CAM_OFFSET.back, 1e-3); close(c2.z, 5, 1e-3);
+  close(c2.x, 10 + off.back, 1e-3); close(c2.z, 5, 1e-3);
   // Standard-Gierung: Kamera im Norden (-z), schaut nach Süden aufs Meer; „hoch“ läuft Richtung Meer
   let c3 = { ...cam };
   for (let i = 0; i < 600; i++) c3 = followCamera(c3, p, 1 / 60, DEFAULT_CAM_YAW);
-  close(c3.z, 5 - CAM_OFFSET.back, 1e-3); close(c3.tz, 5 + CAM_OFFSET.lookAhead, 1e-3);
+  close(c3.z, 5 - off.back, 1e-3); close(c3.tz, 5 + CAM_OFFSET.lookAhead, 1e-3);
   const up = inputToDir({ up: true }, DEFAULT_CAM_YAW);
   close(up.x, 0, 1e-9); close(up.z, 1, 1e-9);
 });
@@ -589,4 +590,24 @@ test('Spawn-Zonen: K7 landet im Reisfeld, K8 im Kokoshain (hain_*), K1 im Hafen;
   const m = aA([{ id: 'nok', spawn: 'K7' }, { id: 'dao', spawn: 'K8' }, { id: 'f', spawn: 'K1' }, { id: 'x' }], ALLE, { day: 3 });
   assert.equal(m.nok.zone, 'reisfeld'); assert.ok(m.dao.id.startsWith('hain_')); assert.equal(m.f.zone, 'pier'); assert.ok(!m.f.id.startsWith('hain_'), 'Fähre nicht in den Hain');
   assert.ok(m.x);
+});
+
+
+test('Kamera-Neigung: Grenzen 15°…80°, Standard 38° (flacher als vorher), Abstand bleibt, followCamera folgt der Neigung', () => {
+  const g = (d) => d * Math.PI / 180;
+  assert.ok(Math.abs(clampPitch(g(5)) - CAM_PITCH.min) < 1e-9 && Math.abs(clampPitch(g(89)) - CAM_PITCH.max) < 1e-9);
+  assert.equal(clampPitch(NaN), CAM_PITCH.standard); assert.equal(clampPitch(undefined), CAM_PITCH.standard);
+  assert.ok(CAM_PITCH.standard < Math.atan2(CAM_OFFSET.up - CAM_OFFSET.targetY, CAM_OFFSET.back), 'Standard flacher als der alte Versatz');
+  for (const p of [CAM_PITCH.min, CAM_PITCH.standard, CAM_PITCH.max]) {
+    const o = camOffsetFor(p);
+    assert.ok(Math.abs(Math.hypot(o.back, o.up - CAM_OFFSET.targetY) - CAM_DIST) < 1e-9, 'Abstand konstant');
+    assert.ok(o.up > 1.5, 'nie unter den Boden');
+  }
+  assert.ok(camOffsetFor(CAM_PITCH.min).back > camOffsetFor(CAM_PITCH.max).back && camOffsetFor(CAM_PITCH.max).up > camOffsetFor(CAM_PITCH.min).up);
+  assert.ok(camOffsetFor(CAM_PITCH.max).back > 2.5, 'nicht senkrecht von oben');
+  const p = { x: 10, z: 20 };
+  let flach = { x: 0, y: 0, z: 0, tx: 0, ty: 0, tz: 0 }, steil = { ...flach };
+  for (let i = 0; i < 600; i++) { flach = followCamera(flach, p, 1 / 60, 0, 4, CAM_PITCH.min); steil = followCamera(steil, p, 1 / 60, 0, 4, CAM_PITCH.max); }
+  assert.ok(flach.y < steil.y && Math.abs(flach.z - p.z) > Math.abs(steil.z - p.z), 'flach: tiefer und weiter hinten');
+  assert.ok(Math.abs(flach.tx - (p.x)) < 1e-6 && Math.abs(flach.ty - CAM_OFFSET.targetY) < 1e-6, 'Blickpunkt unverändert');
 });
