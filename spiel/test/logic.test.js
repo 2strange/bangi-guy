@@ -101,14 +101,18 @@ test('Ufer: bis knöcheltief ins Wasser, nicht weiter; Welt-Grenzen halten', () 
   close(s.z, shoreZ(s.x) + WADE_DEPTH, 1e-6, 'an der Wasserkante');
   const w = run(idle, { dir: { x: -1, z: 0 }, run: true }, 30);
   close(w.x, WORLD.minX + PLAYER_RADIUS);
+  const e = run(idle, { dir: { x: 1, z: 0 }, run: true }, 40);
+  close(e.x, WORLD.maxX - PLAYER_RADIUS, 1e-6, 'Ostgrenze am Pier');
   const n = run(idle, { dir: { x: 0, z: -1 }, run: true }, 30);
   close(n.z, WORLD.minZ + PLAYER_RADIUS);
 });
 
-test('shoreZ: Sichel — Mitte weiter im Land als die Ränder, stetig', () => {
-  const mid = shoreZ(0), left = shoreZ(WORLD.minX), right = shoreZ(WORLD.maxX);
+test('shoreZ: Sichel — Mitte weiter im Land als die Ränder, stetig; östlich der Bucht gerade (Hafen)', () => {
+  const mid = shoreZ(0), left = shoreZ(-66), right = shoreZ(66);
   assert.ok(mid > left && mid > right);
-  for (let x = WORLD.minX; x < WORLD.maxX; x += 0.5) assert.ok(Math.abs(shoreZ(x + 0.5) - shoreZ(x)) < 0.3);
+  for (let x = WORLD.minX; x < WORLD.maxX; x += 0.5) assert.ok(Math.abs(shoreZ(x + 0.5) - shoreZ(x)) < 0.3, `Sprung bei ${x}`);
+  close(shoreZ(66), 12); close(shoreZ(90), 12); close(shoreZ(100), 12);
+  assert.equal(WORLD.maxX, 100);
 });
 
 test('dirToTarget: Richtung normiert, null am Ziel', () => {
@@ -326,10 +330,13 @@ test('Anker tragen eine Zone; zoneSequence mischt nach Gewichten und rotiert pro
   for (const a of ANCHORS) assert.ok(ZONES.includes(a.zone), `${a.id} ohne Zone`);
   const seq = zoneSequence(7, ANCHORS, { day: 1 });
   const count = (z) => seq.filter((x) => x === z).length;
-  // strand 4 : dorf 2 : markt 2 → bei 7 Kunden 3–4 Strand, 1–2 Dorf, 1–2 Markt
+  // strand 4 : dorf 2 : markt 2 : pier 1 → bei 7 Kunden 3 Strand, 1–2 Dorf, 1–2 Markt, 0–1 Pier
   assert.ok(count('strand') >= 3 && count('strand') <= 4, `strand ${count('strand')}`);
   assert.ok(count('dorf') >= 1 && count('dorf') <= 2, `dorf ${count('dorf')}`);
   assert.ok(count('markt') >= 1 && count('markt') <= 2, `markt ${count('markt')}`);
+  assert.ok(count('pier') <= 1, `pier ${count('pier')}`);
+  // über 9 Kunden kommt der Pier sicher dran
+  assert.ok(zoneSequence(9, ANCHORS, { day: 1 }).includes('pier'));
   assert.notDeepEqual(zoneSequence(7, ANCHORS, { day: 2 }), seq, 'anderer Tag, andere Reihenfolge');
   // ohne Markt-Plätze verschwindet der Markt aus der Mischung
   const ohneMarkt = ANCHORS.filter((a) => a.zone !== 'markt');
@@ -442,4 +449,23 @@ test('Verstecke: im Gedränge/Bettlaken ist der Spieler unsichtbar, die Verfolgu
   // ohne Versteck wird derselbe Spieler gefangen
   const r2 = sim(st, { x: 10, z: 0 }, CHASE_LOSE_AFTER + 0.5, { sees: true, heat: 3 });
   assert.ok(r2.events.includes('caught'));
+});
+
+// ---------- Hafen: Steg und Furt ----------
+import { STEG, FURT, PIER_ANCHORS } from '../js/zone-pier-layout.js';
+test('Steg: auf dem Steg darf man weit hinaus, daneben nur knöcheltief; Furt nur mit Sandalen/barfuß', () => {
+  // Steg (x = STEG.x): bis zum Anleger
+  const onSteg = run({ ...idle, x: STEG.x, z: 0 }, { dir: { x: 0, z: 1 }, run: true }, 12);
+  close(onSteg.z, STEG.z1, 1e-6, 'Stegende');
+  const beside = run({ ...idle, x: STEG.x + STEG.w, z: 0 }, { dir: { x: 0, z: 1 }, run: true }, 12);
+  close(beside.z, shoreZ(STEG.x + STEG.w) + WADE_DEPTH, 1e-6, 'neben dem Steg: Wasserkante');
+  // Furt (x0…x1): mit Sandalen bis FURT.maxZ, mit Turnschuhen nur bis zur Wasserkante
+  const fx = (FURT.x0 + FURT.x1) / 2;
+  let s = { ...idle, x: fx, z: 0 };
+  for (let t = 0; t < 12; t += 1 / 60) s = stepPlayer(s, { dir: { x: 0, z: 1 }, run: true }, 1 / 60, [], WORLD, { sandalen: true });
+  close(s.z, FURT.maxZ, 1e-6, 'Furt mit Sandalen');
+  let t2 = { ...idle, x: fx, z: 0 };
+  for (let t = 0; t < 12; t += 1 / 60) t2 = stepPlayer(t2, { dir: { x: 0, z: 1 }, run: true }, 1 / 60, [], WORLD, { sandalen: false });
+  close(t2.z, shoreZ(fx) + WADE_DEPTH, 1e-6, 'Turnschuhe bleiben an der Kante');
+  assert.ok(ANCHORS.filter((a) => a.zone === 'pier').length === PIER_ANCHORS.length && PIER_ANCHORS.length >= 3);
 });

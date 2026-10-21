@@ -11,11 +11,14 @@ export const WADE_DEPTH = 1.6;      // so weit darf er ins Wasser (knöcheltief)
 // Spielfläche der Zone (Bühne). Nord = -z (Hügel), Süd = +z (Meer).
 // Nordgrenze = Posten 7 + Absperrung (zone-markt-layout.js: WORLD_MIN_Z, Test sichert die Übereinstimmung; nördlich des Dorfs)
 export const WORLD_MIN_Z = -98;
-export const WORLD = { minX: -66, maxX: 66, minZ: WORLD_MIN_Z };
+// Ostgrenze = Tuk-Tuk-Pier (zone-pier-layout.js: WORLD_MAX_X); die Sichelbucht selbst bleibt −66…66
+export const BAY = { minX: -66, maxX: 66 };
+export const WORLD = { minX: -66, maxX: 100, minZ: WORLD_MIN_Z };
 
 // Uferlinie: Sichelbucht, in der Mitte reicht das Meer am weitesten ins Land.
 export function shoreZ(x) {
-  const t = Math.max(0, Math.min(1, (x - WORLD.minX) / (WORLD.maxX - WORLD.minX)));
+  if (x >= BAY.maxX) return SHORE_Z; // östlich der Bucht (Hafen): gerade Uferlinie aus dem Pier-Layout
+  const t = Math.max(0, Math.min(1, (x - BAY.minX) / (BAY.maxX - BAY.minX)));
   return 12 + 5 * Math.sin(t * Math.PI) - 1.5 * Math.sin(t * Math.PI * 3);
 }
 
@@ -82,8 +85,9 @@ export function pushOutRect(p, r, b) {
   return { x: p.x, z: b.z + hd + r };
 }
 
-// Alle Collider + Welt-Grenzen + Ufer; zwei Durchgänge, damit Ecken sauber werden
-export function resolveCollisions(p, r, colliders, world = WORLD) {
+// Alle Collider + Welt-Grenzen + Ufer; zwei Durchgänge, damit Ecken sauber werden.
+// Ins Wasser darf man knöcheltief; auf dem Steg weiter hinaus; durch die Furt nur mit Sandalen/barfuß.
+export function resolveCollisions(p, r, colliders, world = WORLD, { sandalen = true } = {}) {
   let q = { x: p.x, z: p.z };
   for (let pass = 0; pass < 2; pass++) {
     for (const c of colliders) {
@@ -91,7 +95,8 @@ export function resolveCollisions(p, r, colliders, world = WORLD) {
     }
     q.x = Math.max(world.minX + r, Math.min(world.maxX - r, q.x));
     q.z = Math.max(world.minZ + r, q.z);
-    const limit = shoreZ(q.x) + WADE_DEPTH;
+    let limit = shoreZ(q.x) + WADE_DEPTH;
+    if (q.x >= BAY.maxX - 8) limit = Math.max(limit, stegDepthLimit(q.x, SHORE_Z, WADE_DEPTH), sandalen ? furtDepthLimit(q.x, SHORE_Z, WADE_DEPTH) : 0);
     if (q.z > limit) q.z = limit;
   }
   return q;
@@ -102,7 +107,7 @@ export function resolveCollisions(p, r, colliders, world = WORLD) {
  * state: { x, z, yaw, phase, speed }  input: { dir:{x,z}|null, run:boolean }
  * Gibt einen neuen State zurück (keine Mutation).
  */
-export function stepPlayer(state, input, dt, colliders = [], world = WORLD) {
+export function stepPlayer(state, input, dt, colliders = [], world = WORLD, { sandalen = true } = {}) {
   const dir = input.dir;
   const moving = !!dir && (dir.x !== 0 || dir.z !== 0);
   const target = moving ? (input.run ? RUN_SPEED : WALK_SPEED) : 0;
@@ -117,7 +122,7 @@ export function stepPlayer(state, input, dt, colliders = [], world = WORLD) {
     x += dir.x * speed * dt;
     z += dir.z * speed * dt;
   }
-  const q = resolveCollisions({ x, z }, PLAYER_RADIUS, colliders, world);
+  const q = resolveCollisions({ x, z }, PLAYER_RADIUS, colliders, world, { sandalen });
   const moved = Math.hypot(q.x - state.x, q.z - state.z);
   // Phase läuft mit der tatsächlich zurückgelegten Strecke (Schrittlänge ≈ 1.6 Einheiten pro Doppelschritt)
   const phase = (state.phase ?? 0) + moved * (Math.PI * 2 / 1.6);
@@ -273,9 +278,10 @@ export function rotateDir(dir, camYaw = 0) {
 // ---------- Ankerplätze für die Kundschaft: fester Ort + Tätigkeit, kein Kreisen ----------
 // Tätigkeiten: sitzt | telefoniert | fotografiert | schaut | steht. `blick` = Blickrichtung (yaw), sonst zum Meer (+z).
 import { MARKT_ANCHORS } from './zone-markt-layout.js';
+import { PIER_ANCHORS, SHORE_Z, stegDepthLimit, furtDepthLimit } from './zone-pier-layout.js';
 // Zonen der Ankerplätze; Mischung pro Tag über ZONE_MIX (Anteile, nur Zonen mit vorhandenen Plätzen zählen)
-export const ZONES = ['strand', 'dorf', 'markt'];
-export const ZONE_MIX = { strand: 4, dorf: 2, markt: 2 };
+export const ZONES = ['strand', 'dorf', 'markt', 'pier'];
+export const ZONE_MIX = { strand: 4, dorf: 2, markt: 2, pier: 1 };
 export const ANCHORS = [
   { zone: 'strand', id: 'liege_1', x: 28, z: -3.2, r: 0.4, activity: 'sitzt', blick: 0 },
   { zone: 'strand', id: 'liege_2', x: 31.8, z: -1.8, r: 0.4, activity: 'sitzt', blick: 0 },
@@ -297,6 +303,8 @@ export const ANCHORS = [
   { zone: 'dorf', id: 'dorf_nord', x: 8, z: -62, r: 1.2, activity: 'steht', blick: Math.PI },
   // Markt + Posten: Plätze aus dem Markt-Layout
   ...MARKT_ANCHORS,
+  // Hafen: Plätze aus dem Pier-Layout
+  ...PIER_ANCHORS,
 ];
 export const ZIVI_MIN_DIST = 8;
 const dist2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);

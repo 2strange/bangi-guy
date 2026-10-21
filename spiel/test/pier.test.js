@@ -2,14 +2,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  PIER, LANES, EXITS, PROPS, STEG, FERRY, FERRY_SPAWN, FURT, PIER_SPOTS, PIER_ANCHORS, WORLD_MAX_X, LANE_WIDTH, SHORE_Z, HUEGEL_OST,
+  PIER, LANES, EXITS, PROPS, STEG, FERRY, FERRY_SPAWN, FURT, PIER_SPOTS, PIER_ANCHORS, WORLD_MAX_X, LANE_WIDTH, SHORE_Z, furtRadius,
   pierColliders, allColliders, ferryAt, ferryDocked, furtDepthLimit, stegDepthLimit, laneLength,
 } from '../js/zone-pier-layout.js';
 import { segmentColliderDistance, reachableWaypoints, LANES as DORF_LANES } from '../js/zone-dorf-layout.js';
 import { LANES as MARKT_LANES, EXITS as MARKT_EXITS } from '../js/zone-markt-layout.js';
 import { resolveCollisions, PLAYER_RADIUS, WADE_DEPTH } from '../js/logic.js';
 
-test('Wege bleiben ≥ 3 breit (Kulissen + Hügelkreise), Zufahrt beginnt an der Markt-Absperrung', () => {
+test('Wege bleiben ≥ 3 breit, Zufahrt beginnt an der Markt-Absperrung', () => {
   const colliders = allColliders();
   for (const [name, pts] of Object.entries(LANES)) {
     for (let i = 1; i < pts.length; i++) for (const c of colliders) {
@@ -79,6 +79,14 @@ test('Furt und Steg: Sandalen dürfen bei der Furt tiefer, auf dem Steg bis zum 
   assert.equal(furtDepthLimit((FURT.x0 + FURT.x1) / 2), FURT.maxZ);
   assert.ok(FURT.maxZ > SHORE_Z + WADE_DEPTH);
   for (const [x, z] of FURT.stones) assert.ok(x >= FURT.x0 && x <= FURT.x1 && z > SHORE_Z && z <= FURT.maxZ, 'Trittstein außerhalb der Furt');
+  // Umriss bleibt positiv und geschlossen, Trittsteine liegen in der Untiefe
+  for (let a = 0; a < Math.PI * 2; a += 0.1) assert.ok(furtRadius(a) > 0.8 && furtRadius(a) < 1.2);
+  assert.ok(Math.abs(furtRadius(0) - furtRadius(Math.PI * 2)) < 1e-9);
+  for (const [x, z] of FURT.stones) {
+    const a = Math.atan2((z - FURT.cz) / FURT.rz, (x - FURT.cx) / FURT.rx);
+    const r = Math.hypot((x - FURT.cx) / FURT.rx, (z - FURT.cz) / FURT.rz);
+    assert.ok(r < furtRadius(a), `Trittstein (${x}, ${z}) liegt außerhalb der Untiefe`);
+  }
   assert.equal(stegDepthLimit(STEG.x), STEG.z1);
   assert.equal(stegDepthLimit(STEG.x + STEG.w), SHORE_Z + WADE_DEPTH);
   // Steg-Geländer halten den Spieler auf dem Steg
@@ -87,10 +95,4 @@ test('Furt und Steg: Sandalen dürfen bei der Furt tiefer, auf dem Steg bis zum 
   assert.ok(q.x < STEG.x + STEG.w / 2 - 0.4, 'Geländer hält nicht');
   const mid = resolveCollisions({ x: STEG.x, z: 16 }, PLAYER_RADIUS, colliders, { minX: -66, maxX: WORLD_MAX_X, minZ: -98 });
   assert.ok(Math.abs(mid.x - STEG.x) < 1e-9, 'Stegmitte wird verschoben');
-});
-
-test('Hügelkreise decken den Kokoshain-Hügel ab und lassen die Zufahrt frei', () => {
-  for (const c of HUEGEL_OST.circles) assert.ok(Math.abs(c.z - HUEGEL_OST.z) < 1e-9);
-  const span = Math.max(...HUEGEL_OST.circles.map((c) => c.x + c.r)) - Math.min(...HUEGEL_OST.circles.map((c) => c.x - c.r));
-  assert.ok(span >= 50, 'Hügel zu schmal abgedeckt');
 });

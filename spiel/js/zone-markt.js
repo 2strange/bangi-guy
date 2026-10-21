@@ -3,7 +3,7 @@
 // Kokos), Gedränge-Kulisse als Versteck, die Katze läuft ihre Runde (Gag 10). Posten 7: das einzige fast
 // gerade Gebäude, Streifenwagen ohne Reifen, Tafel „TAGE OHNE VORFALL: 0“ (Gag 14), Polizist Pong in Sandalen
 // mit Trillerpfeife (Gag 13) und Idle-Loop, Mango-Stand „1 MANGO = 1 GNADE“ daneben (Gag 8).
-// Einbau: buildMarkt(gruppe, colliders) → { spots, update(t), posten {x,z,r}, mangoStand {x,z}, setTafel(text), hideouts, anchors, bounds }.
+// Einbau: buildMarkt(gruppe, colliders, { exits }) → { spots, update(t), posten {x,z,r}, mangoStand {x,z}, setTafel(text), hideouts, anchors, bounds }.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { toonMesh, toon, deform, rng, textTexture, stripeTexture, BLACK } from './toon.js';
@@ -288,7 +288,7 @@ function pong() {
 /**
  * Baut Markt + Posten 7 in `parent`, pusht Collider. Rückgabe { spots, update(t), hideouts, setTafel(n), anchors, bounds }.
  */
-export function buildMarkt(parent, colliders) {
+export function buildMarkt(parent, colliders, { exits = { pier: true, stadt: true } } = {}) {
   const rand = rng(53);
   const add = (o) => { parent.add(o); return o; };
   paving(parent, cobbleTexture(), LANES, PLATZ);
@@ -343,8 +343,12 @@ export function buildMarkt(parent, colliders) {
     for (const s of [-1, 1]) { b.add(limb(V(s, 0, 0.2), V(s, 0.55, 0.2), 0.06, 0x7a4b22, { outline: 0.025 })); b.add(limb(V(s, 0, -0.2), V(s, 1.2, -0.3), 0.06, 0x7a4b22, { outline: 0.025 })); }
     b.position.set(P.bank.x, 0, P.bank.z); b.rotation.y = P.bank.rot; add(b);
   }
-  for (const e of Object.values(EXITS)) { const b = barrier(e.text); b.position.set(e.x, 0, e.z); b.rotation.y = e.rot; b.scale.setScalar(1.3); add(b); }
-  for (const c of marktColliders()) colliders.push(c);
+  // Absperrungen an den Ausgängen — entfallen, sobald die Nachbarzone eingehängt ist (exits.pier / exits.stadt = false)
+  for (const [name, e] of Object.entries(EXITS)) {
+    if (exits[name] === false) continue;
+    const b = barrier(e.text); b.position.set(e.x, 0, e.z); b.rotation.y = e.rot; b.scale.setScalar(1.3); add(b);
+  }
+  for (const c of marktColliders(exits)) colliders.push(c);
   const hideouts = [{ x: GEDRAENGE.x, z: GEDRAENGE.z, r: GEDRAENGE.r + 0.8 }];
 
   // ----- Animation: Katze, Fliegen, Pong (12-s-Loop: pfeifen, Bauch kratzen, umschauen, Hände in die Hüften) -----

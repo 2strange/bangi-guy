@@ -78,7 +78,7 @@ export function aabb(x, z, w, d, rot = 0, margin = 0.1) {
 export function standCollider(s) { return aabb(s.x, s.z, STAND_FOOT.w, STAND_FOOT.d, s.rot, STAND_FOOT.margin); }
 
 // Alle Collider beider Bereiche
-export function marktColliders() {
+export function marktColliders(exits = { pier: true, stadt: true }) {
   const out = STAENDE.map(standCollider);
   out.push({ x: GEDRAENGE.x, z: GEDRAENGE.z, r: GEDRAENGE.r });
   const P = POSTEN;
@@ -88,7 +88,7 @@ export function marktColliders() {
   out.push({ x: P.pong.x, z: P.pong.z, r: P.pong.r });
   out.push({ x: P.fahne.x, z: P.fahne.z, r: P.fahne.r });
   out.push(aabb(P.bank.x, P.bank.z, P.bank.w, P.bank.d, P.bank.rot));
-  for (const e of Object.values(EXITS)) out.push({ x: e.x, z: e.z, w: e.w, d: e.d });
+  for (const [name, e] of Object.entries(EXITS)) if (exits[name] !== false) out.push({ x: e.x, z: e.z, w: e.w, d: e.d });
   return out;
 }
 

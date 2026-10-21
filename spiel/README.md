@@ -83,6 +83,10 @@ Dann `http://localhost:8000/` öffnen.
   Mango den Heat um 1 — einmal pro Tag, nur mit Mango und nur bei Heat > 0 (Texte aus `texte.json → posten7`).
   Die Tafel am Posten zeigt den echten Stand „Tage ohne Vorfall“ (zählt pro Tag hoch, Verhaftung → 0). Logik in
   `js/game.js`, getestet. `?snap=1&scene=mango` zeigt den Kauf.
+- **Hafen:** Die Welt reicht jetzt bis x 100. Auf dem Steg darf man bis zum Anleger hinaus, durch die Furt (Untiefe mit
+  Trittsteinen) kommt man nur mit Sandalen oder barfuß — Turnschuhe bleiben an der Wasserkante (`resolveCollisions`
+  mit `sandalen`, getestet). Kunden mit Spawn-Code K1 kommen mit der Fähre: sie steigen beim Anlegen am Steg aus und
+  gehen zu ihrem Platz. Der Pier-Ausgang des Markts ist offen, die Ost-Absperrung der Promenade ist weg.
 - **Streife P1:** ein Polizist in Sandalen (Mütze, Ohrknopf, Funkgerät) läuft Posten 7 ↔ Markt über die Ringstraße
   (Wegfolgen und Sichtkegel als reine Funktionen in `js/logic.js`, getestet: ±60°, 12 Einheiten). Sieht er einen
   Verkauf, gibt es Heat +1 und Trillerpfeife; ab Heat 1 pfeift er bei jeder Sichtung (höchstens alle 8 s).
@@ -107,7 +111,7 @@ Dann `http://localhost:8000/` öffnen.
 - Standbilder: `?snap=1&scene=dialog` (Sprechblase in der Wahl-Phase), `?snap=1&scene=inspect` (Hinschau-Kamera auf
   den Zivi), `?snap=1&scene=lineup` (alle Kunden in einer Reihe), `?snap=1&scene=ausverkauft` (Ausverkauft-Meldung).
 
-URL-Parameter: `?at=start|bar|pier|mitte|hotel|verleih|ost|hecke|overview|dorf|platz|waesche|hunde|nord|huegel|garten|markt|marktmitte|posten|ring` setzt den Startpunkt, `?cy=-90` dreht die
+URL-Parameter: `?at=start|bar|mitte|hotel|verleih|ost|hecke|overview|dorf|platz|waesche|hunde|nord|huegel|garten|markt|marktmitte|posten|ring|pier|steg|tuktuk|furt|zufahrt` setzt den Startpunkt, `?cy=-90` dreht die
 Kamera (Grad, relativ zum Standard), `?stats=1` zeigt Draw-Calls/Dreiecke/FPS, `?snap=1` rendert ein einzelnes
 Standbild (für die PNGs in `shots/`).
 
@@ -117,6 +121,8 @@ Standbild (für die PNGs in `shots/`).
   Anlauf/Bremsen, Kollision (Kreise + Rechtecke, Rausdrücken in zwei Durchgängen), Uferlinie als Funktion,
   Welt-Grenzen, Folge-Kamera, Watschel-Pose, NPC-Kopfdrehung, Klick-Ziel.
 - `test/logic.test.js` – Tests dazu (`npm test` bzw. `node --test "test/**/*.test.js"`), kein Browser nötig.
+- `js/zone-pier.js` + `js/zone-pier-layout.js` – Tuk-Tuk-Pier (Hafen) östlich von x 66: Steg mit Anleger, Fähre alle
+  60 s, Tuk-Tuk, Furt zum Hotelstrand (eingehängt aus `world.js` mit `buildPier()`).
 - `js/zone-markt.js` + `js/zone-markt-layout.js` – Mango-Markt östlich des Dorfs und Posten 7 nördlich mit Ringstraße
   (eingehängt aus `world.js` mit `buildMarkt()`; liefert Spots, Ankerplätze, Tafel-Setter).
 - `js/zone-huegel.js` + `js/zone-huegel-layout.js` – Zone „Kiffer-Kuppe“: Heightfield mit Serpentine, Mentor-Hütte,

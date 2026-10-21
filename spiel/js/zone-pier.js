@@ -11,7 +11,7 @@ import { sandal } from './figures.js';
 import { face, faceDecal } from './faces.js';
 import { plate, cobbleTexture, paving } from './zone-dorf.js';
 import { WATER_Y } from './world.js';
-import { LANES, PROPS, EXITS, STEG, FERRY, FERRY_SPAWN, FURT, HAFENPLATZ, PIER_SPOTS, PIER_ANCHORS, HUEGEL_OST, WORLD_MAX_X, SHORE_Z, pierColliders, ferryAt } from './zone-pier-layout.js';
+import { LANES, PROPS, EXITS, STEG, FERRY, FERRY_SPAWN, FURT, HAFENPLATZ, PIER_SPOTS, PIER_ANCHORS, WORLD_MAX_X, SHORE_Z, pierColliders, ferryAt, furtRadius } from './zone-pier-layout.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
@@ -179,10 +179,41 @@ export function buildPier(parent, colliders) {
   // Steg + Fähre
   const steg = dock(); steg.position.set(STEG.x, 0, STEG.z0); add(steg);
   const fahre = ferry(); fahre.position.y = WATER_Y + 0.05; add(fahre);
-  // Furt: Untiefe heller, Trittsteine
+  // Furt: organische Untiefe (wabbelige Ellipse, innen hell, zum Rand ins Meerblau verlaufend), Schaumrand, Glitzern, Trittsteine
+  const sparkles = [];
   {
-    const shallow = toonMesh(new THREE.PlaneGeometry(FURT.x1 - FURT.x0 + 2, FURT.maxZ - SHORE_Z + 2), 0x7fe6ea, { outline: 0, shadow: false, basic: true });
-    shallow.rotation.x = -Math.PI / 2; shallow.position.set((FURT.x0 + FURT.x1) / 2, WATER_Y + 0.02, (SHORE_Z + FURT.maxZ) / 2); shallow.userData.noFade = true; add(shallow);
+    const N = 48, inner = new THREE.Color(0x8ff0ef), sea = new THREE.Color(0x1d9be6);
+    const pos = [], col = [], idx = [];
+    const ring = (k, rf, c) => {
+      for (let i = 0; i < N; i++) {
+        const a = i / N * Math.PI * 2, f = furtRadius(a) * rf;
+        pos.push(FURT.cx + Math.cos(a) * FURT.rx * f, 0, FURT.cz + Math.sin(a) * FURT.rz * f);
+        col.push(c.r, c.g, c.b);
+      }
+    };
+    pos.push(FURT.cx, 0, FURT.cz); col.push(inner.r, inner.g, inner.b);      // 0: Mitte
+    ring(1, 1.0, inner);                                                     // 1..N: Rand der Untiefe
+    ring(2, 1.35, sea);                                                      // N+1..2N: Übergang ins Meer
+    for (let i = 0; i < N; i++) { const j = (i + 1) % N; idx.push(0, 1 + j, 1 + i); }
+    for (let i = 0; i < N; i++) { const j = (i + 1) % N; idx.push(1 + i, 1 + j, 1 + N + i, 1 + j, 1 + N + j, 1 + N + i); }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    geo.setIndex(idx); geo.computeVertexNormals();
+    const shallow = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false }));
+    shallow.position.y = WATER_Y + 0.02; shallow.renderOrder = 1; shallow.userData.noFade = true; add(shallow);
+    // Schaumrand als dünne Röhre am Umriss, leicht wellig
+    const pts = [];
+    for (let i = 0; i <= N; i++) { const a = i / N * Math.PI * 2, f = furtRadius(a) * 1.04; pts.push(V(FURT.cx + Math.cos(a) * FURT.rx * f, WATER_Y + 0.05, FURT.cz + Math.sin(a) * FURT.rz * f)); }
+    const foam = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 96, 0.12, 5, true), new THREE.MeshBasicMaterial({ color: 0xeaf9ff }));
+    foam.userData.noFade = true; add(foam);
+    // Glitzern: kleine helle Punkte, die mit der Zeit auf- und abblenden
+    for (let i = 0; i < 14; i++) {
+      const a = rand() * Math.PI * 2, r = Math.sqrt(rand()) * 0.85 * furtRadius(a);
+      const sp = new THREE.Mesh(new THREE.CircleGeometry(0.12 + rand() * 0.1, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
+      sp.rotation.x = -Math.PI / 2; sp.position.set(FURT.cx + Math.cos(a) * FURT.rx * r, WATER_Y + 0.08, FURT.cz + Math.sin(a) * FURT.rz * r);
+      sp.userData.phase = rand() * Math.PI * 2; sp.userData.noFade = true; sparkles.push(add(sp));
+    }
     for (const [x, z] of FURT.stones) {
       const st = toonMesh(new THREE.SphereGeometry(0.7, 8, 6), 0x8d8fa0, { outline: 0.04 }); st.geometry.scale(1.3, 0.5, 1.1);
       st.position.set(x, WATER_Y + 0.1, z); st.rotation.y = rand() * 3; st.userData.noFade = true; add(st);
@@ -233,7 +264,6 @@ export function buildPier(parent, colliders) {
   }
   for (const e of Object.values(EXITS)) { const b = barrier(e.text); b.position.set(e.x, 0, e.z); b.rotation.y = e.rot; b.scale.setScalar(1.3); add(b); }
   for (const c of pierColliders()) colliders.push(c);
-  for (const c of HUEGEL_OST.circles) colliders.push({ ...c });
 
   // ----- Animation: Fähre (Position, Tuten, Rauch), Tuk-Tuk (Puffs, Motor säuft ab), Schwimmer, Möwen -----
   function update(t) {
@@ -251,6 +281,7 @@ export function buildPier(parent, colliders) {
       tuk.userData.body.rotation.z = on ? 0.01 * Math.sin(t * 37) : 0;
     }
     if (fisher) fisher.userData.bob.position.y = 0.05 + 0.08 * Math.sin(t * 2.2);
+    for (const sp of sparkles) sp.material.opacity = Math.max(0, Math.sin(t * 2.6 + sp.userData.phase)) ** 3 * 0.9;
   }
   update(0);
   return {

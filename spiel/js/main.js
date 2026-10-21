@@ -181,7 +181,9 @@ function spawnKunden(day = 1) {
     const collider = { x: npc.x, z: npc.z, r: 0.7 };
     colliders.push(collider);
     prepareGags(group);
-    kunden.push({ def, group, npc, collider, look: 0, id: def.id, gag: null, idleN: i, nextIdle: 3 + i * 1.3, anchor: a });
+    kunden.push({ def, group, npc, collider, look: 0, id: def.id, gag: null, idleN: i, nextIdle: 3 + i * 1.3, anchor: a, arrived: def.spawn !== 'K1' });
+    // Fähren-Gäste (K1) warten unsichtbar auf dem Wasser, bis die Fähre anlegt
+    if (def.spawn === 'K1' && world.pier?.ferrySpawn) { group.visible = false; collider.r = 0; }
     applyKunde(kunden[kunden.length - 1]);
   });
 }
@@ -769,6 +771,25 @@ function updateNearHint() {
   ui.showBadge(['E', 'F'], (badgeWorld.x + 1) / 2 * window.innerWidth, (1 - badgeWorld.y) / 2 * window.innerHeight);
 }
 
+// ---------- Fähre: wer mit der Fähre kommt (Spawn-Code K1), steigt beim Anlegen am Steg aus und geht zu seinem Platz ----------
+let ferryWasDocked = false;
+function updateFerry(t) {
+  if (!world.pier?.ferry) return;
+  const docked = world.pier.ferry(t).state === 'docked';
+  if (docked && !ferryWasDocked) {
+    const sp = world.pier.ferrySpawn;
+    for (const k of kunden) {
+      if (k.def.spawn !== 'K1' || k.arrived) continue;
+      k.arrived = true;
+      k.group.visible = true; k.collider.r = 0.7;
+      k.npc = { ...k.npc, x: sp.x, z: sp.z, points: [{ x: sp.x, z: sp.z }, { x: k.anchor.x, z: k.anchor.z }], idx: 1, pause: 1.5 + Math.random(), moving: false };
+      k.group.userData.pose = null;
+    }
+    try { audio?.sfx?.('ui_klick'); } catch (e) { /* ignorieren */ }
+  }
+  ferryWasDocked = docked;
+}
+
 // ---------- Kunden je Frame ----------
 function updateKunden(dt) {
   const now = clock();
@@ -937,6 +958,7 @@ if (SNAP) {
     camera.updateMatrixWorld();
     world.huegel.update(3.2);
     world.markt?.update?.(3.2);
+    world.pier?.update?.(3.2);
     if (SCENE !== 'streife' && SCENE !== 'verfolgung') applyCop();
     try { world.markt?.setTafel?.(0); } catch (e) { /* ignorieren */ }
     world.group.updateMatrixWorld(true);
@@ -965,6 +987,8 @@ if (SNAP) {
     last = now;
     world.huegel.update(now / 1000);
     world.markt?.update?.(now / 1000);
+    world.pier?.update?.(now / 1000);
+    updateFerry(now / 1000);
     if (now > tafelAt) { tafelAt = now + 500; const n = isArrested(game) ? 0 : (game.tageOhneVorfall || 0); if (n !== tafelShown) { tafelShown = n; try { world.markt?.setTafel?.(n); } catch (e) { /* ignorieren */ } } }
     const free = mode === 'free' || mode === 'inspect'; // dialog/mentor/info/card: stehen bleiben
     if (free) {

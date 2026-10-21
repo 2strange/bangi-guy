@@ -7,6 +7,7 @@ import { shoreZ, WORLD, buildingScale, scaledRect, scaledCircle, BUILDING_POS, b
 import { buildDorf } from './zone-dorf.js';
 import { buildHuegel } from './zone-huegel.js';
 import { buildMarkt } from './zone-markt.js';
+import { buildPier } from './zone-pier.js';
 
 export const WATER_Y = 0.06;
 
@@ -65,7 +66,9 @@ export function buildWorld() {
   // Mentor-Hügel „Kiffer-Kuppe“ (eigenes Modul): Heightfield, Serpentine, Hütte, Garten, Mentor; liefert height(x, z)
   const huegel = buildHuegel(g, colliders);
   // Mango-Markt (östlich des Dorfs) + Posten 7 (nördlich) mit Ringstraße (eigenes Modul)
-  const markt = buildMarkt(g, colliders);
+  const markt = buildMarkt(g, colliders, { exits: { pier: false, stadt: true } }); // Pier-Ausgang ist offen, Stadt bleibt gesperrt
+  // Tuk-Tuk-Pier (Hafen) östlich von x 66: Steg, Fähre, Tuk-Tuk, Furt zum Hotelstrand (eigenes Modul)
+  const hafen = buildPier(g, colliders); // nicht `pier` nennen: so heißt der Steg-Baustein aus props.js
 
   // Promenade: gepflasterter Weg am Nordrand des Strands, mit Laternen
   g.add(stripMesh((x) => -12.2 + 0.4 * Math.sin(x / 5), (x) => -9.4 + 0.4 * Math.sin(x / 5 + 1), 0xd9c4a3, 0.03, { x0: -64, x1: 66, step: 2 }));
@@ -78,7 +81,6 @@ export function buildWorld() {
   g.add(hedge(-6, 66, -25.5, { gapFrom: -4, gapTo: 4, seed: 4 }));
   // Absperrungen an den drei Ausgängen (Wege enden hier erstmal)
   const bW = barrier('SURFER-BUCHT – bald'); bW.position.set(-64.5, 0, -2); bW.rotation.y = Math.PI / 2; bW.scale.setScalar(1.3); g.add(bW); rect(-64.5, -2, 1.5, 6.5);
-  const bE = barrier('PROMENADE – im Bau'); bE.position.set(64.5, 0, -10.8); bE.rotation.y = -Math.PI / 2; bE.scale.setScalar(1.3); g.add(bE); rect(64.5, -10.8, 1.5, 6.5);
 
   // Hotel Palmenschatten im Osten (Kulisse), Pool, Rutsche, Liegen mit Rentnern-Handtüchern
   const ho = hotel();
@@ -244,5 +246,5 @@ export function buildWorld() {
     ost: { x: 58, z: -2, yaw: Math.PI / 2 },
     hecke: { x: 8, z: -17, yaw: 0.3 }, // Strandseite vor der Heckenlücke („nord“ gehört dem Dorf)
   };
-  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots, ...markt.spots }, hideouts: [...dorf.hideouts, ...(markt.hideouts || [])], dorf, huegel, markt };
+  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots, ...markt.spots, ...hafen.spots }, hideouts: [...dorf.hideouts, ...(markt.hideouts || []), ...(hafen.hideouts || [])], dorf, huegel, markt, pier: hafen };
 }

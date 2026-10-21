@@ -1,6 +1,6 @@
 // zone-pier-layout.js — Grundriss der Zone „Tuk-Tuk-Pier“ (Z4, Hafen) als reine Daten (kein Three.js).
 // Lage: östlich des Markts hinter der Absperrung „TUK-TUK-PIER“, am Ostende des Strands (x 66…100). Die Zufahrt
-// führt vom Markt südlich am Kokoshain-Hügel vorbei zum Hafenplatz; der Steg geht ins Meer (Ufer bei z ≈ 12).
+// führt vom Markt zum Hafenplatz; der Steg geht ins Meer (Ufer bei z ≈ 12). Furt: organische Untiefe bei (66, 17).
 // Die Fähre kommt alle FERRY_PERIOD Sekunden von Osten, tutet, legt am Steg an und fährt wieder.
 // Koordinaten wie logic.js: x nach Osten, z nach Süden (Meer).
 
@@ -9,9 +9,6 @@ export const WORLD_MAX_X = 100;                       // neue Ostgrenze
 export const PIER = { minX: 66, maxX: 100, minZ: -56, maxZ: 30 };
 export const HAFENPLATZ = { x: 79, z: -5, w: 22, d: 20 }; // gepflasterter Hafenplatz
 export const SHORE_Z = 12;                            // Uferlinie im Osten (shoreZ(x) für x ≥ 66)
-
-// Kokoshain-Hügel (world.js hill2) — Vorschlag: Mitte (92, -66); als zwei Kreise unbegehbar
-export const HUEGEL_OST = { x: 92, z: -66, circles: [{ x: 84, z: -66, r: 20 }, { x: 100, z: -66, r: 20 }] };
 
 // Wege (Mittellinien): Zufahrt vom Markt, Anschluss an die Promenade (Absperrung „PROMENADE – im Bau“ bei x 64.5)
 // (Schlüssel zonenweit eindeutig — die Tests legen die Wege aller Zonen in ein Objekt)
@@ -30,7 +27,9 @@ export const FERRY = { dockX: 92, dockZ: 25, farX: 140, period: 60, approach: 12
 export const FERRY_SPAWN = { x: 84, z: 16 };          // auf dem Steg: hier steigen Backpacker und Zivi P3 aus
 
 // Furt F2 (Untiefe Hotelstrand ↔ Pier): nur mit Sandalen/barfuß; Turnschuhe bleiben an der Wasserkante
-export const FURT = { x0: 58, x1: 74, maxZ: 22, stones: [[60, 15], [63, 17], [66, 18.5], [69, 17.5], [72, 15.5]] };
+export const FURT = { x0: 58, x1: 74, maxZ: 22.5, cx: 66, cz: 18, rx: 9.5, rz: 4.6, stones: [[60, 16], [63, 18], [66, 19.5], [69, 18.5], [72, 16.5]] }; // Untiefe ganz im Wasser (Ufer bei z 12)
+// Umriss der Untiefe: wabbelige Ellipse (Winkel → Radiusfaktor), für Mesh und Schaumrand
+export const furtRadius = (a) => 1 + 0.1 * Math.sin(3 * a + 0.4) + 0.06 * Math.sin(7 * a + 1.3);
 
 // Kulissen mit Collidern
 export const PROPS = [
@@ -87,7 +86,7 @@ export function pierColliders() {
   out.push({ x: S.x, z: S.z1 + 0.3, w: S.w + 1, d: 0.4 }); // Stegende
   return out;
 }
-export function allColliders() { return [...pierColliders(), ...HUEGEL_OST.circles]; }
+export const allColliders = pierColliders;
 
 // Fähre zur Zeit t: Position, Blickrichtung, Zustand (approach | docked | leave | away), Tut-Signal
 export function ferryAt(t) {

@@ -51,9 +51,7 @@ const hillGeo = new THREE.SphereGeometry(1, 28, 16);
 hillGeo.scale(44, 14, 30);
 const hill = toonMesh(hillGeo, 0x3f9d37, { outline: 0.12 });
 hill.position.set(-45, -2, -52); hill.userData.noFade = true; world.add(hill);
-const hill2Geo = hillGeo.clone(); hill2Geo.scale(0.6, 0.5, 0.7);
-const hill2 = toonMesh(hill2Geo, 0x4cae3c, { outline: 0.12 });
-hill2.position.set(92, -2, -66); // Kokoshain hinter die Bühnenkante (Markt und Pier-Zufahrt liegen davor) hill2.userData.noFade = true; world.add(hill2);
+// (Kokoshain-Hügel entfällt: Markt und Pier liegen dort)
 const mentor = hut({ w: 3, h: 2.4, d: 2.6, lean: 0.35, wall: 0x8b5a2b, straw: true, seed: 8 });
 mentor.position.set(-45, 11.5, -52); mentor.rotation.y = 0.4; mentor.scale.setScalar(buildingScale('mentor')); world.add(mentor);
 world.add(hedge(-66, 66, -25.5, { gapFrom: -4, gapTo: 4, seed: 3 }));
@@ -61,11 +59,7 @@ world.add(hedge(-66, 66, -25.5, { gapFrom: -4, gapTo: 4, seed: 3 }));
 // ----- Dorf -----
 const colliders = [];
 const dorf = buildDorf(world, colliders, { exits: { markt: false, posten: false } });
-const markt = buildMarkt(world, colliders);
-// Markt-Absperrung „TUK-TUK-PIER“ entfällt: Collider wieder entfernen
-const pierExit = colliders.findIndex((c) => c.x === 64.5 && c.z === -51);
-if (pierExit >= 0) colliders.splice(pierExit, 1);
-world.children.filter((o) => Math.abs(o.position.x - 64.5) < 0.01 && Math.abs(o.position.z + 51) < 0.01).forEach((o) => world.remove(o));
+const markt = buildMarkt(world, colliders, { exits: { pier: false } });
 const pier = buildPier(world, colliders);
 world.updateMatrixWorld(true);
 {

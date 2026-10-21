@@ -6,7 +6,7 @@ import {
   syllables, babblePlan, normalizeStimme, normalizeStimmen, STIL, DEFAULT_STIMME, slugFor, pickBark, bark,
   musicPattern, PROGRESSION, BARS, STEPS_PER_BAR, BPM, stepSeconds, nextGullDelay, rng, hashStr, midiToFreq, SFX_NAMES,
   babble, sfx, setMuted, isMuted, ambience, music, stimmeFor, setStimmen, normalizePan,
-  ZONES, normalizeZones, pseudoWords, nextRufDelay, nextFunkDelay,
+  ZONES, normalizeZones, pseudoWords, nextRufDelay, nextFunkDelay, sputterTimes,
 } from '../js/audio.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -126,12 +126,18 @@ test('musicPattern: 16 Takte, Skank nur auf Offbeats, One-Drop, Bass im Keller, 
 });
 
 test('Zonen: normalizeZones clampt, ignoriert Unbekanntes, null = Strand; Pseudo-Wörter brabbelbar', () => {
-  assert.deepEqual(ZONES, ['strand', 'markt', 'posten']);
-  assert.deepEqual(normalizeZones(null), { strand: 1, markt: 0, posten: 0 });
-  assert.deepEqual(normalizeZones({}), { strand: 0, markt: 0, posten: 0 });
-  assert.deepEqual(normalizeZones({ strand: 1, markt: 0.3 }), { strand: 1, markt: 0.3, posten: 0 });
-  assert.deepEqual(normalizeZones({ strand: 7, markt: -1, posten: 'x', bar: 1 }), { strand: 1, markt: 0, posten: 0 });
-  assert.deepEqual(normalizeZones({ posten: '0.4' }), { strand: 0, markt: 0, posten: 0.4 });
+  assert.deepEqual(ZONES, ['strand', 'markt', 'posten', 'pier']);
+  assert.deepEqual(normalizeZones(null), { strand: 1, markt: 0, posten: 0, pier: 0 });
+  assert.deepEqual(normalizeZones({}), { strand: 0, markt: 0, posten: 0, pier: 0 });
+  assert.deepEqual(normalizeZones({ strand: 1, markt: 0.3 }), { strand: 1, markt: 0.3, posten: 0, pier: 0 });
+  assert.deepEqual(normalizeZones({ strand: 7, markt: -1, posten: 'x', bar: 1 }), { strand: 1, markt: 0, posten: 0, pier: 0 });
+  assert.deepEqual(normalizeZones({ posten: '0.4', pier: 0.9 }), { strand: 0, markt: 0, posten: 0.4, pier: 0.9 });
+  // Abwürgen: Zündungen werden langsamer, Puff kommt nach der letzten, Gesamtlänge ~1–2 s
+  const sp = sputterTimes();
+  assert.equal(sp.pops[0], 0);
+  for (let i = 2; i < sp.pops.length; i++) assert.ok(sp.pops[i] - sp.pops[i - 1] > sp.pops[i - 1] - sp.pops[i - 2], 'Abstand wächst');
+  assert.ok(sp.puff > sp.pops[sp.pops.length - 1] && sp.puff > 0.8 && sp.puff < 2.5, `Puff bei ${sp.puff}`);
+  assert.deepEqual(sputterTimes(3, 0.1, 2), { pops: [0, 0.1, 0.30000000000000004], puff: 0.7000000000000001 });
   const r = rng(3);
   const t = pseudoWords(r, 5);
   assert.equal(t.split(' ').length, 5);
@@ -157,15 +163,15 @@ test('Helfer: rng deterministisch im Bereich, hash stabil, Möwenpause 8–22 s,
 });
 
 test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Dauer', () => {
-  for (const n of ['kasse', 'ablehnen', 'heat', 'verhaftet', 'ausverkauft', 'schritt_sand', 'ui_klick', 'hinschauen', 'pfeife', 'mango', 'funk']) assert.ok(SFX_NAMES.includes(n), n);
-  assert.equal(SFX_NAMES.length, 11);
+  for (const n of ['kasse', 'ablehnen', 'heat', 'verhaftet', 'ausverkauft', 'schritt_sand', 'ui_klick', 'hinschauen', 'pfeife', 'mango', 'funk', 'tuten', 'tuktuk_abwuergen']) assert.ok(SFX_NAMES.includes(n), n);
+  assert.equal(SFX_NAMES.length, 13);
   for (const n of SFX_NAMES) assert.equal(sfx(n), 0);
   assert.equal(sfx('gibtsnicht'), 0);
   ambience.start(); ambience.stop(); music.start(); music.stop();
   assert.equal(ambience.isPlaying(), false); assert.equal(music.isPlaying(), false);
   assert.equal(ambience.ruf(), 0); assert.equal(ambience.funk(), 0);
-  assert.deepEqual(ambience.setZone({ markt: 0.5 }), { strand: 0, markt: 0.5, posten: 0 });
-  assert.deepEqual(ambience.getZone(), { strand: 0, markt: 0.5, posten: 0 });
+  assert.deepEqual(ambience.setZone({ markt: 0.5 }), { strand: 0, markt: 0.5, posten: 0, pier: 0 });
+  assert.deepEqual(ambience.getZone(), { strand: 0, markt: 0.5, posten: 0, pier: 0 });
   ambience.setZone(null);
   setMuted(true); assert.equal(isMuted(), true); setMuted(false); assert.equal(isMuted(), false);
   const d = babble('zivi_polo', 'Nice shoes. Where did you get them?');

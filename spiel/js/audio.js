@@ -6,7 +6,7 @@
 //   initAudio()                     einmal beim Start; wartet selbst auf die erste Geste (iOS: resume)
 //   setMuted(bool) / isMuted()      Mute mit localStorage
 //   sfx('kasse' | 'ablehnen' | 'heat' | 'verhaftet' | 'ausverkauft' | 'schritt_sand' | 'ui_klick' | 'hinschauen')
-//   ambience.start() / .stop()      Zonen-Ambience: strand (Brandung + Möwe), markt (Gewirr + Händlerrufe), posten (Funk)
+//   ambience.start() / .stop()      Zonen-Ambience: strand (Brandung + Möwe), markt (Gewirr + Händlerrufe), posten (Funk), pier (Tuk-Tuk-Leerlauf)
 //   ambience.setZone({ strand: 1, markt: 0.3 })   Mischung 0..1 je Zone, weich; .ruf() / .funk() sofort
 //   music.start() / .stop() / .setVolume(0..1) / .setEnabled(bool)   Strand-Loop, ~75 BPM
 //   loadStimmen() → stimmeFor(id)   Stimmprofile + Barks aus data/stimmen.json
@@ -23,9 +23,9 @@ export const VOL = {
   voice: 0.55,
   // einzelne Effekte relativ zum SFX-Bus
   kasse: 0.8, ablehnen: 0.6, heat: 0.55, verhaftet: 0.5, ausverkauft: 0.6, schritt_sand: 0.18, ui_klick: 0.35, hinschauen: 0.4,
-  pfeife: 0.45, mango: 0.6, funk: 0.4,
+  pfeife: 0.45, mango: 0.6, funk: 0.4, tuten: 0.55, tuktuk_abwuergen: 0.5,
   // Ambience-Details (relativ zum Ambience-Bus)
-  moewe: 0.35, walla: 0.16, ruf: 0.3, funkspruch: 0.45,
+  moewe: 0.35, walla: 0.16, ruf: 0.3, funkspruch: 0.45, tuktuk: 0.22,
 };
 const STORE_MUTE = 'bangi_audio_muted';
 const STORE_MUSIC = 'bangi_audio_music';
@@ -232,13 +232,20 @@ export const nextRufDelay = (r) => 6 + r() * 9;
 export const nextFunkDelay = (r) => 10 + r() * 15;
 
 // ---------- Zonen (rein) ----------
-export const ZONES = ['strand', 'markt', 'posten'];
+export const ZONES = ['strand', 'markt', 'posten', 'pier'];
 /** Gewichte 0..1 je Zone; unbekannte Schlüssel ignoriert, fehlende = 0; null/undefined = nur Strand */
 export function normalizeZones(g) {
-  if (!g || typeof g !== 'object') return { strand: 1, markt: 0, posten: 0 };
   const out = {};
+  for (const z of ZONES) out[z] = 0;
+  if (!g || typeof g !== 'object') { out.strand = 1; return out; }
   for (const z of ZONES) out[z] = clamp(Number(g[z]) || 0, 0, 1);
   return out;
+}
+/** Tuk-Tuk-Abwürgen: Zündungen mit wachsendem Abstand (rein, testbar): Zeitpunkte in s, dann der Puff */
+export function sputterTimes(count = 9, first = 0.07, growth = 1.22) {
+  const t = []; let at = 0, gap = first;
+  for (let i = 0; i < count; i++) { t.push(at); at += gap; gap *= growth; }
+  return { pops: t, puff: at };
 }
 /** Pseudo-Wörter fürs Stimmengewirr (nur Buchstaben, 1–3 Silben je Wort), r = Zufall 0..1 */
 const PSEUDO_ON = ['b', 'd', 'g', 'k', 'l', 'm', 'n', 'p', 'r', 's', 't', 'w', 'h', 'j', 'ch', 'st'];
@@ -469,6 +476,41 @@ const SFX = {
   },
   // Funk-Knacken (Squelch), einzeln als SFX
   funk(t, out) { radioCrackle(t, out, 1, 2 + Math.floor(Math.random() * 3)); return 0.35; },
+  // Fährhorn: tiefe Quinte aus zwei Sägezähnen + Sub, langsam an, lang gehalten, am Ende comic-haft absackend
+  tuten(t, out) {
+    const lp = filt('lowpass', 420, 1.2); lp.frequency.linearRampToValueAtTime(700, t + 0.5); lp.frequency.linearRampToValueAtTime(380, t + 2.2);
+    const g = gainEnv(t, { a: 0.18, peak: 0.6, d: 0.6, hold: 1.4 });
+    lp.connect(g); g.connect(out);
+    const vib = osc('sine', 5.5, t); const vg = ctx.createGain(); vg.gain.value = 1.8; vib.connect(vg);
+    [[98, 1, 'sawtooth'], [147, 0.6, 'sawtooth'], [49, 0.5, 'sine'], [99.5, 0.5, 'square']].forEach(([f, v, w]) => {
+      const o = osc(w, f, t);
+      o.frequency.setValueAtTime(f, t + 1.5); o.frequency.exponentialRampToValueAtTime(f * 0.88, t + 2.2); // Absacken
+      vg.connect(o.frequency);
+      const og = ctx.createGain(); og.gain.value = v; o.connect(og); og.connect(lp); o.start(t); o.stop(t + 2.4);
+    });
+    vib.start(t); vib.stop(t + 2.4);
+    return 2.4;
+  },
+  // Tuk-Tuk würgt ab: Zündungen mit wachsendem Abstand, zum Schluss ein dumpfer Puff
+  tuktuk_abwuergen(t, out) {
+    const { pops, puff } = sputterTimes();
+    pops.forEach((dt, i) => {
+      const tt = t + dt;
+      const o = osc('sine', 95, tt); o.frequency.exponentialRampToValueAtTime(38, tt + 0.05);
+      const g = gainEnv(tt, { a: 0.002, peak: 0.55 * (1 - i * 0.04), d: 0.06 });
+      o.connect(g); g.connect(out); o.start(tt); o.stop(tt + 0.1);
+      const n = noise(); const bp = filt('bandpass', 700 + Math.random() * 300, 1.2); const ng = gainEnv(tt, { a: 0.002, peak: 0.3, d: 0.03 });
+      n.connect(bp); bp.connect(ng); ng.connect(out); n.start(tt); n.stop(tt + 0.06);
+    });
+    // Puff: Lowpass-Rauschwolke + tiefer Seufzer
+    const tp = t + puff;
+    const n = noise(); const lp = filt('lowpass', 500, 0.7); const ng = gainEnv(tp, { a: 0.02, peak: 0.6, d: 0.35 });
+    n.connect(lp); lp.connect(ng); ng.connect(out); n.start(tp); n.stop(tp + 0.5);
+    const o = osc('triangle', 70, tp); o.frequency.exponentialRampToValueAtTime(28, tp + 0.4);
+    const g = gainEnv(tp, { a: 0.01, peak: 0.4, d: 0.4 });
+    o.connect(g); g.connect(out); o.start(tp); o.stop(tp + 0.5);
+    return puff + 0.5;
+  },
   // Zoom-Swoosh: Bandpass-Rauschen fegt hoch
   hinschauen(t, out) {
     const n = noise(); const bp = filt('bandpass', 300, 1.5);
@@ -610,7 +652,20 @@ function pickText(slug, situation, fallback) {
   return t;
 }
 
-const LAYERS = { strand: layerStrand, markt: layerMarkt, posten: layerPosten };
+// Pier: Tuk-Tuk im Leerlauf (Zündfolge ≈ 22 Hz als Sägezahn durch Lowpass + Auspuff-Rauschen im selben Takt, Drehzahl wabert leicht)
+function layerPier(out) {
+  const g = ctx.createGain(); g.gain.value = VOL.tuktuk; g.connect(out);
+  const motor = osc('sawtooth', 22, now()); const mlp = filt('lowpass', 170, 1.5); const mg = ctx.createGain(); mg.gain.value = 0.8;
+  motor.connect(mlp); mlp.connect(mg); mg.connect(g);
+  const n = noise(); const bp = filt('bandpass', 850, 0.9); const puls = ctx.createGain(); puls.gain.value = 0.12;
+  const pl = osc('square', 22, now()); const plg = ctx.createGain(); plg.gain.value = 0.1; pl.connect(plg); plg.connect(puls.gain); // Auspuff pulst im Zündtakt
+  n.connect(bp); bp.connect(puls); puls.connect(g);
+  const wob = osc('sine', 0.3, now()); const wg = ctx.createGain(); wg.gain.value = 1.6; wob.connect(wg); wg.connect(motor.frequency); wg.connect(pl.frequency);
+  motor.start(); n.start(); pl.start(); wob.start();
+  return { nodes: [motor, n, pl, wob], timers: [], weight: 0 };
+}
+
+const LAYERS = { strand: layerStrand, markt: layerMarkt, posten: layerPosten, pier: layerPier };
 let zoneWeights = normalizeZones(null);
 export const ambience = {
   start() {
