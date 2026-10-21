@@ -20,7 +20,7 @@ import {
   normalizeStimmen, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
   normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
-  initialClock, clockStep, clockLabel, phaseFor, abendBeginnt, nachtBeginnt, barBeendetTag, normalizeAbend, barAbend, guteNacht, sonnenuntergangLine, einschlafenLine,
+  initialClock, clockStep, clockLabel, phaseFor, abendBeginnt, nachtBeginnt, barBeendetTag, inBar, normalizeAbend, zwischenrufLine, barAbend, guteNacht, sonnenuntergangLine, einschlafenLine,
 } from './game.js';
 import { POSTEN as POSTEN_LAYOUT, MARKT as MARKT_AREA, STAENDE, LANES as MARKT_LANES } from './zone-markt-layout.js';
 import { HAFENPLATZ } from './zone-pier-layout.js';
@@ -289,6 +289,8 @@ function placeBarks() {
   P.head.getWorldPosition(barkHead);
   barkHead.y += 0.9; barkHead.project(camera);
   ui.placeBark('spieler', (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now);
+  barkeeperObj.getWorldPosition(barkHead); barkHead.project(camera);
+  ui.placeBark('barkeeper', (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now);
   cop.userData.parts.head.getWorldPosition(barkHead);
   barkHead.y += 0.9; barkHead.project(camera);
   ui.placeBark('streife_p1', (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now);
@@ -400,15 +402,18 @@ function endInfo() { mentorFolge = null; ui.hideBubble(); stopBabble(); mode = '
 
 // Verhaftung: Pong bringt den Schluffi am Abend an der Bar vorbei — Mentor kommentiert, dann die Bilanz
 function verhaftetZurBar() {
-  const bar = world.spots.bar;
+  const bar = barStehplatz();
   cam = { ...cam, x: cam.x + (bar.x - state.x), z: cam.z + (bar.z - state.z), tx: bar.x, tz: bar.z };
   state = { ...state, x: bar.x, z: bar.z, yaw: bar.yaw, speed: 0, stumbled: false };
   tagesuhr = { t01: Math.max(tagesuhr.t01, 0.72) }; applyTageszeit(); placeMentor(true); refreshHud();
   startBarAbend();
 }
 // ---------- Abend in der Bar: Nong (Barkeeper) → Mentor-Rückblick → letzte Runde → Bilanz-Karte → neuer Tag ----------
-const barkeeperObj = pointObj(-27.5, 2.9, -2.2); // Blasen-Anker hinter der Theke
+const barkeeperObj = pointObj(BUILDING_POS.bar.x - 1, 2.6, BUILDING_POS.bar.z - 1.8); // Blasen-Anker hinter der Theke (Nong)
 let barFolge = null, barIdx = 0, nachtArt = 'bar';
+// Bar-Kamera: von der Meerseite leicht links auf den Tresen, Mentor mittig, Schluffi am linken Hocker nicht in der Sichtlinie
+const barCamera = () => { const b = BUILDING_POS.bar; return { x: b.x - 5.5, y: 4.8, z: b.z + 11, tx: b.x - 0.5, ty: 1.5, tz: b.z - 0.5 }; };
+const barStehplatz = () => { const b = BUILDING_POS.bar; return { x: b.x - 2.4, z: b.z + 3.8, yaw: Math.PI }; }; // hinter dem linken Hocker, Blick zum Tresen
 function startBarAbend() {
   barFolge = barAbend(game, abendTexte, lineIdx++);
   barIdx = 0;
@@ -820,6 +825,7 @@ function stats() {
 let frameMs = 16;
 let lastStepPhase = 0;
 let sunsetAt = 0;
+let zwischenrufAt = 0, warAmTresen = false;
 let tafelAt = 0, tafelShown = -1;
 
 // ---------- Reveal-Gags (gags.js, Daten aus texte.json) ----------
@@ -975,9 +981,9 @@ function setupScene() {
   }
   if (T01) { tagesuhr = { t01: Math.max(0, Math.min(1, parseFloat(T01))) }; applyTageszeit(); placeMentor(barBeendetTag(tagesuhr.t01)); refreshHud(); }
   if (SCENE === 'bar') {
-    tagesuhr = { t01: 0.74 }; applyTageszeit(); placeMentor(true);
+    tagesuhr = { t01: 0.78 }; applyTageszeit(); placeMentor(true);
     game = { ...game, geld: 95, verkauftHeute: 4, geldHeute: 95, heat: 1 }; refreshHud();
-    state = { ...state, x: world.spots.bar.x, z: world.spots.bar.z, yaw: Math.PI, speed: 0 };
+    state = { ...state, ...barStehplatz(), speed: 0 };
     startBarAbend(); barIdx = 1; showBarStep(); // Mentor-Rückblick
     return;
   }
@@ -1090,6 +1096,7 @@ if (SNAP) {
       applyKunde(talking);
     }
     if (SCENE === 'lineup') cam = { x: 0, y: 3.2, z: 6 + 16.5, tx: 0, ty: 1.2, tz: 6 };
+    if (mode === 'bar') cam = barCamera();
     applyCamera();
     camera.updateMatrixWorld();
     world.huegel.update(3.2);
@@ -1148,6 +1155,10 @@ if (SNAP) {
       tagesuhr = clockStep(tagesuhr, dt);
       applyTageszeit();
       if (abendBeginnt(prev, tagesuhr.t01)) { placeMentor(true); sunsetAt = 0; }
+      // Nong tagsüber: ein Zwischenruf pro Vorbeigehen am Tresen, höchstens alle 30 s
+      const amTresen = inBar(state, BUILDING_POS.bar, 5);
+      if (amTresen && !warAmTresen && !barBeendetTag(tagesuhr.t01) && now > zwischenrufAt) { zwischenrufAt = now + 30000; ui.showBark('barkeeper', zwischenrufLine(abendTexte, lineIdx++), 3.2); try { audio?.bark?.('barkeeper', 'zwischenruf', { pan: panFor(barkeeperObj) }); } catch (e) { /* ohne Ton */ } }
+      warAmTresen = amTresen;
       if (barBeendetTag(tagesuhr.t01) && now > sunsetAt) { sunsetAt = now + 20000; ui.showBark('spieler', sonnenuntergangLine(abendTexte, lineIdx++), 4); }
       if (nachtBeginnt(prev, tagesuhr.t01)) { nachtArt = 'haengematte'; sfx('gaehnen'); endDay(einschlafenLine(abendTexte, lineIdx++)); }
       if (Math.floor(prev * 1000) !== Math.floor(tagesuhr.t01 * 1000)) refreshHud();
@@ -1176,8 +1187,8 @@ if (SNAP) {
     }
 
     // Kamera: Folge-Kamera oder Hinschau-Kamera (weich)
-    if (mode === 'inspect' && talking) {
-      const want = inspectCamera(talking.npc, state, inspectOpts(talking));
+    if ((mode === 'inspect' && talking) || mode === 'bar') {
+      const want = mode === 'bar' ? barCamera() : inspectCamera(talking.npc, state, inspectOpts(talking));
       const t = 1 - Math.exp(-5 * dt);
       for (const key of ['x', 'y', 'z', 'tx', 'ty', 'tz']) cam[key] += (want[key] - cam[key]) * t;
     } else {

@@ -10,7 +10,7 @@ import {
   normalizeMentorSzene, mentorSzene, finishMentor, applyMentorAktion, mentorBesucht,
   POSTEN_DEFAULT, inPostenSicht, buyMango, giveMango, mangoAbgegeben, tafelText, MANGO_PREIS,
   normalizePosten7, mangoText, pongText, tafelLines, DEFAULT_POSTEN7, patrolSpotted, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
-  DAY_LENGTH, phaseFor, initialClock, clockStep, clockLabel, abendBeginnt, nachtBeginnt, barBeendetTag, inBar, normalizeAbend, barAbend, guteNacht, sonnenuntergangLine, einschlafenLine, DEFAULT_ABEND, NACHT_ABKUEHLUNG,
+  DAY_LENGTH, phaseFor, initialClock, clockStep, clockLabel, abendBeginnt, nachtBeginnt, barBeendetTag, inBar, normalizeAbend, barAbend, guteNacht, sonnenuntergangLine, einschlafenLine, zwischenrufLine, DEFAULT_ABEND, NACHT_ABKUEHLUNG,
 } from '../js/game.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -617,6 +617,7 @@ test('Bar-Abend: Barkeeper-Gruß → Mentor-Rückblick nach Lage → letzte Rund
   assert.equal(v[1].lage, 'verhaftet', 'nach Verhaftung kommentiert der Mentor');
   assert.ok(!v.some((e) => e.frage), 'nach Verhaftung keine Feierabend-Frage');
   assert.ok(guteNacht(A).length > 3);
+  assert.equal(zwischenrufLine(A, 0), DEFAULT_ABEND.barkeeper.zwischenruf[0], 'Zwischenruf fällt auf Default zurück');
   assert.deepEqual(normalizeAbend(undefined), normalizeAbend({}));
 });
 test('Über Nacht kühlt der Heat: Bar −2, Hängematte −1, nie unter 0; nach Verhaftung 0', () => {

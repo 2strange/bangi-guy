@@ -633,4 +633,5 @@ export function barAbend(state, abend, lineIdx = 0) {
 export const FEIERABEND_FRAGE = 'Feierabend?';
 export const guteNacht = (abend, lineIdx = 0) => pickLine((abend || DEFAULT_ABEND).barkeeper.gute_nacht, lineIdx);
 export const sonnenuntergangLine = (abend, lineIdx = 0) => pickLine((abend || DEFAULT_ABEND).sonnenuntergang, lineIdx);
+export const zwischenrufLine = (abend, lineIdx = 0) => pickLine((abend || DEFAULT_ABEND).barkeeper.zwischenruf, lineIdx); // Nong tagsüber am Tresen
 export const einschlafenLine = (abend, lineIdx = 0) => pickLine((abend || DEFAULT_ABEND).einschlafen, lineIdx);

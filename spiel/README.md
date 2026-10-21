@@ -72,8 +72,10 @@ Dann `http://localhost:8000/` öffnen.
   Nong fragt „Feierabend?“ (E/1 = ja, 2/Esc = noch nicht) → Bilanz-Karte mit Nongs Gute-Nacht-Zeile → neuer Tag.
   Spätestens nachts endet der Tag von allein in der Hängematte (Gähnen, kein Rückblick). Über Nacht kühlt der Heat:
   Bar −2, Hängematte −1. Nach einer Verhaftung bringt Pong den Schluffi abends an die Bar, der Mentor kommentiert
-  (ohne Feierabend-Frage), dann die Bilanz (Heat 0). Nachschub gibt es nur morgens am Hügel. Rund um das Bar-Dach hängt
-  eine Lichterkette, die abends glüht; in Bar-Nähe klirren Gläser (Ambience-Zone `bar`).
+  (ohne Feierabend-Frage), dann die Bilanz (Heat 0). Nachschub gibt es nur morgens am Hügel. Im Bar-Abend schwenkt die
+  Kamera von der Meerseite auf den Tresen (Dach bleibt sichtbar, nichts wird ausgeblendet). Rund um das Bar-Dach hängt
+  eine Lichterkette, die abends glüht; in Bar-Nähe klirren Gläser (Ambience-Zone `bar`). Tagsüber ruft Nong beim
+  Vorbeigehen am Tresen etwas (`barkeeper.zwischenruf`, höchstens alle 30 s).
   Licht: `licht.js → initLicht(scene, { sonne }).set(t01)` + `sunOffset(t01)` für die Schattensonne; Ton: `audio.setMood('tag'|'abend')`. `?t=0.72` setzt die Tageszeit,
   `?snap=1&scene=abend` / `scene=bar`.
 - **Ausverkauft:** Bei Ware 0 meldet sich der Schluffi selbst in einer Sprechblase: **Tag beenden** zeigt die
