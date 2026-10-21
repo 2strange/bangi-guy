@@ -84,10 +84,8 @@ Dann `http://localhost:8000/` öffnen.
   Die Tafel am Posten zeigt den echten Stand „Tage ohne Vorfall“ (zählt pro Tag hoch, Verhaftung → 0). Logik in
   `js/game.js`, getestet. `?snap=1&scene=mango` zeigt den Kauf.
 - **Hafen:** Die Welt reicht jetzt bis x 100. Auf dem Steg darf man bis zum Anleger hinaus, durch die Furt (Untiefe mit
-  Trittsteinen) kommt man nur mit Sandalen oder barfuß — Turnschuhe bleiben an der Wasserkante (`resolveCollisions` mit
-  `schuhe`, getestet). In der Untiefe gilt Wat-Tempo 0,6; Flip-Flops stolpern alle ~3 Einheiten auf den Trittsteinen
-  (0,8 s Stillstand). Fähren-Gäste bekommen Hafen-Plätze, weil der Strandweg zum Hotel durch Bootsschuppen und
-  Felsnase gesperrt ist (nur die Furt führt hinüber). Kunden mit Spawn-Code K1 kommen mit der Fähre: sie steigen beim Anlegen am Steg aus und
+  Trittsteinen) kommt man nur mit Sandalen oder barfuß — Turnschuhe bleiben an der Wasserkante (`resolveCollisions`
+  mit `sandalen`, getestet). Kunden mit Spawn-Code K1 kommen mit der Fähre: sie steigen beim Anlegen am Steg aus und
   gehen zu ihrem Platz; die Fähre tutet beim An- und Ablegen, am Tuk-Tuk würgt Somchai den Motor ab. Der
   Pier-Ausgang des Markts ist offen, die Ost-Absperrung der Promenade ist weg.
 - **Tuk-Tuk-Express (F3):** E am Tuk-Tuk — Somchai fährt dich zur Bar; Preis laut Schild 20 Mangos, sonst 40 Münzen,
@@ -99,7 +97,7 @@ Dann `http://localhost:8000/` öffnen.
   **Verfolgung:** ab Heat 2 folgt sie dem Spieler (3,0 statt 4,0 Einheiten/s — Sandalen, zu Fuß entkommt man),
   verliert ihn nach 6 s ohne Sicht oder sobald er in einem Versteck steht (Bettlaken, Gedränge), und kehrt dann zur
   Route zurück; fängt sie ihn, ist das eine Verhaftung (Tag verloren, Geld bleibt). Schalter `schuhe`: in Sandalen
-  watet sie mit Wat-Tempo 0,6 durch die Furt, in Turnschuhen bleibt sie an der Wasserkante stehen („These are new!“).
+  watet sie mit halbem Tempo durch die Furt, in Turnschuhen bleibt sie an der Wasserkante stehen („These are new!“).
   Reine Logik `chaseStep` in `js/logic.js`, getestet. `?snap=1&scene=streife` / `scene=verfolgung`.
 - **Reveal-Gags:** `data/texte.json → reveal_gags[]` (id, wann = kauf | ablehnung | immer, mood, extra, dauer_s) werden
   von `js/gags.js` gespielt: nach Verkauf bzw. Ablehnung der passende Gag des Kunden (hält den Endzustand, bis man

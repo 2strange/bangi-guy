@@ -9,7 +9,7 @@ import { createUI, isTouchDevice, hintSeen, markHint } from './ui.js';
 import { prepareGags, playGag, stopGag } from './gags.js';
 import {
   inputToDir, dirToTarget, stepPlayer, followCamera, waddlePose, CAM_OFFSET, DEFAULT_CAM_YAW, isOccluder, joystickInput, rotateDir,
-  ANCHORS, assignAnchors, zoneMix, patrolStart, seesTarget, chaseStep, inHideout, CHASE_SPEED, PATROL_SPEED, WORLD,
+  ANCHORS, assignAnchors, zoneMix, patrolStart, seesTarget, chaseStep, inHideout, CHASE_SPEED, PATROL_SPEED,
 } from './logic.js';
 import {
   initialState, normalizeKatalog, pickKunden, startDialog, advanceDialog, chooseOption, isArrested, newDay, moodFor,
@@ -365,7 +365,6 @@ function endInfo() { mentorFolge = null; ui.hideBubble(); stopBabble(); mode = '
 
 // ---------- Streife P1: läuft Posten ↔ Markt (Straßen aus dem Markt-Layout), sieht sie einen Verkauf → Heat + Pfiff ----------
 const PATROL_ROUTE = [[8, -82], ...MARKT_LANES.ring.slice().reverse()].map(([x, z]) => ({ x, z })); // Posten → Ringstraße → Marktzufahrt und zurück
-const PLAYER_SCHUHE = 'sandalen'; // der Schluffi: darf in die Furt, watet dort mit 0,6
 const STREIFE_SCHUHE = 'sandalen'; // Streife P1 in Sandalen: watet durch die Furt; 'turnschuhe' bleibt an der Kante
 const cop = buildKunde(normalizeKunde({ id: 'streife_p1', typ: 'Streife', name: 'Streife', schuhe: 'sandale', hemd: 'polo_sauber', hose: 'chino', accessoire: 'ohrknopf', extras: ['funkgeraet'], hautton: 'mittel', haare: 'kurz', zivi: true, stimmung_start: 'misstrauisch' }), 7);
 setRevealed(cop, true); // Polizeimütze: die Streife ist offen Polizei (Pong in Sandalen — kann nicht rennen)
@@ -1034,8 +1033,7 @@ if (SNAP) {
         dir = dirToTarget(state, clickTarget);
         if (!dir) clickTarget = null;
       }
-      state = stepPlayer(state, { dir, run }, dt, colliders, WORLD, { schuhe: PLAYER_SCHUHE });
-      if (state.stumbled) sfx('schritt');
+      state = stepPlayer(state, { dir, run }, dt, colliders);
     } else {
       state = stepPlayer(state, { dir: null, run: false }, dt, colliders);
     }
