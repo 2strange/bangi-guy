@@ -4,10 +4,12 @@
 // ?what=pool  → der Hotel-Pool mit Leiter, Plattform und Rutsche
 // ?what=gags  → Raster aller Reveal-Gags aus data/texte.json im Endzustand (t = dauer_s)
 // ?what=posen → Tätigkeits-Posen (figures.pose) an drei Kunden
+// ?what=nong  → Barkeeper Nong hinter der Theke (links neutral/tagsüber, rechts müde/abends), t über ?t=
 import * as THREE from 'three';
 import { toonMesh, textTexture } from './toon.js';
-import { schluffi, runner, sandal, sneaker, pose, POSES } from './figures.js';
-import { hotel } from './props.js';
+import { schluffi, runner, sandal, sneaker, pose, POSES, buildNong, updateNong, setNongMood } from './figures.js';
+import { hotel, beachBar } from './props.js';
+import { buildingScale } from './logic.js';
 import { buildKunde } from './kunden.js';
 import { normalizeKatalog } from './game.js';
 import { playGag } from './gags.js';
@@ -48,6 +50,16 @@ if (WHAT === 'feet') {
   for (const [shoe, x] of items) { shoe.position.set(x, 0, 0); shoe.scale.setScalar(1.6); scene.add(shoe); }
   camera.position.set(0, 4.2, 4.5);
   camera.lookAt(0, 0.3, 0);
+} else if (WHAT === 'nong') {
+  const t = parseFloat(q('t') || '1.1');
+  const bs = buildingScale('bar');
+  [['neutral', -5], ['muede', 5]].forEach(([mood, x]) => {
+    const bar = beachBar(); bar.position.set(x, 0, 0); bar.scale.setScalar(bs); scene.add(bar);
+    const nong = buildNong(); nong.position.set(-0.7, 0, -0.1); nong.scale.setScalar(1 / bs); bar.add(nong); // zwischen Regal (z -0.9) und Theke (z +0.9)
+    setNongMood(nong, mood); updateNong(nong, t);
+  });
+  camera.position.set(0, 2.9, 8.5);
+  camera.lookAt(0, 2.4, -0.5);
 } else if (WHAT === 'posen') {
   const kat = await fetch('./data/kunden.json').then((r) => r.json());
   const kunden = normalizeKatalog(kat);

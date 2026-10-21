@@ -9,6 +9,7 @@ import { buildHuegel } from './zone-huegel.js';
 import { buildMarkt } from './zone-markt.js';
 import { buildPier } from './zone-pier.js';
 import { lichterkette } from './licht.js';
+import { buildNong } from './figures.js';
 
 export const WATER_Y = 0.06;
 
@@ -165,6 +166,8 @@ export function buildWorld() {
   const bs = buildingScale('bar');
   bar.scale.setScalar(bs);
   g.add(bar);
+  // Barkeeper Nong hinter der Theke (bar-lokal zwischen Regal und Theke, Skala auf Figurenmaß zurück)
+  const nong = buildNong(); nong.position.set(-0.7, 0, -0.1); nong.scale.setScalar(1 / bs); bar.add(nong);
   // Lichterkette rundherum an der Dachkante (abends glühen die Birnchen, siehe licht.js); dreht mit der Bar mit
   { const c = Math.cos(bar.rotation.y), sn = Math.sin(bar.rotation.y);
     const V = (lx, ly, lz) => new THREE.Vector3(barPos.x + (lx * c + lz * sn) * bs, ly * bs, barPos.z + (-lx * sn + lz * c) * bs);
@@ -251,5 +254,5 @@ export function buildWorld() {
     ost: { x: 58, z: -2, yaw: Math.PI / 2 },
     hecke: { x: 8, z: -17, yaw: 0.3 }, // Strandseite vor der Heckenlücke („nord“ gehört dem Dorf)
   };
-  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots, ...markt.spots, ...hafen.spots }, hideouts: [...dorf.hideouts, ...(markt.hideouts || []), ...(hafen.hideouts || [])], dorf, huegel, markt, pier: hafen, sonne };
+  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots, ...markt.spots, ...hafen.spots }, hideouts: [...dorf.hideouts, ...(markt.hideouts || []), ...(hafen.hideouts || [])], dorf, huegel, markt, pier: hafen, sonne, nong };
 }

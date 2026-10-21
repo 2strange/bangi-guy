@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { toonMesh, toon, deform, BLACK } from './toon.js';
 import { limb } from './props.js';
-import { faceDecal, schluffiFace, runnerFace } from './faces.js';
+import { faceDecal, schluffiFace, runnerFace, face, setFace } from './faces.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
@@ -427,4 +427,116 @@ export function pose(figur, name = 'stehen') {
   figur.userData.pose = name === 'stehen' ? null : name;
   figur.userData.poseOffsetY = offsetY;
   return { offsetY };
+}
+
+// ---------- Barkeeper Nong: poliert seit Jahren dasselbe Glas; die Möwe „Chef“ sitzt auf der Schulter ----------
+// Barfuß, Tanktop, lange Hose, Schürze, Glatze, Schnauzer, dunkle Haut; ein Auge immer halb zu, Mund ein Strich.
+// buildNong() → Gruppe (Füße auf y = 0, Blick nach +z); updateNong(g, t) = Idle-Loop (polieren, nicken, Möwe);
+// setNongMood(g, 'neutral' | 'muede' | 'gruss' | …) tauscht nur das Gesicht (das halb geschlossene Auge bleibt).
+const NONG_SKIN = 0x8d5a3a;
+const NONG_FACE = { skin: '#8d5a3a', bart: 'schnauzer', seed: 41, lids: [0.55, 0.2] };
+
+function bareFoot(skin, side = 'L') {
+  const m = sideSign(side);
+  const g = new THREE.Group();
+  const footGeo = new RoundedBoxGeometry(0.42, 0.18, 0.78, 3, 0.07);
+  deform(footGeo, (v) => { if (v.z < -0.22) v.y += 0.06; if (v.z > 0.1) v.x += m * 0.05 * (v.z - 0.1) / 0.29; });
+  const foot = toonMesh(footGeo, skin, { outline: 0.04 }); foot.position.set(0, 0.1, -0.1); g.add(foot);
+  for (const [x, r] of [[0.16, 0.1], [0.04, 0.08], [-0.06, 0.07], [-0.145, 0.065], [-0.22, 0.055]]) {
+    const t = toonMesh(new THREE.SphereGeometry(r, 9, 7), skin, { outline: 0.03 });
+    t.position.set(m * x, 0.05 + r * 0.5, 0.3 + (0.1 - r) * 0.8); g.add(t);
+  }
+  return g;
+}
+
+function nongGull() {
+  const g = new THREE.Group();
+  const body = toonMesh(new THREE.SphereGeometry(0.17, 10, 8), 0xffffff, { outline: 0.03 }); body.geometry.scale(1.5, 1, 1); g.add(body);
+  const head = new THREE.Group(); head.position.set(0.22, 0.17, 0); g.add(head);
+  head.add(toonMesh(new THREE.SphereGeometry(0.12, 8, 6), 0xffffff, { outline: 0.025 }));
+  const beak = toonMesh(new THREE.ConeGeometry(0.05, 0.18, 6), 0xffb13b, { outline: 0.02 }); beak.position.set(0.16, -0.02, 0); beak.rotation.z = -Math.PI / 2; head.add(beak);
+  for (const s of [-1, 1]) { const e = toonMesh(new THREE.SphereGeometry(0.025, 6, 5), BLACK, { outline: 0, basic: true }); e.position.set(0.06, 0.04, s * 0.08); head.add(e); }
+  const wing = toonMesh(new THREE.BoxGeometry(0.4, 0.04, 0.22), 0xc9cfdc, { outline: 0.015 }); wing.position.set(-0.05, 0.1, 0.12); g.add(wing);
+  const wing2 = toonMesh(new THREE.BoxGeometry(0.4, 0.04, 0.22), 0xc9cfdc, { outline: 0.015 }); wing2.position.set(-0.05, 0.1, -0.12); g.add(wing2);
+  for (const s of [-1, 1]) g.add(limb(V(0.02, -0.12, s * 0.06), V(0.02, -0.3, s * 0.07), 0.02, 0xffb13b, { outline: 0.01 }));
+  g.userData.parts = { head, wings: [wing, wing2] };
+  return g;
+}
+
+export function buildNong() {
+  const root = new THREE.Group();
+  const skin = NONG_SKIN;
+  const hipY = 1.1;
+  for (const s of [-1, 1]) {
+    const foot = bareFoot(skin, s < 0 ? 'L' : 'R'); foot.position.set(s * 0.3, 0, 0.05); foot.rotation.y = s * 0.2; root.add(foot);
+    root.add(limb(V(s * 0.3, 0.25, 0), V(s * 0.26, hipY, 0), 0.16, 0x334455, { outline: 0.04 })); // lange Hose
+  }
+  const belly = toonMesh(new THREE.CylinderGeometry(0.42, 0.52, 0.95, 14), 0xffffff, { outline: 0.045 }); belly.position.set(0, hipY + 0.48, 0); root.add(belly); // Tanktop
+  const shoulders = toonMesh(new THREE.SphereGeometry(0.46, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.45), skin, { outline: 0.04 }); shoulders.position.set(0, hipY + 0.72, 0); root.add(shoulders);
+  const apron = toonMesh(new THREE.BoxGeometry(0.8, 1.2, 0.06), 0x2fa9b9, { outline: 0.035 }); apron.position.set(0, hipY + 0.2, 0.5); apron.rotation.x = 0.06; root.add(apron);
+  const strap = toonMesh(new THREE.TorusGeometry(0.2, 0.025, 6, 12, Math.PI), 0x2fa9b9, { outline: 0.012 }); strap.position.set(0, hipY + 0.95, 0.3); strap.rotation.x = Math.PI / 2 + 0.4; root.add(strap);
+  const belt = toonMesh(new THREE.CylinderGeometry(0.48, 0.48, 0.1, 14), 0x222222, { outline: 0.03 }); belt.position.set(0, hipY + 0.02, 0); root.add(belt);
+  const shoulderY = hipY + 0.9;
+  const arms = [];
+  for (const s of [-1, 1]) {
+    const arm = new THREE.Group(); arm.position.set(s * 0.52, shoulderY, 0.02);
+    arm.add(limb(V(0, 0, 0), V(s * 0.1, -0.5, 0.3), 0.1, skin, { outline: 0.04 }));
+    arm.add(limb(V(s * 0.1, -0.5, 0.3), V(s * -0.1, -0.55, 0.75), 0.09, skin, { outline: 0.04 }));
+    const hand = toonMesh(new THREE.SphereGeometry(0.17, 12, 9), skin, { outline: 0.04 }); hand.position.set(s * -0.12, -0.56, 0.82); arm.add(hand);
+    root.add(arm); arms.push(arm);
+  }
+  // rechts das Glas (nie benutzt), links das Tuch
+  const glass = new THREE.Group();
+  const gbody = toonMesh(new THREE.CylinderGeometry(0.12, 0.09, 0.32, 10), toon(0xdff4ff, { transparent: true, opacity: 0.75 }), { outline: 0.02 }); glass.add(gbody);
+  const glint = toonMesh(new THREE.SphereGeometry(0.045, 6, 5), 0xffffff, { outline: 0, basic: true }); glint.position.set(0.07, 0.1, 0.07); glass.add(glint);
+  glass.position.set(-0.12, -0.42, 0.9); arms[1].add(glass);
+  const cloth = toonMesh(new THREE.BoxGeometry(0.26, 0.05, 0.3), 0xfff1c2, { outline: 0.02 }); cloth.position.set(0.12, -0.5, 0.95); cloth.rotation.z = 0.3; arms[0].add(cloth);
+  // Hals + Kopf: Glatze mit Glanz, Schnauzer, ein Auge halb zu
+  const neckY = shoulderY + 0.15;
+  root.add(limb(V(0, neckY - 0.2, 0), V(0, neckY + 0.3, 0), 0.15, skin, { outline: 0.035 }));
+  const head = new THREE.Group(); head.position.set(0, neckY + 0.72, 0.02); root.add(head);
+  const shape = (geo) => { geo.scale(1.02, 1.08, 0.98); };
+  const hg = new THREE.SphereGeometry(0.52, 28, 20); shape(hg);
+  head.add(toonMesh(hg, skin, { outline: 0.05 }));
+  const decal = faceDecal(face('kunde', 'neutral', NONG_FACE), 0.527, shape); head.add(decal);
+  const nose = toonMesh(new THREE.SphereGeometry(0.13, 10, 8), 0x7a4a2e, { outline: 0.03 }); nose.position.set(0, -0.08, 0.52); head.add(nose);
+  const mo = toonMesh(new THREE.BoxGeometry(0.36, 0.09, 0.08), 0x222222, { outline: 0.025 }); mo.position.set(0, -0.22, 0.52); head.add(mo);
+  for (const s of [-1, 1]) { const ear = toonMesh(new THREE.SphereGeometry(0.1, 8, 6), skin, { outline: 0.03 }); ear.position.set(s * 0.52, -0.02, 0); head.add(ear); }
+  const shine = toonMesh(new THREE.SphereGeometry(0.08, 6, 5), 0xffffff, { outline: 0 }); shine.position.set(-0.2, 0.42, 0.25); head.add(shine);
+  // Möwe Chef auf der linken Schulter
+  const gull = nongGull(); gull.position.set(-0.62, shoulderY + 0.28, 0.05); gull.rotation.y = 0.6; root.add(gull);
+  root.userData.parts = { arms, head, decal, glass, glint, cloth, gull };
+  root.userData.mood = 'neutral';
+  root.userData.update = (t) => updateNong(root, t);
+  return root;
+}
+
+// Idle-Loop: Tuch kreist übers Glas, Glas dreht sich langsam, alle ~7 s ein Nicken, die Möwe schaut sich um
+// und schlägt alle ~9 s kurz mit den Flügeln; abends glänzt das Glas mehr.
+export function updateNong(g, t) {
+  const P = g.userData.parts;
+  if (!P) return;
+  const [armL, armR] = P.arms;
+  armR.rotation.set(-0.25 + 0.03 * Math.sin(t * 1.3), 0, 0.15);
+  P.glass.rotation.y = t * 0.8;
+  armL.rotation.set(-0.3 + 0.12 * Math.sin(t * 6), 0.1 * Math.cos(t * 6), 0.25 + 0.08 * Math.sin(t * 6 + 1));
+  P.cloth.rotation.set(0.2 * Math.sin(t * 6), 0, 0.3 + 0.3 * Math.cos(t * 6));
+  const nod = (t % 7) < 0.6 ? Math.sin((t % 7) / 0.6 * Math.PI) : 0;
+  P.head.rotation.set(0.2 * nod, 0.05, 0.04);
+  const abend = g.userData.mood === 'muede' ? 1 : 0;
+  P.glint.scale.setScalar(1 + 0.5 * abend + 0.4 * Math.max(0, Math.sin(t * 3)));
+  const G = P.gull.userData.parts;
+  G.head.rotation.y = 0.7 * Math.sin(t * 0.7) + 0.2 * Math.sin(t * 2.3);
+  const flap = (t % 9) < 0.8 ? Math.sin((t % 9) / 0.8 * Math.PI * 4) * 0.6 : 0;
+  G.wings[0].rotation.x = -flap; G.wings[1].rotation.x = flap;
+  G.head.rotation.x = (t % 9) < 0.8 ? -0.3 : 0;
+}
+
+// Moods wie faces.js; zusätzlich 'gruss' = neutrales Gesicht, die Braue über dem offenen Auge geht hoch
+export function setNongMood(g, mood) {
+  const P = g.userData.parts;
+  if (!P) return;
+  const opts = mood === 'gruss' ? { ...NONG_FACE, brows: ['normal', 'hoch'] } : NONG_FACE;
+  setFace(P.decal, face('kunde', mood === 'gruss' ? 'neutral' : mood, opts));
+  g.userData.mood = mood;
 }

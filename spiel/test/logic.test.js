@@ -547,3 +547,32 @@ test('assignAnchors: Fähren-Gäste (Spawn K1) bekommen Hafen-Plätze, der Rest 
     }
   }
 });
+
+import { patrolStep as pStep, chaseStep as cStep, patrolStart as pStart, STREIFE_P2_ROUTE, PATROL_SPEED as PSPEED, WADE_FACTOR as WF, inUntiefe as inU } from '../js/logic.js';
+import { FURT as FURT2 } from '../js/zone-pier-layout.js';
+test('Streife P2: Route Hotelstrand ↔ Furt ↔ Pier folgt der Furt-Mittellinie; in der Untiefe watet sie (0,6), an Land volles Tempo', () => {
+  const r = STREIFE_P2_ROUTE;
+  const [fx0, fz0] = FURT2.path[0], [fx1, fz1] = FURT2.path[FURT2.path.length - 1];
+  assert.ok(r.some((p) => p.x === fx0 && p.z === fz0) && r.some((p) => p.x === fx1 && p.z === fz1), 'beide Furt-Einstiege sind Wegpunkte');
+  assert.ok(r[0].x < fx0 && r[r.length - 1].x > fx1, 'beginnt am Hotelstrand, endet am Pier-Strand');
+  // in der Untiefe (mitten auf dem Steinbogen): 1 s Patrouille ≈ PATROL_SPEED · WADE_FACTOR
+  const mitte = { x: FURT2.path[2][0], z: FURT2.path[2][1] };
+  assert.ok(inU(mitte));
+  let s = { ...pStart(r), x: mitte.x, z: mitte.z, idx: 5 };
+  const z0 = s.z, x0 = s.x;
+  for (let t = 0; t < 1; t += 1 / 60) s = pStep(s, r, 1 / 60, { schuhe: 'sandalen' });
+  const wat = Math.hypot(s.x - x0, s.z - z0);
+  assert.ok(Math.abs(wat - PSPEED * WF) < 0.12, `Wat-Tempo ${wat.toFixed(2)}`);
+  // ohne schuhe-Option (Streife P1) bleibt das alte Verhalten: volles Tempo
+  let q = { ...pStart(r), x: mitte.x, z: mitte.z, idx: 5 };
+  for (let t = 0; t < 1; t += 1 / 60) q = pStep(q, r, 1 / 60);
+  assert.ok(Math.abs(Math.hypot(q.x - x0, q.z - z0) - PSPEED) < 0.12);
+  // an Land (Hotelstrand) volles Tempo, auch über chaseStep im Patrouillen-Modus
+  let l = { ...pStart(r), mode: 'patrol' };
+  for (let t = 0; t < 1; t += 1 / 60) l = cStep(l, r, { x: 0, z: -50 }, 1 / 60, { sees: false, heat: 0, schuhe: 'sandalen' }).st;
+  assert.ok(Math.abs(Math.hypot(l.x - r[0].x, l.z - r[0].z) - PSPEED) < 0.12, 'an Land volles Tempo');
+  // chaseStep im Patrouillen-Modus reicht die Schuhe durch: in der Untiefe watet sie
+  let c = { ...pStart(r), x: mitte.x, z: mitte.z, idx: 5, mode: 'patrol' };
+  for (let t = 0; t < 1; t += 1 / 60) c = cStep(c, r, { x: 0, z: -50 }, 1 / 60, { sees: false, heat: 0, schuhe: 'sandalen' }).st;
+  assert.ok(Math.abs(Math.hypot(c.x - x0, c.z - z0) - PSPEED * WF) < 0.12, 'watet auch über chaseStep');
+});

@@ -75,7 +75,9 @@ Dann `http://localhost:8000/` öffnen.
   (ohne Feierabend-Frage), dann die Bilanz (Heat 0). Nachschub gibt es nur morgens am Hügel. Im Bar-Abend schwenkt die
   Kamera von der Meerseite auf den Tresen (Dach bleibt sichtbar, nichts wird ausgeblendet). Rund um das Bar-Dach hängt
   eine Lichterkette, die abends glüht; in Bar-Nähe klirren Gläser (Ambience-Zone `bar`). Tagsüber ruft Nong beim
-  Vorbeigehen am Tresen etwas (`barkeeper.zwischenruf`, höchstens alle 30 s).
+  Vorbeigehen am Tresen etwas (`barkeeper.zwischenruf`, höchstens alle 30 s). Nong steht als Figur hinter der Theke
+  (`figures.js`: Tuch kreist, Glas dreht, Möwe „Chef“ flattert); er schaut tagsüber neutral, abends müde und hebt beim
+  Gruß eine Braue. Snap: `?snap=1&scene=nong`.
   Licht: `licht.js → initLicht(scene, { sonne }).set(t01)` + `sunOffset(t01)` für die Schattensonne; Ton: `audio.setMood('tag'|'abend')`. `?t=0.72` setzt die Tageszeit,
   `?snap=1&scene=abend` / `scene=bar`.
 - **Ausverkauft:** Bei Ware 0 meldet sich der Schluffi selbst in einer Sprechblase: **Tag beenden** zeigt die
@@ -114,6 +116,10 @@ Dann `http://localhost:8000/` öffnen.
   Route zurück; fängt sie ihn, ist das eine Verhaftung (Tag verloren, Geld bleibt). Schalter `schuhe`: in Sandalen
   watet sie mit Wat-Tempo 0,6 durch die Furt, in Turnschuhen bleibt sie an der Wasserkante stehen („These are new!“).
   Reine Logik `chaseStep` in `js/logic.js`, getestet. `?snap=1&scene=streife` / `scene=verfolgung`.
+- **Streife P2 (ab Tag 2):** eine zweite Sandalen-Streife läuft Hotelstrand ↔ Furt ↔ Pier-Strand und watet dabei auf
+  der Furt-Mittellinie (Steinbogen) mit Wat-Tempo 0,6 (`STREIFE_P2_ROUTE`, `patrolStep(..., { schuhe })`). Gleiche
+  Sicht-, Verfolgungs- und Verhaftungslogik wie P1; an Tag 1 ist sie unsichtbar und ohne Collider, damit der erste
+  Tag ruhiger bleibt (`STREIFE_P2_AB_TAG`). Snap: `?snap=1&scene=streife2`.
 - **Reveal-Gags:** `data/texte.json → reveal_gags[]` (id, wann = kauf | ablehnung | immer, mood, extra, dauer_s) werden
   von `js/gags.js` gespielt: nach Verkauf bzw. Ablehnung der passende Gag des Kunden (hält den Endzustand, bis man
   weitergeht), „immer“-Gags alle 6–10 s als Idle-Tick, wenn der Spieler in der Nähe ist — der Hinweis zum

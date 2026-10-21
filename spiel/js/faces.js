@@ -8,7 +8,9 @@
 //   mood: 'neutral' | 'misstrauisch' | 'erschrocken' | 'zufrieden' | 'selig' | 'reveal' | 'muede' | 'schlaeft'   (selig = stoned)
 //   opts: skin (CSS-Farbe oder Hex-Zahl, Lidfarbe = Haut), beard (true = Vollbart, 'stoppeln', 'schnauzer'),
 //         glasses (true/'lese' = Lesebrille, 'sonnen' = Sonnenbrille, 'sport' = Sportbrille), wrinkles (Oma),
-//         seed (kleine Abweichungen bei Augenabstand/-größe und Mundbreite, damit Kunden sich unterscheiden), look [px, py].
+//         seed (kleine Abweichungen bei Augenabstand/-größe und Mundbreite, damit Kunden sich unterscheiden), look [px, py],
+//         lids [links, rechts] (Lid je Auge 0…1, überschreibt die Stimmung — z. B. ein Auge halb zu),
+//         brows [links, rechts] mit 'hoch' | 'normal' (eine Braue gerissen, z. B. beim Gruß).
 //   Katalog-Felder aus data/kunden.json gehen direkt rein: hautton (hell|mittel|dunkel|sonnenbrand), bart
 //   (keiner|stoppel|vollbart|schnauzer), brille (keine|sonnenbrille|lesebrille|sportbrille), haare (weiss → graue
 //   Brauen + Falten). kundeFace(datensatz, mood) nimmt den ganzen Datensatz; kundeSkin(datensatz) liefert die Kopffarbe.
@@ -108,6 +110,8 @@ function normalize(o) {
     wrinkles: o.wrinkles ?? weiss,
     seed: o.seed ?? 0,
     look: o.look ?? null,
+    lids: o.lids ?? null,
+    brows: o.brows ?? null,
     beardColor: cssColor(o.beardColor, weiss ? '#d8d8e0' : '#6b4423'),
     browColor: weiss ? '#d8d8e0' : null,
   };
@@ -159,21 +163,23 @@ const KINDS = {
 };
 
 // ---------- Brauen ----------
-function brows(ctx, mood, eyes, r, width, light = null) {
+// override: je Auge 'hoch' (eine Braue gerissen, z. B. beim Gruß) oder 'normal' (Stimmung)
+function brows(ctx, mood, eyes, r, width, light = null, override = null) {
   if (light) { // helle Brauen: erst Tinte breiter, dann die helle Farbe drüber
-    brows(ctx, mood, eyes, r, width + 8);
+    brows(ctx, mood, eyes, r, width + 8, null, override);
     const sp = strokePath;
     const lightStroke = (c, pts, w) => sp(c, pts, w, light);
-    return browsWith(ctx, mood, eyes, r, width - 2, lightStroke);
+    return browsWith(ctx, mood, eyes, r, width - 2, lightStroke, override);
   }
-  return browsWith(ctx, mood, eyes, r, width, strokePath);
+  return browsWith(ctx, mood, eyes, r, width, strokePath, override);
 }
-function browsWith(ctx, mood, eyes, r, width, strokePath) {
+function browsWith(ctx, mood, eyes, r, width, strokePath, override = null) {
   for (let i = 0; i < 2; i++) {
     const [ex, ey] = eyes[i];
     const s = i === 0 ? 1 : -1; // Spiegelung: innen = Richtung Mitte
     const inner = (k) => ex + s * k * r, outer = (k) => ex - s * k * r;
-    switch (mood) {
+    const shape = override?.[i] === 'hoch' ? 'erschrocken' : mood;
+    switch (shape) {
       case 'misstrauisch': // V-Brauen, innen tief
         strokePath(ctx, [[outer(0.95), ey - 1.5 * r], [inner(0.87), ey - 1.0 * r]], width + 2);
         break;
@@ -398,12 +404,12 @@ function paint(kind, mood, o) {
   for (let i = 0; i < 2; i++) {
     const look = o.look ? [pick(o.look[0], i), pick(o.look[1], i)] : [pick(M.px, i), pick(M.py, i)];
     eye(ctx, eyes[i][0], eyes[i][1], r, {
-      lid: M.lid, lidTilt: i === 0 ? M.tilt : -M.tilt, lidColor, pupil, px: look[0], py: look[1],
+      lid: o.lids ? o.lids[i] : M.lid, lidTilt: i === 0 ? M.tilt : -M.tilt, lidColor, pupil, px: look[0], py: look[1],
       veins, bag: !!K.bag, seed: K.seeds?.[i] ?? 1 + i, stroke: K.stroke,
     });
   }
   if (o.glasses) glasses(ctx, eyes, r, o.glasses);
-  if (K.brows !== false) brows(ctx, mood, eyes, r, 20, o.browColor);
+  if (K.brows !== false) brows(ctx, mood, eyes, r, 20, o.browColor, o.brows);
   if (K.stubble || o.beard === 'stoppeln') stubble(ctx, m, K.stubble ? 9 : 9 + o.seed);
   if (o.beard === 'schnauzer') mustache(ctx, m, o.beardColor);
   if (K.cheekbones) {
@@ -418,7 +424,7 @@ function paint(kind, mood, o) {
 
 const canvasCache = new Map();
 const texCache = new Map();
-const key = (kind, mood, o) => `${kind}|${mood}|${o.skin}|${o.beard}|${o.glasses}|${o.wrinkles ? 1 : 0}|${o.seed}|${o.look ? o.look.join(',') : ''}|${o.beardColor}|${o.browColor ?? ''}`;
+const key = (kind, mood, o) => `${kind}|${mood}|${o.skin}|${o.beard}|${o.glasses}|${o.wrinkles ? 1 : 0}|${o.seed}|${o.look ? o.look.join(',') : ''}|${o.lids ? o.lids.join(',') : ''}|${o.brows ? o.brows.join(',') : ''}|${o.beardColor}|${o.browColor ?? ''}`;
 
 /** Rohes Canvas (gecacht) — für 2D-Vorschauen oder eigene Texturen. */
 export function faceCanvas(kind, mood = 'neutral', opts = {}) {

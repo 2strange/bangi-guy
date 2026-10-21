@@ -628,3 +628,11 @@ test('Über Nacht kühlt der Heat: Bar −2, Hängematte −1, nie unter 0; nach
   assert.equal(newDay({ ...initialState(), heat: 1, verhaftet: true }, { nacht: 'haengematte' }).heat, 0, 'nach Verhaftung ist der Heat abgegolten');
   assert.equal(newDay({ ...initialState(), heat: MAX_HEAT }, { nacht: 'haengematte' }).heat, 0, 'Heat-Max = Verhaftung');
 });
+
+import { STREIFE_P2_AB_TAG, streifeP2Aktiv } from '../js/game.js';
+test('Streife P2 läuft erst ab Tag 2', () => {
+  assert.equal(STREIFE_P2_AB_TAG, 2);
+  assert.equal(streifeP2Aktiv(initialState()), false);
+  assert.equal(streifeP2Aktiv(newDay(initialState())), true);
+  assert.equal(streifeP2Aktiv({ tag: 5 }), true);
+});

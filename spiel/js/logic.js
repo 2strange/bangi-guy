@@ -396,7 +396,8 @@ export function patrolStart(route) {
   const p = route[0];
   return { x: p.x, z: p.z, yaw: 0, idx: 1, dir: 1, wait: 0, phase: 0, moving: false };
 }
-export function patrolStep(st, route, dt, { speed = PATROL_SPEED, wait = PATROL_WAIT, arrive = 0.25 } = {}) {
+// schuhe (optional): Sandalen-Streife watet in der Untiefe mit WADE_FACTOR (Route durch die Furt)
+export function patrolStep(st, route, dt, { speed = PATROL_SPEED, wait = PATROL_WAIT, arrive = 0.25, schuhe = null } = {}) {
   if (!route || route.length < 2) return { ...st, moving: false };
   if (st.wait > 0) return { ...st, wait: Math.max(0, st.wait - dt), moving: false };
   const idx = Math.max(0, Math.min(route.length - 1, st.idx));
@@ -409,7 +410,8 @@ export function patrolStep(st, route, dt, { speed = PATROL_SPEED, wait = PATROL_
     if (next < 0 || next >= route.length) { dir = -dir; next = idx + dir; w = wait; }
     return { ...st, x: t.x, z: t.z, idx: next, dir, wait: w, moving: false };
   }
-  const step = Math.min(d, speed * dt);
+  const v = speed * (schuhe && darfInFurt(schuhe) && inUntiefe(st) ? WADE_FACTOR : 1);
+  const step = Math.min(d, v * dt);
   return { ...st, x: st.x + (dx / d) * step, z: st.z + (dz / d) * step, yaw: Math.atan2(dx, dz), phase: (st.phase || 0) + step * (Math.PI * 2 / 1.6), moving: true };
 }
 // Sichtkegel: Ziel innerhalb range und innerhalb ±fov/2 um die Blickrichtung (yaw, 0 = +z)
@@ -447,13 +449,15 @@ export function wadeFactor(pos, schuhe = 'sandalen') {
   return ['sandale', 'sandalen', 'barfuss', 'flipflop'].includes(schuhe) ? WADE_FACTOR : 0;
 }
 export const darfInFurt = (schuhe) => ['sandale', 'sandalen', 'barfuss', 'flipflop'].includes(schuhe);
+// Streife P2 (Sandalen): Hotelstrand → Furt-Mittellinie (watet) → Pier-Strand und zurück
+export const STREIFE_P2_ROUTE = [[46, 6], [53, 9.5], ...FURT.path, [79, 8], [86, 5]].map(([x, z]) => ({ x, z }));
 export function chaseStep(st, route, player, dt, { sees = false, heat = 0, hideouts = [], speed = CHASE_SPEED, loseAfter = CHASE_LOSE_AFTER, catchDist = CATCH_DIST, chaseHeat = CHASE_HEAT, schuhe = 'sandalen' } = {}) {
   const hidden = inHideout(player, hideouts);
   const visible = sees && !hidden;
   const mode = st.mode || 'patrol';
   if (mode === 'patrol') {
     if (visible && heat >= chaseHeat) return { st: { ...st, mode: 'chase', lastSeen: { x: player.x, z: player.z }, lost: 0, wait: 0 }, event: 'chase_start' };
-    return { st: { ...patrolStep(st, route, dt), mode: 'patrol' }, event: null };
+    return { st: { ...patrolStep(st, route, dt, { schuhe }), mode: 'patrol' }, event: null };
   }
   if (mode === 'chase') {
     const lastSeen = visible ? { x: player.x, z: player.z } : (st.lastSeen || { x: player.x, z: player.z });
@@ -481,6 +485,6 @@ export function chaseStep(st, route, player, dt, { sees = false, heat = 0, hideo
   const t = route[idx];
   const dx = t.x - st.x, dz = t.z - st.z, dl = Math.hypot(dx, dz);
   if (dl <= 0.3) return { st: { ...st, mode: 'patrol', x: t.x, z: t.z, moving: false }, event: null };
-  const step = Math.min(dl, speed * dt);
+  const step = Math.min(dl, speed * (darfInFurt(schuhe) && inUntiefe(st) ? WADE_FACTOR : 1) * dt);
   return { st: { ...st, mode: 'return', x: st.x + (dx / dl) * step, z: st.z + (dz / dl) * step, yaw: Math.atan2(dx, dz), phase: (st.phase || 0) + step * (Math.PI * 2 / 1.6), moving: true }, event: null };
 }

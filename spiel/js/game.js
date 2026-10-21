@@ -117,6 +117,9 @@ export function decline(state, kunde, lineIdx = 0) {
 }
 
 export const isArrested = (state) => state.heat >= MAX_HEAT || state.verhaftet;
+// Streife P2 (Hotelstrand ↔ Furt ↔ Pier) läuft erst ab Tag 2, damit Tag 1 ruhiger bleibt
+export const STREIFE_P2_AB_TAG = 2;
+export const streifeP2Aktiv = (state) => (state.tag || 1) >= STREIFE_P2_AB_TAG;
 
 // Verhaftung mild: Tag verloren, Ware weg, Geld bleibt, alle Kunden wieder neutral
 export const NACHT_ABKUEHLUNG = { bar: 2, haengematte: 1 };

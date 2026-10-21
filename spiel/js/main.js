@@ -4,14 +4,14 @@ import * as THREE from 'three';
 import { buildWorld } from './world.js';
 import { schluffi } from './figures.js';
 import { buildKunde, setMood, setRevealed } from './kunden.js';
-import { pose as figurePose } from './figures.js';
+import { pose as figurePose, updateNong, setNongMood } from './figures.js';
 import { initLicht } from './licht.js';
 import { mentorBarSpot } from './zone-huegel.js';
 import { createUI, isTouchDevice, hintSeen, markHint } from './ui.js';
 import { prepareGags, playGag, stopGag } from './gags.js';
 import {
   inputToDir, dirToTarget, stepPlayer, followCamera, waddlePose, CAM_OFFSET, DEFAULT_CAM_YAW, isOccluder, joystickInput, rotateDir,
-  ANCHORS, assignAnchors, zoneMix, patrolStart, seesTarget, chaseStep, inHideout, CHASE_SPEED, PATROL_SPEED, WORLD, BUILDING_POS,
+  ANCHORS, assignAnchors, zoneMix, patrolStart, seesTarget, chaseStep, inHideout, CHASE_SPEED, PATROL_SPEED, WORLD, BUILDING_POS, STREIFE_P2_ROUTE,
 } from './logic.js';
 import {
   initialState, normalizeKatalog, pickKunden, startDialog, advanceDialog, chooseOption, isArrested, newDay, moodFor,
@@ -20,7 +20,7 @@ import {
   normalizeStimmen, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
   normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
-  initialClock, clockStep, clockLabel, phaseFor, abendBeginnt, nachtBeginnt, barBeendetTag, inBar, normalizeAbend, zwischenrufLine, barAbend, guteNacht, sonnenuntergangLine, einschlafenLine,
+  initialClock, clockStep, clockLabel, phaseFor, abendBeginnt, nachtBeginnt, barBeendetTag, inBar, normalizeAbend, zwischenrufLine, STREIFE_P2_AB_TAG, barAbend, guteNacht, sonnenuntergangLine, einschlafenLine,
 } from './game.js';
 import { POSTEN as POSTEN_LAYOUT, MARKT as MARKT_AREA, STAENDE, LANES as MARKT_LANES } from './zone-markt-layout.js';
 import { HAFENPLATZ } from './zone-pier-layout.js';
@@ -289,11 +289,13 @@ function placeBarks() {
   P.head.getWorldPosition(barkHead);
   barkHead.y += 0.9; barkHead.project(camera);
   ui.placeBark('spieler', (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now);
-  barkeeperObj.getWorldPosition(barkHead); barkHead.project(camera);
+  (barkeeperObj.userData.parts?.head || barkeeperObj).getWorldPosition(barkHead); barkHead.y += 0.9; barkHead.project(camera);
   ui.placeBark('barkeeper', (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now);
-  cop.userData.parts.head.getWorldPosition(barkHead);
-  barkHead.y += 0.9; barkHead.project(camera);
-  ui.placeBark('streife_p1', (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now);
+  for (const s of streifen) {
+    s.group.userData.parts.head.getWorldPosition(barkHead);
+    barkHead.y += 0.9; barkHead.project(camera);
+    ui.placeBark(s.id, (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now);
+  }
   for (const k of kunden) {
     k.group.userData.parts.head.getWorldPosition(barkHead);
     barkHead.y += 0.9;
@@ -335,6 +337,7 @@ function placeMentor(abends) {
   if (!mentorRef || abends === mentorAmTresen) return;
   mentorAmTresen = abends;
   try { world.huegel.mentorAnBar?.(abends); } catch (e) { /* ohne Umzug */ }
+  nongSag(abends ? 'muede' : 'neutral');
   const p = abends ? mentorBarSpot() : MENTOR_GARTEN;
   mentorRef.npc.x = p.x; mentorRef.npc.z = p.z;
 }
@@ -384,7 +387,7 @@ function usePoint(point) {
     const bar = world.spots.bar;
     state = { ...state, x: bar.x, z: bar.z, yaw: bar.yaw, speed: 0 };
     cam = { ...cam, x: bar.x, z: bar.z + (cam.z - state.z), tx: bar.x, tz: bar.z };
-    if (patrol.mode === 'chase') patrol = { ...patrol, mode: 'return', lost: 0, kante: false };
+    for (const s of streifen) if (s.patrol.mode === 'chase') s.patrol = { ...s.patrol, mode: 'return', lost: 0, kante: false };
     showInfo({ ...point, obj: P.head }, r.result === 'mangos' ? `Somchai nimmt die ${TUKTUK_PREIS_MANGOS} Mangos, der Motor säuft zweimal ab, dann sind wir an der Bar.` : `${TUKTUK_PREIS_GELD} Münzen, Motor säuft ab, läuft, säuft ab — Bar.`);
     return;
   }
@@ -409,11 +412,15 @@ function verhaftetZurBar() {
   startBarAbend();
 }
 // ---------- Abend in der Bar: Nong (Barkeeper) → Mentor-Rückblick → letzte Runde → Bilanz-Karte → neuer Tag ----------
-const barkeeperObj = pointObj(BUILDING_POS.bar.x - 1, 2.6, BUILDING_POS.bar.z - 1.8); // Blasen-Anker hinter der Theke (Nong)
+const barkeeperObj = world.nong || pointObj(BUILDING_POS.bar.x - 1, 2.6, BUILDING_POS.bar.z - 1.8); // Nong hinter der Theke (Blasen-Anker am Kopf)
+// Nongs Gesicht: tagsüber neutral, abends müde, beim Gruß kurz eine Braue hoch
+let nongMoodAt = 0;
+const nongBaseMood = () => (mentorAmTresen ? 'muede' : 'neutral');
+function nongSag(mood, now = performance.now()) { try { setNongMood(world.nong, mood); } catch (e) { /* ohne Figur */ } nongMoodAt = mood === 'gruss' ? now + 1500 : 0; }
 let barFolge = null, barIdx = 0, nachtArt = 'bar';
 // Bar-Kamera: von der Meerseite leicht links auf den Tresen, Mentor mittig, Schluffi am linken Hocker nicht in der Sichtlinie
 const barCamera = () => { const b = BUILDING_POS.bar; return { x: b.x - 5.5, y: 4.8, z: b.z + 11, tx: b.x - 0.5, ty: 1.5, tz: b.z - 0.5 }; };
-const barStehplatz = () => { const b = BUILDING_POS.bar; return { x: b.x - 2.4, z: b.z + 3.8, yaw: Math.PI }; }; // hinter dem linken Hocker, Blick zum Tresen
+const barStehplatz = () => { const b = BUILDING_POS.bar; return { x: b.x - 4.2, z: b.z + 2.6, yaw: Math.PI }; }; // am linken Ende des Tresens, verdeckt weder Nong noch den Mentor
 function startBarAbend() {
   barFolge = barAbend(game, abendTexte, lineIdx++);
   barIdx = 0;
@@ -428,6 +435,7 @@ function showBarStep() {
   const e = barFolge[barIdx];
   const last = barIdx === barFolge.length - 1;
   const isMentor = e.wer === 'mentor';
+  nongSag(e.id === 'gruss' ? 'gruss' : nongBaseMood());
   talking = isMentor && mentorRef ? mentorRef : { id: 'barkeeper', group: barkeeperObj, def: { id: 'barkeeper', name: abendTexte.barkeeper.name }, npc: { x: -27.5, z: -2.2, yaw: 0 } };
   ui.showBubble({ text: e.text, options: e.frage ? e.optionen : [last ? 'Feierabend' : 'Weiter'] }, isMentor ? 'Mentor' : abendTexte.barkeeper.name, 0);
   if (e.bark) { try { const pan = panFor(talking.group); audio?.bark?.(isMentor ? 'mentor' : 'barkeeper', e.bark, { pan }); } catch (err) { /* ohne Ton */ } }
@@ -443,51 +451,69 @@ function advanceBar(wahl = 0) {
   endDay(null, { fuss: guteNacht(abendTexte, lineIdx++) });
 }
 
-// ---------- Streife P1: läuft Posten ↔ Markt (Straßen aus dem Markt-Layout), sieht sie einen Verkauf → Heat + Pfiff ----------
+// ---------- Streifen: P1 Posten ↔ Markt (Straßen aus dem Markt-Layout), P2 Hotelstrand ↔ Furt ↔ Pier (watet, ab Tag 2).
+// Sieht eine Streife einen Verkauf → Heat + Pfiff; ab Heat 2 Verfolgung ----------
 const PATROL_ROUTE = [[8, -82], ...MARKT_LANES.ring.slice().reverse()].map(([x, z]) => ({ x, z })); // Posten → Ringstraße → Marktzufahrt und zurück
 const PLAYER_SCHUHE = 'sandalen'; // der Schluffi: darf in die Furt, watet dort mit 0,6
-const STREIFE_SCHUHE = 'sandalen'; // Streife P1 in Sandalen: watet durch die Furt; 'turnschuhe' bleibt an der Kante
-const cop = buildKunde(normalizeKunde({ id: 'streife_p1', typ: 'Streife', name: 'Streife', schuhe: 'sandale', hemd: 'polo_sauber', hose: 'chino', accessoire: 'ohrknopf', extras: ['funkgeraet'], hautton: 'mittel', haare: 'kurz', zivi: true, stimmung_start: 'misstrauisch' }), 7);
-setRevealed(cop, true); // Polizeimütze: die Streife ist offen Polizei (Pong in Sandalen — kann nicht rennen)
-scene.add(cop);
-let patrol = { ...patrolStart(PATROL_ROUTE), mode: 'patrol' };
-const copCollider = { x: patrol.x, z: patrol.z, r: 0.7 };
-colliders.push(copCollider);
-let copSeesPlayer = false;
+const STREIFE_DEFS = [
+  { id: 'streife_p1', route: PATROL_ROUTE, schuhe: 'sandalen', seed: 7, abTag: 1 },          // Sandalen: watet durch die Furt; 'turnschuhe' bliebe an der Kante
+  { id: 'streife_p2', route: STREIFE_P2_ROUTE, schuhe: 'sandalen', seed: 11, abTag: STREIFE_P2_AB_TAG, hautton: 'dunkel' },
+];
+function makeStreife(def) {
+  const group = buildKunde(normalizeKunde({ id: def.id, typ: 'Streife', name: 'Streife', schuhe: 'sandale', hemd: 'polo_sauber', hose: 'chino', accessoire: 'ohrknopf', extras: ['funkgeraet'], hautton: def.hautton || 'mittel', haare: 'kurz', zivi: true, stimmung_start: 'misstrauisch' }), def.seed);
+  setRevealed(group, true); // Polizeimütze: die Streife ist offen Polizei (Pong in Sandalen — kann nicht rennen)
+  scene.add(group);
+  const patrol = { ...patrolStart(def.route), mode: 'patrol' };
+  const collider = { x: patrol.x, z: patrol.z, r: 0.7 };
+  colliders.push(collider);
+  return { ...def, group, patrol, collider, sees: false };
+}
+const streifen = STREIFE_DEFS.map(makeStreife);
+const streifeAktiv = (s) => (game.tag || 1) >= s.abTag;
+const streifeSieht = () => streifen.some((st) => st.sees);
 let sightCooldown = 0;
-function applyCop() {
-  cop.position.set(patrol.x, 0, patrol.z);
-  cop.rotation.y = patrol.yaw;
-  copCollider.x = patrol.x; copCollider.z = patrol.z;
+function applyCop(s) {
+  const aktiv = streifeAktiv(s);
+  s.group.visible = aktiv;
+  if (!aktiv) { s.collider.x = 1e4; s.collider.z = 1e4; return; } // inaktiv: unsichtbar und ohne Collider
+  const { patrol } = s;
+  s.group.position.set(patrol.x, 0, patrol.z);
+  s.group.rotation.y = patrol.yaw;
+  s.collider.x = patrol.x; s.collider.z = patrol.z;
   const pose = waddlePose(patrol.phase || 0, patrol.moving ? (patrol.mode === 'chase' ? CHASE_SPEED : PATROL_SPEED) : 0, patrol.mode === 'chase');
-  const P = cop.userData.parts;
+  const P = s.group.userData.parts;
   P.legs[0].rotation.x = pose.legL; P.legs[1].rotation.x = pose.legR;
   P.arms[0].rotation.x = pose.armL; P.arms[1].rotation.x = pose.armR;
-  P.head.rotation.y = copSeesPlayer ? Math.max(-1, Math.min(1, Math.atan2(Math.sin(Math.atan2(state.x - patrol.x, state.z - patrol.z) - patrol.yaw), Math.cos(Math.atan2(state.x - patrol.x, state.z - patrol.z) - patrol.yaw)))) : 0;
+  P.head.rotation.y = s.sees ? Math.max(-1, Math.min(1, Math.atan2(Math.sin(Math.atan2(state.x - patrol.x, state.z - patrol.z) - patrol.yaw), Math.cos(Math.atan2(state.x - patrol.x, state.z - patrol.z) - patrol.yaw)))) : 0;
 }
+const applyCops = () => { for (const s of streifen) applyCop(s); };
 function updatePatrol(dt, now) {
-  const busy = mode === 'dialog' || mode === 'mentor' || mode === 'info' || mode === 'card' || mode === 'arrest';
-  copSeesPlayer = seesTarget(patrol, state) && !inHideout(state, world.hideouts);
-  // Verfolgung ab Heat 2: langsam (Sandalen), verliert den Spieler nach 6 s ohne Sicht oder im Versteck
-  const r = chaseStep(patrol, PATROL_ROUTE, state, dt, { sees: seesTarget(patrol, state), heat: game.heat, hideouts: world.hideouts, schuhe: STREIFE_SCHUHE });
-  if (r.event === 'kante') { ui.showBark('streife_p1', 'These are new!', 2.5); try { audio?.babble?.('pong', 'These are new!', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ } }
-  patrol = r.st;
-  if (r.event === 'chase_start') { sfx('pfeife'); try { audio?.bark?.('pong', 'verfolgung', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ } ui.showPrompt('Die Streife hat dich gesehen — lauf! (oder ab ins Gedränge)'); }
-  if (r.event === 'lost') { try { audio?.bark?.('pong', 'sichtung', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ } if (mode === 'free') ui.showPrompt(null); }
-  if (r.event === 'caught' && !busy && !isArrested(game)) {
-    game = arrestNow(game); refreshHud();
-    sfx('verhaftet'); try { audio?.bark?.('pong', 'verhaftung', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ }
-    dialog = null; ui.hideBubble();
-    patrol = { ...patrol, mode: 'return', lost: 0 };
-    verhaftetZurBar();
+  const busy = mode === 'dialog' || mode === 'mentor' || mode === 'info' || mode === 'card' || mode === 'arrest' || mode === 'bar';
+  for (const s of streifen) {
+    if (!streifeAktiv(s)) { s.sees = false; applyCop(s); continue; }
+    const sees = seesTarget(s.patrol, state);
+    s.sees = sees && !inHideout(state, world.hideouts);
+    // Verfolgung ab Heat 2: langsam (Sandalen), verliert den Spieler nach 6 s ohne Sicht oder im Versteck
+    const r = chaseStep(s.patrol, s.route, state, dt, { sees, heat: game.heat, hideouts: world.hideouts, schuhe: s.schuhe });
+    if (r.event === 'kante') { ui.showBark(s.id, 'These are new!', 2.5); try { audio?.babble?.('pong', 'These are new!', { pan: panFor(s.group) }); } catch (e) { /* ohne Ton */ } }
+    s.patrol = r.st;
+    if (r.event === 'chase_start') { sfx('pfeife'); try { audio?.bark?.('pong', 'verfolgung', { pan: panFor(s.group) }); } catch (e) { /* ohne Ton */ } ui.showPrompt('Die Streife hat dich gesehen — lauf! (oder ab ins Gedränge)'); }
+    if (r.event === 'lost') { try { audio?.bark?.('pong', 'sichtung', { pan: panFor(s.group) }); } catch (e) { /* ohne Ton */ } if (mode === 'free') ui.showPrompt(null); }
+    if (r.event === 'caught' && !busy && !isArrested(game)) {
+      game = arrestNow(game); refreshHud();
+      sfx('verhaftet'); try { audio?.bark?.('pong', 'verhaftung', { pan: panFor(s.group) }); } catch (e) { /* ohne Ton */ }
+      dialog = null; ui.hideBubble();
+      s.patrol = { ...s.patrol, mode: 'return', lost: 0 };
+      verhaftetZurBar();
+    }
+    // Sichtung (ohne Verkauf): Pfiff + Funkspruch, alle 8 s höchstens einmal, nur ab Heat 1
+    if (s.sees && game.heat >= 1 && now > sightCooldown) {
+      sightCooldown = now + 8000;
+      sfx('pfeife');
+      try { audio?.bark?.('pong', 'sichtung', { pan: panFor(s.group) }); } catch (e) { /* ohne Ton */ }
+    }
+    applyCop(s);
   }
-  // Sichtung (ohne Verkauf): Pfiff + Funkspruch, alle 8 s höchstens einmal, nur ab Heat 1
-  if (copSeesPlayer && game.heat >= 1 && now > sightCooldown) {
-    sightCooldown = now + 8000;
-    sfx('pfeife');
-    try { audio?.bark?.('pong', 'sichtung', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ }
-  }
-  applyCop();
 }
 let mentorFolge = null; // laufende Blasenfolge
 let mentorIdx = 0;
@@ -613,10 +639,11 @@ function confirmDialog() {
     game = r.state; dialog = r.dialog;
     if (game.heat > heatBefore) { sfx('alarm'); if (inSicht) { sfx('pfeife'); pongSay('sichtung'); } }
     // Streife hat den Verkauf gesehen (egal an wen): Heat +1, Pfiff
-    if ((dialog.result === 'kauf' || dialog.result === 'reveal') && copSeesPlayer) {
+    if ((dialog.result === 'kauf' || dialog.result === 'reveal') && streifeSieht()) {
       const sp = patrolSpotted(game, { selling: true });
       game = sp.state; refreshHud();
-      sfx('pfeife'); try { audio?.bark?.('pong', 'sichtung', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ }
+      const zeuge = streifen.find((st) => st.sees) || streifen[0];
+      sfx('pfeife'); try { audio?.bark?.('pong', 'sichtung', { pan: panFor(zeuge.group) }); } catch (e) { /* ohne Ton */ }
     }
     refreshHud();
     setMood(talking.group, moodFor(kundeStatus(game, talking.id)));
@@ -668,7 +695,7 @@ function startNewDay() {
   tagesuhr = initialClock();
   applyTageszeit();
   placeMentor(false);
-  patrol = { ...patrolStart(PATROL_ROUTE), mode: 'patrol' };
+  for (const s of streifen) s.patrol = { ...patrolStart(s.route), mode: 'patrol' };
   soldOutShown = false;
   refreshHud();
   ui.hideCard();
@@ -970,16 +997,23 @@ function setupScene() {
   if (SCENE === 'verfolgung') {
     // Streife hinter dem Spieler her, Heat 2
     state = { ...state, x: 24, z: -78, yaw: Math.PI / 2, speed: 0 };
-    patrol = { ...patrol, x: 18, z: -78.5, yaw: Math.PI / 2, mode: 'chase', lastSeen: { x: 24, z: -78 }, lost: 0, moving: true, phase: 1.1 };
+    streifen[0].patrol = { ...streifen[0].patrol, x: 18, z: -78.5, yaw: Math.PI / 2, mode: 'chase', lastSeen: { x: 24, z: -78 }, lost: 0, moving: true, phase: 1.1 };
     game = { ...game, heat: 2 };
     refreshHud();
-    copSeesPlayer = true;
-    applyCop();
+    streifen[0].sees = true;
+    applyCops();
     ui.showPrompt('Die Streife hat dich gesehen — lauf! (oder ab ins Gedränge)');
     mode = 'free';
     return;
   }
   if (T01) { tagesuhr = { t01: Math.max(0, Math.min(1, parseFloat(T01))) }; applyTageszeit(); placeMentor(barBeendetTag(tagesuhr.t01)); refreshHud(); }
+  if (SCENE === 'nong') {
+    // Nong grüßt (eine Braue hoch), Bar-Kamera
+    tagesuhr = { t01: 0.74 }; applyTageszeit(); placeMentor(true); refreshHud();
+    state = { ...state, ...barStehplatz(), speed: 0 };
+    startBarAbend(); // Schritt 0 = Nongs Gruß
+    return;
+  }
   if (SCENE === 'bar') {
     tagesuhr = { t01: 0.78 }; applyTageszeit(); placeMentor(true);
     game = { ...game, geld: 95, verkauftHeute: 4, geldHeute: 95, heat: 1 }; refreshHud();
@@ -996,12 +1030,24 @@ function setupScene() {
   }
   if (SCENE === 'streife') {
     // Streife auf der Straße am Posten, Spieler davor im Sichtkegel
-    patrol = { ...patrol, x: 12, z: -78, yaw: Math.PI / 2, idx: 2, moving: true, phase: 2.2 };
+    streifen[0].patrol = { ...streifen[0].patrol, x: 12, z: -78, yaw: Math.PI / 2, idx: 2, moving: true, phase: 2.2 };
     state = { ...state, x: 18, z: -77, yaw: -Math.PI / 2, speed: 0 };
     game = { ...game, heat: 1 };
     refreshHud();
-    copSeesPlayer = seesTarget(patrol, state);
-    applyCop();
+    streifen[0].sees = seesTarget(streifen[0].patrol, state);
+    applyCops();
+    mode = 'free';
+    return;
+  }
+  if (SCENE === 'streife2') {
+    // Tag 2: Streife P2 watet auf dem Steinbogen der Furt, Spieler schaut vom Hotelstrand zu
+    game = { ...game, tag: 2, heat: 1 }; refreshHud();
+    const p2 = streifen[1];
+    const m = STREIFE_P2_ROUTE[5]; // mitten auf dem Bogen
+    p2.patrol = { ...p2.patrol, x: m.x, z: m.z, yaw: Math.PI / 2, idx: 6, moving: true, phase: 1.5 };
+    state = { ...state, x: 55, z: 8, yaw: Math.atan2(m.x - 55, m.z - 8), speed: 0 };
+    p2.sees = seesTarget(p2.patrol, state);
+    applyCops();
     mode = 'free';
     return;
   }
@@ -1102,7 +1148,8 @@ if (SNAP) {
     world.huegel.update(3.2);
     world.markt?.update?.(3.2);
     world.pier?.update?.(3.2);
-    if (SCENE !== 'streife' && SCENE !== 'verfolgung') applyCop();
+    try { updateNong(world.nong, 3.2); } catch (e) { /* ohne Figur */ }
+    if (SCENE !== 'streife' && SCENE !== 'verfolgung' && SCENE !== 'streife2') applyCops();
     try { world.markt?.setTafel?.(0); } catch (e) { /* ignorieren */ }
     world.group.updateMatrixWorld(true);
     kundenGroup.updateMatrixWorld(true);
@@ -1131,6 +1178,8 @@ if (SNAP) {
     if (!mentorAmTresen) world.huegel.update(now / 1000);
     world.markt?.update?.(now / 1000);
     world.pier?.update?.(now / 1000);
+    try { updateNong(world.nong, now / 1000); } catch (e) { /* ohne Figur */ }
+    if (nongMoodAt && now > nongMoodAt) nongSag(nongBaseMood());
     updateFerry(now / 1000);
     if (now > tafelAt) { tafelAt = now + 500; const n = isArrested(game) ? 0 : (game.tageOhneVorfall || 0); if (n !== tafelShown) { tafelShown = n; try { world.markt?.setTafel?.(n); } catch (e) { /* ignorieren */ } } }
     const free = mode === 'free' || mode === 'inspect'; // dialog/mentor/info/card: stehen bleiben
@@ -1157,7 +1206,7 @@ if (SNAP) {
       if (abendBeginnt(prev, tagesuhr.t01)) { placeMentor(true); sunsetAt = 0; }
       // Nong tagsüber: ein Zwischenruf pro Vorbeigehen am Tresen, höchstens alle 30 s
       const amTresen = inBar(state, BUILDING_POS.bar, 5);
-      if (amTresen && !warAmTresen && !barBeendetTag(tagesuhr.t01) && now > zwischenrufAt) { zwischenrufAt = now + 30000; ui.showBark('barkeeper', zwischenrufLine(abendTexte, lineIdx++), 3.2); try { audio?.bark?.('barkeeper', 'zwischenruf', { pan: panFor(barkeeperObj) }); } catch (e) { /* ohne Ton */ } }
+      if (amTresen && !warAmTresen && !barBeendetTag(tagesuhr.t01) && now > zwischenrufAt) { zwischenrufAt = now + 30000; ui.showBark('barkeeper', zwischenrufLine(abendTexte, lineIdx++), 3.2); nongSag('gruss', now); try { audio?.bark?.('barkeeper', 'zwischenruf', { pan: panFor(barkeeperObj) }); } catch (e) { /* ohne Ton */ } }
       warAmTresen = amTresen;
       if (barBeendetTag(tagesuhr.t01) && now > sunsetAt) { sunsetAt = now + 20000; ui.showBark('spieler', sonnenuntergangLine(abendTexte, lineIdx++), 4); }
       if (nachtBeginnt(prev, tagesuhr.t01)) { nachtArt = 'haengematte'; sfx('gaehnen'); endDay(einschlafenLine(abendTexte, lineIdx++)); }
