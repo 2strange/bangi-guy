@@ -62,6 +62,11 @@
   #mute, #music, #optionen { pointer-events: auto; cursor: pointer; font-size: 18px; line-height: 1; }
   #mute.muted, #music.muted { opacity: .6; }
   @media (max-width: 720px) { #music { right: 52px; } #optionen { right: 92px; } #mute, #music, #optionen { top: 40px; } } /* schmal: zweite Reihe, nicht über dem HUD */
+  /* Tutorial Tag 1: Hinweiskasten oben mit Überspringen-Knopf; HUD-Puls fürs Heat-Ziel */
+  #tutorial { position: fixed; left: 50%; top: 58px; transform: translateX(-50%); display: none; width: min(92vw, 560px); background: var(--paper); border: 3px solid var(--ink); border-radius: 14px; padding: 10px 14px; font-size: 17px; box-shadow: 4px 4px 0 var(--ink); z-index: 4; pointer-events: auto; }
+  #tutorial .skip { display: inline-block; margin-top: 8px; font-size: 13px; padding: 3px 10px; min-height: 30px; }
+  .hud-item.pulse { animation: pulse .9s ease-in-out infinite; background: #ffd54a; }
+  @media (max-width: 720px) { #tutorial { top: 76px; font-size: 14px; padding: 8px 10px; } }
   /* Optionen-Menü (⚙): Sprache, Beschlagnahme, Musik, Ton — große Knöpfe, auch für den Daumen */
   #menue { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(20, 30, 60, .55); z-index: 7; }
   #menue .card { background: var(--paper); border: 5px solid var(--ink); border-radius: 24px; padding: 20px 28px; box-shadow: 8px 8px 0 var(--ink); width: min(92vw, 460px); }
@@ -101,6 +106,7 @@
 <div id="bubble" class="comic"></div>
 <div id="arrest" class="comic"></div>
 <div id="menue" class="comic"></div>
+<div id="tutorial" class="comic"></div>
 <div id="touch" class="comic"></div>
 <pre id="err" style="position:fixed;top:0;left:0;margin:0;padding:8px;background:#fff;color:#c00;font:14px monospace;white-space:pre-wrap;display:none;z-index:9"></pre>
 <script>

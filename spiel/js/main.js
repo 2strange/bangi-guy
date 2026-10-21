@@ -6,6 +6,7 @@ import { schluffi } from './figures.js';
 import { buildKunde, setMood, setRevealed, holdPose } from './kunden.js';
 import { pose as figurePose, updateNong, setNongMood } from './figures.js';
 import { initLicht } from './licht.js';
+import { zielMarker, updateMarker } from './marker.js';
 import { mentorBarSpot } from './zone-huegel.js';
 import { createUI, isTouchDevice, hintSeen, markHint } from './ui.js';
 import { prepareGags, playGag, stopGag } from './gags.js';
@@ -18,6 +19,7 @@ import {
   kundeStatus, nearestKunde, wanderStep, inspectCamera, kundeLookYaw, TALK_DIST, idSeed,
   normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE, gagFor, nextIdleGagDelay,
   mergeTexte, mergeKundenKatalog, normalizeOptionen, toSave, fromSave, hatFortschritt, fillText,
+  normalizeTutorial, tutorialStart, tutorialEvent, tutorialSkip,
   normalizeStimmen, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
   normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
@@ -167,6 +169,8 @@ function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) { /*
 async function fetchJson(url) { try { const res = await fetch(url, { cache: 'no-store' }); return res.ok ? await res.json() : null; } catch (e) { return null; } }
 let texte = normalizeTexte(null);
 let abendTexte = normalizeAbend(null);
+let tutorialTexte = normalizeTutorial(null);
+let tutorial = null; // Tutorial-Zustand (nur im ersten Spiel, Tag 1)
 let tagesuhr = initialClock();
 let phase = phaseFor(0);
 // Licht über den Tag (licht.js: Himmel, Nebel, Sonnen-/Hemisphärenlicht, Nachtlichter, Sonne/Mond) + Musik-/Ambience-Stimmung
@@ -267,6 +271,7 @@ async function loadTexte() {
   mentorSz = normalizeMentorSzene(json);
   posten7 = normalizePosten7(json);
   abendTexte = normalizeAbend(json);
+  tutorialTexte = normalizeTutorial(json);
   game = { ...game, texte };
 }
 async function loadStimmen() {
@@ -438,6 +443,7 @@ let barFolge = null, barIdx = 0, nachtArt = 'bar';
 const barCamera = () => { const b = BUILDING_POS.bar; return { x: b.x - 5.5, y: 4.8, z: b.z + 11, tx: b.x - 0.5, ty: 1.5, tz: b.z - 0.5 }; };
 const barStehplatz = () => { const b = BUILDING_POS.bar; return { x: b.x - 4.2, z: b.z + 2.6, yaw: Math.PI }; }; // am linken Ende des Tresens, verdeckt weder Nong noch den Mentor
 function startBarAbend() {
+  tutorialFire('bar_betreten');
   barFolge = barAbend(game, abendTexte, lineIdx++);
   barIdx = 0;
   nachtArt = 'bar';
@@ -558,6 +564,7 @@ function advanceMentor() {
   if (mentorIdx < mentorFolge.length - 1) { mentorIdx++; showMentorStep(); return; }
   const before = game;
   game = finishMentor(game, mentorFolge);
+  tutorialFire('mentor_szene_ende');
   if (game.ware > before.ware) sfx('kasse');
   refreshHud();
   mentorFolge = null;
@@ -606,6 +613,40 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
   const hit = new THREE.Vector3();
   if (ray.ray.intersectPlane(groundPlane, hit)) clickTarget = { x: hit.x, z: hit.z };
 });
+// ---------- Tutorial Tag 1: Schritte aus texte.json → tutorial{}, Zielmarker (marker.js), nur im ersten Spiel, überspringbar ----------
+const TUT_KEY = 'bangi.tutorial';
+const TUT_PARAM = q('tutorial'); // ?tutorial=1 erzwingt, =0 unterdrückt (Snaps/Tests)
+function tutorialErlaubt() { if (TUT_PARAM === '1') return true; if (TUT_PARAM === '0') return false; try { return localStorage.getItem(TUT_KEY) !== '1'; } catch (e) { return true; } }
+const marker = zielMarker({ x: 0, z: 0 }); marker.visible = false; scene.add(marker);
+let markerZiel = null, tutorialBis = 0, fertigGezeigt = false;
+function beginTutorial() { if (!tutorialErlaubt() || game.tag !== 1) return; tutorial = tutorialStart(); fertigGezeigt = false; tutorialFire('tag1_start'); }
+function tutorialDone() { tutorial = null; tutorialBis = 0; setTutorialZiel(null); ui.hideTutorial(); try { localStorage.setItem(TUT_KEY, '1'); } catch (e) { /* ignorieren */ } }
+function tutorialFire(trigger) {
+  if (!tutorial || tutorial.fertig) return;
+  const r = tutorialEvent(tutorial, tutorialTexte, trigger);
+  tutorial = r.tut;
+  if (!r.schritt) return;
+  ui.showTutorial({ text: r.schritt.text, skip: tutorialTexte.ueberspringen });
+  tutorialBis = performance.now() + 10000;
+  setTutorialZiel(r.schritt.ziel);
+  sfx('talk');
+}
+function setTutorialZiel(ziel) {
+  markerZiel = ziel;
+  ui.pulseHud('heat', ziel === 'heat_anzeige');
+  const p = ziel === 'huegel' ? (mentorRef ? mentorRef.npc : world.spots.garten) : ziel === 'strand' ? world.spots.start : ziel === 'bar' ? world.spots.bar : null;
+  marker.visible = !!p;
+  if (p) marker.userData.setPosition(p.x, p.z, groundY(p.x, p.z));
+}
+function updateTutorial(now) {
+  if (markerZiel === 'kunde') { const k = nearK || kunden[0]; if (k) { marker.visible = true; marker.userData.setPosition(k.npc.x, k.npc.z, groundY(k.npc.x, k.npc.z)); } }
+  if (marker.visible) updateMarker(marker, now / 1000);
+  if (!tutorialBis || now < tutorialBis) return;
+  if (tutorial?.fertig && !fertigGezeigt) { fertigGezeigt = true; ui.showTutorial({ text: tutorialTexte.fertig }); tutorialBis = now + 7000; setTutorialZiel(null); return; }
+  ui.hideTutorial(); tutorialBis = 0;
+  if (tutorial?.fertig) tutorialDone();
+}
+ui.onTutorialSkip(() => { if (!tutorial) return; tutorial = tutorialSkip(tutorial, tutorialTexte); sfx('talk'); tutorialDone(); });
 // ---------- Startkarte: Spielstand vorhanden → „Weiter“ (Stand laden) oder „Neues Spiel“ (Stand löschen) ----------
 function showStart(saved) {
   const T = texte.start;
@@ -620,7 +661,7 @@ function startChoice(i) {
     spawnKunden(game.tag);
     for (const s of streifen) s.patrol = { ...patrolStart(s.route), mode: 'patrol' };
     tagesuhr = initialClock(); applyTageszeit(); placeMentor(false);
-  } else clearSave();
+  } else { clearSave(); beginTutorial(); }
   refreshHud();
   mode = 'free';
 }
@@ -721,7 +762,7 @@ function confirmDialog() {
     }
     refreshHud();
     setMood(talking.group, moodFor(kundeStatus(game, talking.id)));
-    if (dialog.result === 'kauf' || dialog.result === 'reveal') sfx('kasse'); else sfx('ablehnung');
+    if (dialog.result === 'kauf' || dialog.result === 'reveal') { sfx('kasse'); tutorialFire('erster_verkauf'); } else { sfx('ablehnung'); if (dialog.result === 'ablehnung') tutorialFire('erste_ablehnung'); }
     if (dialog.result === 'reveal') setRevealed(talking.group, true);
     const wann = dialog.result === 'ablehnung' ? 'ablehnung' : (dialog.result === 'kauf' || dialog.result === 'reveal') ? 'kauf' : null;
     if (wann) startGag(talking, gagFor(texte, talking.id, wann));
@@ -745,6 +786,7 @@ function endDialog() {
 }
 // Ausverkauft: Sprechblase des Spielers mit „Tag beenden“ / „Weiterbummeln“
 function showSoldOut() {
+  tutorialFire('ware_leer');
   talking = null;
   dialog = soldOutDialog(texte, lineIdx++);
   sfx('ausverkauft');
@@ -789,7 +831,7 @@ function toggleInspect() {
   if (mode === 'inspect') endInspect();
   else if (nearK) { talking = nearK; mode = 'inspect'; markHint('look'); sfx('look'); showInspectHint(); if (nearK.def.zivi) bark(nearK, 'zivi_verdaechtig', 3.5); }
 }
-function endInspect() { mode = 'free'; markHint('end'); ui.showPrompt(null); stopBabble(); }
+function endInspect() { mode = 'free'; markHint('end'); ui.showPrompt(null); stopBabble(); tutorialFire('nach_hinschauen'); }
 // Inspect-Ansicht bleibt frei: Beenden-Hinweis als kleine Pille am Rand, groß nur beim ersten Mal
 function showInspectHint() {
   if (!hintSeen('end')) ui.showPrompt(TOUCH ? 'Nochmal Schauen oder weggehen: fertig' : 'F oder Esc: fertig geschaut — weggehen geht auch', { small: true });
@@ -1179,6 +1221,20 @@ function setupScene() {
     return;
   }
   if (SCENE === 'menue') { openMenu(); return; }
+  if (SCENE === 'tutorial') {
+    // Schritt „hinschauen“: Kunde in Reichweite, Zielmarker am Kunden, Hinweiskasten oben
+    const k = kunden[0]; const p = k.npc.points[0];
+    k.npc = { ...k.npc, x: p.x, z: p.z, yaw: 0, moving: false, pause: 99 };
+    state = { ...state, x: p.x + 1.7, z: p.z - 1.8, yaw: Math.atan2(-1.7, 1.8), speed: 0 };
+    k.npc.yaw = Math.atan2(state.x - k.npc.x, state.z - k.npc.z); k.look = 0; applyKunde(k);
+    nearK = k;
+    tutorial = tutorialEvent(tutorialStart(), tutorialTexte, 'tag1_start').tut;
+    tutorialFire('kunde_in_reichweite');
+    updateTutorial(0);
+    updateMarker(marker, 3.2);
+    mode = 'free';
+    return;
+  }
   if (SCENE === 'start') { showStart({ ...initialState(), tag: 3, geld: 140, ware: 4 }); return; }
   if (SCENE === 'figur') {
     // Einzelfigur auf offenem Sand, Blick zur Kamera: ?scene=figur&id=surfer_1[&cy=50]
@@ -1261,7 +1317,7 @@ if (SNAP) {
 } else {
   resize();
   window.addEventListener('resize', resize);
-  Promise.all([loadTexte(), loadStimmen(), loadKunden()]).then(() => { const sv = readSave(); if (hatFortschritt(sv)) showStart(fromSave(sv)); });
+  Promise.all([loadTexte(), loadStimmen(), loadKunden()]).then(() => { const sv = readSave(); if (hatFortschritt(sv)) showStart(fromSave(sv)); else beginTutorial(); });
   let last = performance.now();
   renderer.setAnimationLoop((now) => {
     const dt = Math.min(0.05, (now - last) / 1000);
@@ -1295,7 +1351,7 @@ if (SNAP) {
       const prev = tagesuhr.t01;
       tagesuhr = clockStep(tagesuhr, dt);
       applyTageszeit();
-      if (abendBeginnt(prev, tagesuhr.t01)) { placeMentor(true); sunsetAt = 0; }
+      if (abendBeginnt(prev, tagesuhr.t01)) { placeMentor(true); sunsetAt = 0; tutorialFire('sonnenuntergang'); }
       // Nong tagsüber: ein Zwischenruf pro Vorbeigehen am Tresen, höchstens alle 30 s
       const amTresen = inBar(state, BUILDING_POS.bar, 5);
       if (amTresen && !warAmTresen && !barBeendetTag(tagesuhr.t01) && now > zwischenrufAt) { zwischenrufAt = now + 30000; ui.showBark('barkeeper', zwischenrufLine(abendTexte, lineIdx++), 3.2); nongSag('gruss', now); try { audio?.bark?.('barkeeper', 'zwischenruf', { pan: panFor(barkeeperObj) }); } catch (e) { /* ohne Ton */ } }
@@ -1304,6 +1360,8 @@ if (SNAP) {
       if (nachtBeginnt(prev, tagesuhr.t01)) { nachtArt = 'haengematte'; sfx('gaehnen'); endDay(einschlafenLine(abendTexte, lineIdx++)); }
       if (Math.floor(prev * 1000) !== Math.floor(tagesuhr.t01 * 1000)) refreshHud();
     }
+    if (nearK) tutorialFire('kunde_in_reichweite');
+    updateTutorial(now);
     updatePatrol(dt, now);
     // Schritt im Sand: jede volle Watschel-Periode (1.6 Einheiten ≈ 0.4 s Gehen)
     if (state.moving && Math.floor(state.phase / (Math.PI * 2)) !== Math.floor(lastStepPhase / (Math.PI * 2))) sfx('schritt');

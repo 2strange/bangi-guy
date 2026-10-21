@@ -218,6 +218,15 @@ gelegt – fehlende Zweige, andere Listenlängen oder leere Strings fallen auf D
 `mergeKundenKatalog` in `js/game.js`, getestet). Dialog-Beschriftungen und Menütexte kommen aus `texte.json → ui{}`
 (`dialog`, `menue`, `titel`, `optionen`, …). `?lang=en` setzt die Sprache für Snaps, `?snap=1&scene=menue` zeigt das Menü.
 
+## Tutorial (Tag 1)
+Beim ersten Spiel führt Tag 1 in Schritten: zum Mentor (Ware), Kunde ansehen, erster Verkauf (Heat erklärt), abends
+Bar. Schritte und Texte stehen in `texte.json → tutorial{}` (`trigger` = Ereignis, `ziel` = Marker: huegel | strand |
+kunde | heat_anzeige | bar). Das Tutorial folgt dem Spieler: löst ein späteres Ereignis aus, gelten die Schritte davor
+als übersprungen; optionale Schritte dürfen ausfallen (`tutorialEvent` in `js/game.js`, getestet). Ein Hinweiskasten
+oben zeigt den Text ~10 s, „Tutorial überspringen“ beendet es; ein Leuchtring mit Pfeil (`js/marker.js`) markiert das
+Ziel, beim Heat-Schritt pulsiert die Anzeige. Erledigt oder übersprungen wird im Browser gemerkt (`bangi.tutorial`),
+`?tutorial=1` erzwingt es, `?tutorial=0` unterdrückt es. `?snap=1&scene=tutorial` zeigt den Schritt „hinschauen“.
+
 ## Spielstand
 Beim Tageswechsel wird der Morgenstand des neuen Tages automatisch gespeichert (`localStorage` `bangi.spielstand`,
 Schema mit `version`; nur Tag, Kasse, Tasche, Heat, Mangos, Tafel – Tagesinternes ist morgens ohnehin frisch).

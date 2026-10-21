@@ -710,3 +710,30 @@ test('Spielstand: toSave/fromSave sind ein Rundlauf über die Nachtfelder; fremd
   assert.equal(hatFortschritt(null), false);
   assert.equal(nT(null).start.weiter, 'Weiter');
 });
+
+import { normalizeTutorial, tutorialStart, tutorialEvent, tutorialSkip, DEFAULT_TUTORIAL, TUTORIAL_TRIGGER } from '../js/game.js';
+test('Tutorial: Schritte folgen den Ereignissen, überspringen Zwischenschritte, ignorieren Unbekanntes, enden mit fertig; überspringbar', () => {
+  const T = normalizeTutorial({ tutorial: { ueberspringen: 'Skip', schritte: [
+    { id: 'a', trigger: 'tag1_start', ziel: 'huegel', text: 'A' }, { id: 'b', trigger: 'mentor_szene_ende', ziel: 'strand', text: 'B' },
+    { id: 'c', trigger: 'kunde_in_reichweite', ziel: 'kunde', text: 'C' }, { id: 'd', trigger: 'erste_ablehnung', ziel: 'nix', optional: true, text: 'D' },
+    { id: 'e', trigger: 'sonnenuntergang', ziel: 'bar', text: 'E' }, { id: 'kaputt', trigger: 'gibtsnicht', text: 'X' }, { id: 'leer', trigger: 'bar_betreten', text: '  ' },
+  ] } });
+  assert.equal(T.ueberspringen, 'Skip'); assert.equal(T.fertig, DEFAULT_TUTORIAL.fertig);
+  assert.deepEqual(T.schritte.map((s) => s.id), ['a', 'b', 'c', 'd', 'e'], 'kaputte Schritte fliegen raus');
+  assert.equal(T.schritte[3].ziel, null); assert.equal(T.schritte[3].optional, true); assert.equal(T.schritte[0].optional, false);
+  let tut = tutorialStart();
+  let r = tutorialEvent(tut, T, 'tag1_start'); tut = r.tut;
+  assert.equal(r.schritt.id, 'a'); assert.equal(tut.idx, 1);
+  r = tutorialEvent(tut, T, 'tag1_start'); assert.equal(r.schritt, null, 'gleiches Ereignis nochmal: nichts'); assert.equal(r.tut.idx, 1);
+  r = tutorialEvent(tut, T, 'erster_verkauf'); assert.equal(r.schritt, null, 'Ereignis ohne Schritt: nichts');
+  r = tutorialEvent(tut, T, 'kunde_in_reichweite'); tut = r.tut;
+  assert.equal(r.schritt.id, 'c', 'Spieler war schneller als der Mentor-Schritt → b übersprungen'); assert.equal(tut.idx, 3);
+  r = tutorialEvent(tut, T, 'mentor_szene_ende'); assert.equal(r.schritt, null, 'übersprungene Schritte kommen nicht nach');
+  r = tutorialEvent(tut, T, 'sonnenuntergang'); tut = r.tut;
+  assert.equal(r.schritt.id, 'e'); assert.equal(r.fertig, true); assert.equal(tut.fertig, true, 'optionales d übersprungen, letzter Schritt → fertig');
+  assert.equal(tutorialEvent(tut, T, 'bar_betreten').schritt, null, 'fertig: nichts mehr');
+  const sk = tutorialSkip(tutorialStart(), T); assert.equal(sk.fertig, true); assert.equal(tutorialEvent(sk, T, 'tag1_start').schritt, null);
+  assert.ok(TUTORIAL_TRIGGER.includes('ware_leer'));
+  assert.deepEqual(normalizeTutorial(null).schritte, DEFAULT_TUTORIAL.schritte);
+  assert.equal(tutorialEvent(null, T, 'tag1_start').schritt, null);
+});

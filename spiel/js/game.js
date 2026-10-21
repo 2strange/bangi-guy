@@ -332,6 +332,45 @@ export function mergeKundenKatalog(deJson, enJson) {
   return deJson && Array.isArray(deJson.kunden) ? { ...deJson, kunden: out } : out;
 }
 
+// ---------- Tutorial Tag 1 (data/texte.json → tutorial{}): geführte Schritte, folgen dem Spieler, überspringbar ----------
+export const TUTORIAL_TRIGGER = ['tag1_start', 'mentor_szene_ende', 'kunde_in_reichweite', 'nach_hinschauen', 'erster_verkauf', 'erste_ablehnung', 'ware_leer', 'sonnenuntergang', 'bar_betreten'];
+export const TUTORIAL_ZIELE = ['huegel', 'strand', 'kunde', 'heat_anzeige', 'bar'];
+export const DEFAULT_TUTORIAL = {
+  ueberspringen: 'Tutorial überspringen',
+  fertig: 'Das war’s. Ab jetzt bist du auf dich gestellt.',
+  schritte: [
+    { id: 'aufwachen', trigger: 'tag1_start', ziel: 'huegel', optional: false, text: 'Der Typ mit dem Gras wohnt auf dem Hügel. Hoch mit dir.' },
+    { id: 'nachschub', trigger: 'mentor_szene_ende', ziel: 'strand', optional: false, text: 'Runter zum Strand. Schuhe zuerst, immer.' },
+    { id: 'hinschauen', trigger: 'kunde_in_reichweite', ziel: 'kunde', optional: false, text: 'Erst gucken, dann reden: genau hinschauen.' },
+    { id: 'heat', trigger: 'erster_verkauf', ziel: 'heat_anzeige', optional: false, text: 'Das ist dein Heat. Bei FAHNDUNG holt dich Pong.' },
+    { id: 'abend', trigger: 'sonnenuntergang', ziel: 'bar', optional: false, text: 'Sonne geht unter. Ab in die Bar, dann ist der Tag rum.' },
+  ],
+};
+export function normalizeTutorial(json) {
+  const t = json && typeof json === 'object' && json.tutorial && typeof json.tutorial === 'object' ? json.tutorial : {};
+  const D = DEFAULT_TUTORIAL;
+  const raw = Array.isArray(t.schritte) && t.schritte.length ? t.schritte : D.schritte;
+  const schritte = raw.filter((st) => st && typeof st === 'object' && typeof st.id === 'string' && TUTORIAL_TRIGGER.includes(st.trigger) && typeof st.text === 'string' && st.text.trim())
+    .map((st) => ({ id: st.id, trigger: st.trigger, ziel: TUTORIAL_ZIELE.includes(st.ziel) ? st.ziel : null, optional: st.optional === true, text: st.text }));
+  return { ueberspringen: str(t.ueberspringen, D.ueberspringen), fertig: str(t.fertig, D.fertig), schritte: schritte.length ? schritte : D.schritte };
+}
+export const tutorialStart = () => ({ idx: 0, fertig: false });
+export const tutorialSkip = (tut, T) => ({ idx: (T || DEFAULT_TUTORIAL).schritte.length, fertig: true });
+/**
+ * Ereignis einspeisen: der nächste Schritt (ab idx) mit diesem Trigger wird gezeigt — Schritte davor gelten als übersprungen
+ * (das Tutorial folgt dem Spieler, statt ihn festzuhalten). Rückgabe { tut, schritt|null, fertig: gerade fertig geworden }.
+ */
+export function tutorialEvent(tut, T, trigger) {
+  const S = (T || DEFAULT_TUTORIAL).schritte;
+  if (!tut || tut.fertig) return { tut, schritt: null, fertig: false };
+  let i = tut.idx;
+  while (i < S.length && S[i].trigger !== trigger) i++;
+  if (i >= S.length) return { tut, schritt: null, fertig: false };
+  const idx = i + 1;
+  const fertig = idx >= S.length;
+  return { tut: { idx, fertig }, schritt: S[i], fertig };
+}
+
 // ---------- Spielstand: automatisch am Tagesende (Morgenstand des neuen Tages), „Weiter“/„Neues Spiel“ beim Start ----------
 export const SAVE_VERSION = 1;
 export const SAVE_FELDER = ['tag', 'geld', 'ware', 'heat', 'mangos', 'tageOhneVorfall'];

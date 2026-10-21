@@ -25,6 +25,8 @@ export function createUI() {
   const bubble = document.getElementById('bubble');
   const arrest = document.getElementById('arrest');
   const menue = document.getElementById('menue');
+  const tutorialBox = document.getElementById('tutorial');
+  const hudPulse = { heat: false }; // Tutorial: Heat-Anzeige pulsiert
 
   function setHud(state) {
     if (!hud) return;
@@ -32,7 +34,7 @@ export function createUI() {
       <span class="hud-item"><b>Tag ${state.tag}</b>${state.clockLabel ? ` <span class="clock">${state.clockLabel}</span>` : ''}</span>
       <span class="hud-item">💰 <b>${state.geld}</b></span>
       <span class="hud-item${state.ware === 0 ? ' empty' : ''}">🌿 <b>${state.ware}</b></span>
-      <span class="hud-item heat-${state.heat}">Heat <b>${heatLabel(state.heat)}</b></span>${state.mangos > 0 ? `<span class="hud-item">🥭 <b>${state.mangos}</b></span>` : ''}`;
+      <span class="hud-item heat-${state.heat}${hudPulse.heat ? ' pulse' : ''}">Heat <b>${heatLabel(state.heat)}</b></span>${state.mangos > 0 ? `<span class="hud-item">🥭 <b>${state.mangos}</b></span>` : ''}`;
   }
 
   function showPrompt(text, { small = false } = {}) {
@@ -204,6 +206,21 @@ export function createUI() {
     };
   }
 
+  // ---------- Tutorial-Kasten (Text + „überspringen“) und HUD-Puls ----------
+  let tutorialSkipCb = null;
+  function showTutorial({ text, skip = null }) {
+    if (!tutorialBox) return;
+    tutorialBox.innerHTML = `<div>${escapeHtml(text)}</div>${skip ? `<button class="opt skip" data-skip="1">${escapeHtml(skip)}</button>` : ''}`;
+    tutorialBox.style.display = 'block';
+  }
+  function hideTutorial() { if (tutorialBox) tutorialBox.style.display = 'none'; }
+  function onTutorialSkip(cb) { tutorialSkipCb = cb; }
+  if (tutorialBox) tutorialBox.addEventListener('click', (e) => { if (e.target.closest('[data-skip]')) tutorialSkipCb?.(); });
+  function pulseHud(which, on) {
+    hudPulse[which] = !!on;
+    const el = hud?.querySelector(`.hud-item[class*="${which}-"]`);
+    if (el) el.classList.toggle('pulse', !!on);
+  }
   // ---------- Optionen-Menü (⚙): model = { titel, hinweis, rows: [{ id, label, value, werte: [{ v, label }] }], schliessen } ----------
   let menuChange = null, menuClose = null;
   function showMenu(model) {
@@ -229,7 +246,7 @@ export function createUI() {
     const b = document.getElementById('optionen');
     if (b) b.addEventListener('click', () => onClick?.());
   }
-  return { setHud, showPrompt, showBadge, pulseButtons, createMuteButton, showBark, placeBark, hideBarks, showBubble, hideBubble, placeBubble, showCard, showArrest, hideCard, hideArrest: hideCard, onOptionClick, createTouchControls, showMenu, hideMenu, isMenuOpen, onMenu, createOptionsButton };
+  return { setHud, showPrompt, showBadge, pulseButtons, createMuteButton, showBark, placeBark, hideBarks, showBubble, hideBubble, placeBubble, showCard, showArrest, hideCard, hideArrest: hideCard, onOptionClick, createTouchControls, showMenu, hideMenu, isMenuOpen, onMenu, createOptionsButton, showTutorial, hideTutorial, onTutorialSkip, pulseHud };
 }
 
 function escapeHtml(s) {
