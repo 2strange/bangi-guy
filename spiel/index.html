@@ -59,9 +59,19 @@
   .bark::after { content: ""; position: absolute; left: 50%; bottom: -14px; border: 7px solid transparent; border-top: 9px solid var(--ink); transform: translateX(-50%); }
   body.touch .bark { font-size: 13px; padding: 2px 8px; }
   /* Mute im HUD */
-  #mute, #music { pointer-events: auto; cursor: pointer; font-size: 18px; line-height: 1; }
+  #mute, #music, #optionen { pointer-events: auto; cursor: pointer; font-size: 18px; line-height: 1; }
   #mute.muted, #music.muted { opacity: .6; }
-  @media (max-width: 720px) { #music { right: 52px; } }
+  @media (max-width: 720px) { #music { right: 52px; } #optionen { right: 92px; } #mute, #music, #optionen { top: 40px; } } /* schmal: zweite Reihe, nicht über dem HUD */
+  /* Optionen-Menü (⚙): Sprache, Beschlagnahme, Musik, Ton — große Knöpfe, auch für den Daumen */
+  #menue { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(20, 30, 60, .55); z-index: 7; }
+  #menue .card { background: var(--paper); border: 5px solid var(--ink); border-radius: 24px; padding: 20px 28px; box-shadow: 8px 8px 0 var(--ink); width: min(92vw, 460px); }
+  #menue h1 { margin: 0 0 12px; font-size: 32px; color: #2a3f8f; text-align: center; }
+  #menue .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0; font-size: 18px; }
+  #menue .seg { display: flex; gap: 6px; flex-shrink: 0; }
+  #menue .seg button.opt { min-width: 64px; min-height: 40px; padding: 6px 12px; }
+  #menue .small { font-size: 14px; color: #555; margin: 4px 0 10px; }
+  #menue .close { display: block; margin: 14px auto 0; min-height: 44px; }
+  @media (max-width: 720px) { #menue .card { padding: 14px 16px; } #menue h1 { font-size: 24px; } #menue .row { font-size: 15px; } }
   /* schmale Bildschirme: alles kompakter */
   @media (max-width: 720px) {
     .hud-item { font-size: 13px; padding: 2px 8px; border-width: 2px; box-shadow: 2px 2px 0 var(--ink); }
@@ -85,10 +95,12 @@
 <div id="hud" class="comic"></div>
 <button id="mute" class="hud-item comic" aria-label="Ton an/aus" style="position:fixed;right:12px;top:10px;display:none">🔊</button>
 <button id="music" class="hud-item comic" aria-label="Musik an/aus" style="position:fixed;right:64px;top:10px;display:none">🎵</button>
+<button id="optionen" class="hud-item comic" aria-label="Optionen" style="position:fixed;right:116px;top:10px">⚙</button>
 <div id="badge" class="comic"></div>
 <div id="prompt" class="comic"></div>
 <div id="bubble" class="comic"></div>
 <div id="arrest" class="comic"></div>
+<div id="menue" class="comic"></div>
 <div id="touch" class="comic"></div>
 <pre id="err" style="position:fixed;top:0;left:0;margin:0;padding:8px;background:#fff;color:#c00;font:14px monospace;white-space:pre-wrap;display:none;z-index:9"></pre>
 <script>

@@ -647,3 +647,45 @@ test('lichtT: Spieluhr 06:00–24:00 wird auf die 24-h-Lichtpalette abgebildet',
   assert.ok(Math.abs(lichtT(PHASE_AT.abend) - 0.745) < 0.01, 'Abend-Phase beginnt beim Sonnenuntergang der Palette (~0.74)');
   assert.equal(lichtT(-1), 0.25); assert.equal(lichtT(2), 1);
 });
+
+import { mergeTexte, mergeKundenKatalog, normalizeOptionen, DEFAULT_OPTIONEN, normalizeTexte as nT, startDialog as sD, advanceDialog as aD, chooseOption as cO, ZIVI_BESCHLAGNAHMT as ZB } from '../js/game.js';
+test('normalizeTexte liest die Oberflächen-Texte aus ui{} (Dialog-Beschriftungen, Menü), ältere Dateien oben; Defaults bei Lücken', () => {
+  const T = nT({ ui: { dialog: { verkaufen: 'Sell', weiter: 'Next' }, titel: { feierabend: 'Closing time.' }, optionen: { tag_beenden: 'End the day' }, menue: { titel: 'Options' } }, bilanz: ['B {tag}'] });
+  assert.equal(T.dialog.verkaufen, 'Sell'); assert.equal(T.dialog.lieber_nicht, 'Lieber nicht', 'fehlender Schlüssel → Default');
+  assert.equal(T.titel.feierabend, 'Closing time.'); assert.equal(T.optionen.tag_beenden, 'End the day'); assert.equal(T.menue.titel, 'Options');
+  assert.deepEqual(T.bilanz, ['B {tag}'], 'oben liegende Felder gelten weiter');
+  assert.equal(nT({ ui: { bilanz: ['U'] }, bilanz: ['T'] }).bilanz[0], 'U', 'ui{} gewinnt');
+  // Dialog nutzt die Beschriftungen; die Wahl läuft über den Index, nicht über den Text
+  const d = aD(sD(schluffi, initialState(), 0, T), T);
+  assert.deepEqual(d.options, ['Sell', 'Lieber nicht']);
+  const r = cO(initialState(), d, schluffi, 0, 0, undefined, T);
+  assert.equal(r.dialog.result, 'kauf'); assert.deepEqual(r.dialog.options, ['Next']);
+  assert.equal(cO(initialState(), d, schluffi, 'Sell', 0, undefined, T).dialog.result, 'kauf', 'Beschriftung geht auch');
+  assert.equal(cO(initialState(), d, schluffi, 1, 0, undefined, T).dialog.result, 'ablehnung');
+});
+test('mergeTexte: EN ersetzt Strings und gleich lange String-Listen, Objekte rekursiv; Zahlen/ids/fehlende Zweige bleiben DE', () => {
+  const de = { a: 'A', l: ['x', 'y'], n: 3, o: { s: 'S', id: 'k1', t: ['1', '2', '3'] }, steps: [{ id: 's', text: ['T'], menge: 5 }] };
+  const en = { a: 'EN-A', l: ['ex', 'why'], n: 9, o: { s: 'EN-S', id: 'zz', t: ['one', 'two'] }, steps: [{ id: 'q', text: ['EN-T'], menge: 7 }] };
+  const m = mergeTexte(de, en);
+  assert.equal(m.a, 'EN-A'); assert.deepEqual(m.l, ['ex', 'why']); assert.equal(m.n, 3, 'Zahl bleibt DE');
+  assert.equal(m.o.s, 'EN-S'); assert.equal(m.o.id, 'k1', 'id bleibt DE'); assert.deepEqual(m.o.t, ['1', '2', '3'], 'Liste anderer Länge → DE');
+  assert.deepEqual(m.steps, [{ id: 's', text: ['EN-T'], menge: 5 }], 'Objektlisten gleicher Länge elementweise');
+  assert.deepEqual(mergeTexte(de, null), de); assert.deepEqual(mergeTexte(de, { a: '', l: 'nope', o: 'nope' }), de, 'leere/kaputte EN-Knoten → DE');
+  assert.equal(mergeTexte('A', undefined), 'A');
+});
+test('mergeKundenKatalog: EN-Datei keyed by id übersetzt name/typ/tells/saetze, Rest (Schuhe, zahlt, heat) bleibt', () => {
+  const de = { kunden: [{ id: 'k1', name: 'Kai', typ: 'Surfer', schuhe: 'barfuss', zahlt: 15, tells: ['a', 'b'], saetze: { gruss: ['G1', 'G2'], kauf: ['K'] } }, { id: 'k2', name: 'B', saetze: { gruss: ['x'] } }] };
+  const en = { kunden: { k1: { name: 'Kai', typ: 'Surfer dude', schuhe: 'sneaker', zahlt: 99, tells: ['a-en', 'b-en'], saetze: { gruss: ['G1-en'], kauf: ['K-en'] } } } };
+  const m = mergeKundenKatalog(de, en);
+  assert.equal(m.kunden[0].typ, 'Surfer dude'); assert.equal(m.kunden[0].schuhe, 'barfuss'); assert.equal(m.kunden[0].zahlt, 15);
+  assert.deepEqual(m.kunden[0].tells, ['a-en', 'b-en']); assert.deepEqual(m.kunden[0].saetze.gruss, ['G1', 'G2'], 'Länge passt nicht → DE'); assert.deepEqual(m.kunden[0].saetze.kauf, ['K-en']);
+  assert.deepEqual(m.kunden[1], de.kunden[1], 'ohne EN-Eintrag unverändert');
+  assert.deepEqual(mergeKundenKatalog(de, null), de); assert.deepEqual(mergeKundenKatalog(de.kunden, en)[1], de.kunden[1], 'nacktes Array geht auch');
+});
+test('normalizeOptionen: Defaults (DE, Beschlagnahme an, Musik/Ton an), nur gültige Werte übernehmen', () => {
+  assert.deepEqual(normalizeOptionen(null), DEFAULT_OPTIONEN);
+  assert.equal(DEFAULT_OPTIONEN.beschlagnahme, ZB);
+  const o = normalizeOptionen({ sprache: 'en', beschlagnahme: false, musik: 'nein', ton: 0, extra: 1 });
+  assert.deepEqual(o, { sprache: 'en', beschlagnahme: false, musik: true, ton: true });
+  assert.equal(normalizeOptionen({ sprache: 'fr' }).sprache, 'de');
+});

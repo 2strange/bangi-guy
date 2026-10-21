@@ -5,10 +5,11 @@
 // ?what=gags  → Raster aller Reveal-Gags aus data/texte.json im Endzustand (t = dauer_s)
 // ?what=posen → Tätigkeits-Posen (figures.pose) an drei Kunden
 // ?what=nong  → Barkeeper Nong hinter der Theke (links neutral/tagsüber, rechts müde/abends), t über ?t=
+// ?what=huette → Finale-Hütte in allen Zuständen + Wegweiser normal/„Jetzt stimmt es.“
 import * as THREE from 'three';
 import { toonMesh, textTexture } from './toon.js';
 import { schluffi, runner, sandal, sneaker, pose, POSES, buildNong, updateNong, setNongMood } from './figures.js';
-import { hotel, beachBar } from './props.js';
+import { hotel, beachBar, finaleHuette, setHuette, HUETTE_ZUSTAENDE, signpost, setWegweiserText } from './props.js';
 import { buildingScale } from './logic.js';
 import { buildKunde } from './kunden.js';
 import { normalizeKatalog } from './game.js';
@@ -50,6 +51,16 @@ if (WHAT === 'feet') {
   for (const [shoe, x] of items) { shoe.position.set(x, 0, 0); shoe.scale.setScalar(1.6); scene.add(shoe); }
   camera.position.set(0, 4.2, 4.5);
   camera.lookAt(0, 0.3, 0);
+} else if (WHAT === 'huette') {
+  HUETTE_ZUSTAENDE.forEach((z, i) => {
+    const h = finaleHuette(); setHuette(h, z); h.scale.setScalar(1.5); h.position.set((i - 1.5) * 9, 0, 0); h.rotation.y = 0.2; scene.add(h);
+    const tex = textTexture(z, { bg: '#fff1c2', fg: '#2b1b0b', font: 'bold 56px sans-serif', w: 384, h: 96 });
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshBasicMaterial({ map: tex })); label.position.set((i - 1.5) * 9, 9.2, 0); scene.add(label);
+  });
+  const sp1 = signpost(); sp1.position.set(-20, 0, 6); sp1.rotation.y = -0.4; sp1.scale.setScalar(1.25); scene.add(sp1);
+  const sp2 = signpost(); setWegweiserText(sp2, 2, 'POLIZEI 2km. Jetzt stimmt es.', { font: 'bold 44px sans-serif' }); sp2.position.set(20, 0, 6); sp2.rotation.y = -0.4; sp2.scale.setScalar(1.25); scene.add(sp2);
+  camera.position.set(0, 13, 36);
+  camera.lookAt(0, 3.4, 0);
 } else if (WHAT === 'nong') {
   const t = parseFloat(q('t') || '1.1');
   const bs = buildingScale('bar');

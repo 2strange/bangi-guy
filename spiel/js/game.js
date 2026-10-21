@@ -142,24 +142,29 @@ export function heatLabel(heat) {
 
 // ---------- Gespräch (Zustandsautomat) ----------
 // phase: 'gruss' → 'wahl' → 'ergebnis' → (Ende)
-export function startDialog(kunde, state, lineIdx = 0) {
+export function startDialog(kunde, state, lineIdx = 0, texte = null) {
+  const T = texte || DEFAULT_TEXTE;
   const st = kundeStatus(state, kunde.id);
   if (st !== 'neutral') {
     const text = st === 'zufrieden' ? 'Alles gut bei mir, Mann.' : st === 'misstrauisch' ? '…' : pickLine(kunde.saetze.ablehnung, lineIdx);
     return { kundeId: kunde.id, phase: 'ergebnis', text, options: [], result: 'schon_erledigt' };
   }
-  return { kundeId: kunde.id, phase: 'gruss', text: pickLine(kunde.saetze.gruss, lineIdx), options: ['Weiter'] };
+  return { kundeId: kunde.id, phase: 'gruss', text: pickLine(kunde.saetze.gruss, lineIdx), options: [T.dialog.weiter] };
 }
-export function advanceDialog(dialog) {
+export function advanceDialog(dialog, texte = null) {
+  const T = texte || DEFAULT_TEXTE;
   if (!dialog) return null;
-  if (dialog.phase === 'gruss') return { ...dialog, phase: 'wahl', text: 'Was läuft?', options: ['Verkaufen', 'Lieber nicht'] };
+  if (dialog.phase === 'gruss') return { ...dialog, phase: 'wahl', text: T.dialog.was_laeuft, options: [T.dialog.verkaufen, T.dialog.lieber_nicht] };
   if (dialog.phase === 'ergebnis') return null; // Gespräch zu Ende
   return dialog;
 }
-export function chooseOption(state, dialog, kunde, option, lineIdx = 0, sellOpts = undefined) {
+// option: Index (0 = verkaufen) oder Beschriftung — Index ist sprachunabhängig
+export function chooseOption(state, dialog, kunde, option, lineIdx = 0, sellOpts = undefined, texte = null) {
+  const T = texte || DEFAULT_TEXTE;
   if (!dialog || dialog.phase !== 'wahl') return { state, dialog };
-  const r = option === 'Verkaufen' || option === 0 ? sell(state, kunde, lineIdx, sellOpts) : decline(state, kunde, lineIdx);
-  return { state: r.state, dialog: { ...dialog, phase: 'ergebnis', text: r.text, options: ['Weiter'], result: r.result, geldPlus: r.geldPlus, heatPlus: r.heatPlus } };
+  const verkaufen = option === 0 || option === T.dialog.verkaufen || option === 'Verkaufen';
+  const r = verkaufen ? sell(state, kunde, lineIdx, sellOpts) : decline(state, kunde, lineIdx);
+  return { state: r.state, dialog: { ...dialog, phase: 'ergebnis', text: r.text, options: [T.dialog.weiter], result: r.result, geldPlus: r.geldPlus, heatPlus: r.heatPlus } };
 }
 
 // Stimmung des Kunden aus Status (für Mimik: setMood)
@@ -256,30 +261,84 @@ export const DEFAULT_TEXTE = {
   polizei: ' ({anZivis} an die Polizei 🙈)',
   titel: { feierabend: 'Feierabend.', verhaftet: 'VERHAFTET.' },
   optionen: { tag_beenden: 'Tag beenden', weiter: 'Weiterbummeln', neuer_tag: 'Neuer Tag' },
+  dialog: { was_laeuft: 'Was läuft?', verkaufen: 'Verkaufen', lieber_nicht: 'Lieber nicht', weiter: 'Weiter', hinschauen: 'Genau hinschauen', beenden: 'Beenden' },
+  heat_label: { 0: 'kalt', 1: 'lauwarm', 2: 'heiß', 3: 'FAHNDUNG' },
+  // Optionen-Menü (⚙): Oberflächen-Beschriftungen, Content kann sie unter ui.menue{} übersetzen
+  menue: { titel: 'Optionen', sprache: 'Textsprache', beschlagnahme: 'Zivi nimmt die Ware ab', musik: 'Musik', ton: 'Ton', an: 'an', aus: 'aus', schliessen: 'Schließen', hinweis: 'Stimmen bleiben Englisch.' },
   reveal_gags: [],
 };
 const strList = (v, fallback) => (Array.isArray(v) && v.length && v.every((x) => typeof x === 'string' && x.trim()) ? v : fallback);
 const str = (v, fallback) => (typeof v === 'string' && v.trim() ? v : fallback);
+// Oberflächen-Texte liegen in texte.json unter ui{} (ältere Dateien: oben) — beide Orte werden gelesen
 export function normalizeTexte(json) {
   const t = json && typeof json === 'object' ? json : {};
-  const te = t.tagesende && typeof t.tagesende === 'object' ? t.tagesende : {};
-  const op = t.optionen && typeof t.optionen === 'object' ? t.optionen : {};
-  const ti = t.titel && typeof t.titel === 'object' ? t.titel : {};
+  const u = t.ui && typeof t.ui === 'object' ? t.ui : {};
+  const pick = (key) => (u[key] !== undefined ? u[key] : t[key]);
+  const obj = (v) => (v && typeof v === 'object' ? v : {});
+  const te = obj(t.tagesende);
+  const op = obj(pick('optionen')), ti = obj(pick('titel')), di = obj(pick('dialog')), hl = obj(pick('heat_label')), me = obj(pick('menue'));
   const tagesende = {};
   for (const l of LAGEN) tagesende[l] = strList(te[l], DEFAULT_TEXTE.tagesende[l]);
+  const strMap = (src, defaults) => Object.fromEntries(Object.keys(defaults).map((k) => [k, str(src[k], defaults[k])]));
   return {
     ausverkauft: strList(t.ausverkauft, DEFAULT_TEXTE.ausverkauft),
-    ausverkauft_kunde: strList(t.ausverkauft_kunde, DEFAULT_TEXTE.ausverkauft_kunde),
+    ausverkauft_kunde: strList(pick('ausverkauft_kunde'), DEFAULT_TEXTE.ausverkauft_kunde),
     tagesende,
-    bilanz: strList(t.bilanz, DEFAULT_TEXTE.bilanz),
-    polizei: str(t.polizei, DEFAULT_TEXTE.polizei),
+    bilanz: strList(pick('bilanz'), DEFAULT_TEXTE.bilanz),
+    polizei: str(pick('polizei'), DEFAULT_TEXTE.polizei),
     reveal_gags: normalizeGags(t.reveal_gags),
-    titel: { feierabend: str(ti.feierabend, DEFAULT_TEXTE.titel.feierabend), verhaftet: str(ti.verhaftet, DEFAULT_TEXTE.titel.verhaftet) },
-    optionen: {
-      tag_beenden: str(op.tag_beenden, DEFAULT_TEXTE.optionen.tag_beenden),
-      weiter: str(op.weiter, DEFAULT_TEXTE.optionen.weiter),
-      neuer_tag: str(op.neuer_tag, DEFAULT_TEXTE.optionen.neuer_tag),
-    },
+    titel: strMap(ti, DEFAULT_TEXTE.titel),
+    optionen: strMap(op, DEFAULT_TEXTE.optionen),
+    dialog: strMap(di, DEFAULT_TEXTE.dialog),
+    heat_label: strMap(hl, DEFAULT_TEXTE.heat_label),
+    menue: strMap(me, DEFAULT_TEXTE.menue),
+  };
+}
+
+// ---------- Sprache: zweite Datei je Quelle (texte.en.json, kunden.en.json), Deep-Merge mit DE als Fallback ----------
+export const SPRACHEN = ['de', 'en'];
+/** EN-Knoten ersetzen DE-Knoten nur, wo sie passen: Strings 1:1, String-Listen gleicher Länge komplett (Zeilenzähler
+ *  bleibt synchron), Objekte rekursiv; Zahlen/Booleans/ids/fehlende Zweige bleiben DE. */
+export function mergeTexte(de, en) {
+  if (en === undefined || en === null) return de;
+  if (typeof de === 'string') return typeof en === 'string' && en.trim() ? en : de;
+  if (Array.isArray(de)) {
+    if (!Array.isArray(en) || en.length !== de.length) return de;
+    if (de.every((x) => typeof x === 'string')) return en.every((x) => typeof x === 'string' && x.trim()) ? en : de;
+    return de.map((x, i) => mergeTexte(x, en[i]));
+  }
+  if (de && typeof de === 'object') {
+    if (!en || typeof en !== 'object' || Array.isArray(en)) return de;
+    const out = { ...de };
+    for (const k of Object.keys(de)) if (k !== 'id' && k !== '_schema') out[k] = mergeTexte(de[k], en[k]);
+    return out;
+  }
+  return de; // Zahlen, Booleans, null: nie aus EN
+}
+/** kunden.json (Array) + kunden.en.json ({ kunden: { <id>: { name, typ, tells, saetze } } }) → Array mit EN-Texten */
+export function mergeKundenKatalog(deJson, enJson) {
+  const list = deJson && Array.isArray(deJson.kunden) ? deJson.kunden : Array.isArray(deJson) ? deJson : [];
+  const en = enJson && typeof enJson === 'object' && enJson.kunden && typeof enJson.kunden === 'object' && !Array.isArray(enJson.kunden) ? enJson.kunden : {};
+  const out = list.map((k) => {
+    const e = k && typeof k === 'object' && typeof k.id === 'string' ? en[k.id] : null;
+    if (!e || typeof e !== 'object') return k;
+    const m = { ...k };
+    for (const key of ['name', 'typ', 'tells', 'saetze']) if (e[key] !== undefined && k[key] !== undefined) m[key] = mergeTexte(k[key], e[key]);
+    return m;
+  });
+  return deJson && Array.isArray(deJson.kunden) ? { ...deJson, kunden: out } : out;
+}
+
+// ---------- Optionen (⚙): Textsprache, Zivi-Beschlagnahme, Musik, Ton — Ablage im Browser, robust gegen Müll ----------
+export const DEFAULT_OPTIONEN = { sprache: 'de', beschlagnahme: ZIVI_BESCHLAGNAHMT, musik: true, ton: true };
+export function normalizeOptionen(json) {
+  const o = json && typeof json === 'object' ? json : {};
+  const bool = (v, d) => (typeof v === 'boolean' ? v : d);
+  return {
+    sprache: SPRACHEN.includes(o.sprache) ? o.sprache : DEFAULT_OPTIONEN.sprache,
+    beschlagnahme: bool(o.beschlagnahme, DEFAULT_OPTIONEN.beschlagnahme),
+    musik: bool(o.musik, DEFAULT_OPTIONEN.musik),
+    ton: bool(o.ton, DEFAULT_OPTIONEN.ton),
   };
 }
 // Reveal-Gags (gags.js spielt sie): id, wann (kauf|ablehnung|immer), gag, mood, extra, dauer_s — kaputte Einträge fliegen raus

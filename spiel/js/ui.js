@@ -24,6 +24,7 @@ export function createUI() {
   const prompt = document.getElementById('prompt');
   const bubble = document.getElementById('bubble');
   const arrest = document.getElementById('arrest');
+  const menue = document.getElementById('menue');
 
   function setHud(state) {
     if (!hud) return;
@@ -200,7 +201,32 @@ export function createUI() {
     };
   }
 
-  return { setHud, showPrompt, showBadge, pulseButtons, createMuteButton, showBark, placeBark, hideBarks, showBubble, hideBubble, placeBubble, showCard, showArrest, hideCard, hideArrest: hideCard, onOptionClick, createTouchControls };
+  // ---------- Optionen-Menü (⚙): model = { titel, hinweis, rows: [{ id, label, value, werte: [{ v, label }] }], schliessen } ----------
+  let menuChange = null, menuClose = null;
+  function showMenu(model) {
+    if (!menue) return;
+    const rows = model.rows.map((r) => `<div class="row"><span>${escapeHtml(r.label)}</span><span class="seg">${r.werte.map((w) =>
+      `<button class="opt${w.v === r.value ? ' sel' : ''}" data-opt="${r.id}" data-val="${escapeHtml(String(w.v))}">${escapeHtml(w.label)}</button>`).join('')}</span></div>`).join('');
+    menue.innerHTML = `<div class="card"><h1>${escapeHtml(model.titel)}</h1>${rows}${model.hinweis ? `<p class="small">${escapeHtml(model.hinweis)}</p>` : ''}
+      <button class="opt sel close" data-close="1"><span class="key">Esc</span> ${escapeHtml(model.schliessen)}</button></div>`;
+    menue.style.display = 'flex';
+  }
+  function hideMenu() { if (menue) menue.style.display = 'none'; }
+  const isMenuOpen = () => !!menue && menue.style.display === 'flex';
+  if (menue) {
+    menue.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) { if (e.target === menue) menuClose?.(); return; }
+      if (b.dataset.close) { menuClose?.(); return; }
+      if (b.dataset.opt) menuChange?.(b.dataset.opt, b.dataset.val);
+    });
+  }
+  function onMenu({ change, close }) { menuChange = change; menuClose = close; }
+  function createOptionsButton(onClick) {
+    const b = document.getElementById('optionen');
+    if (b) b.addEventListener('click', () => onClick?.());
+  }
+  return { setHud, showPrompt, showBadge, pulseButtons, createMuteButton, showBark, placeBark, hideBarks, showBubble, hideBubble, placeBubble, showCard, showArrest, hideCard, hideArrest: hideCard, onOptionClick, createTouchControls, showMenu, hideMenu, isMenuOpen, onMenu, createOptionsButton };
 }
 
 function escapeHtml(s) {

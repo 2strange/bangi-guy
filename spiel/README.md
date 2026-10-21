@@ -209,6 +209,15 @@ Standbild (für die PNGs in `shots/`).
   Meshes zusammengeführt — mit `?stats=1` lässt sich der Draw-Call-Stand ablesen, das ist der erste Hebel, wenn
   es auf einem Laptop ruckelt. Pixel-Ratio ist auf 1.5 gedeckelt.
 
+## Optionen (⚙)
+Der Zahnrad-Knopf im HUD (oder Esc) öffnet das Optionen-Menü und pausiert das Spiel: **Textsprache** DE/EN,
+**Zivi nimmt die Ware ab** (an/aus, Default an), **Musik**, **Ton**. Die Wahl liegt im Browser (`localStorage`, im
+privaten Modus nur für die Sitzung). Stimmen/Barks bleiben Englisch. Die Sprache ist eine zweite Datei je Quelle:
+`data/texte.en.json` und `data/kunden.en.json` (keyed by Kunden-id) werden per Deep-Merge über die deutschen Texte
+gelegt – fehlende Zweige, andere Listenlängen oder leere Strings fallen auf DE zurück (`mergeTexte`,
+`mergeKundenKatalog` in `js/game.js`, getestet). Dialog-Beschriftungen und Menütexte kommen aus `texte.json → ui{}`
+(`dialog`, `menue`, `titel`, `optionen`, …). `?lang=en` setzt die Sprache für Snaps, `?snap=1&scene=menue` zeigt das Menü.
+
 ## Offen / nächste Schritte
 - Statische Deko zusammenführen (Hecke, Palmen, Laternen) und Konturen als Screen-Space-Pass, falls die
   Draw-Calls auf schwächeren Rechnern bremsen.

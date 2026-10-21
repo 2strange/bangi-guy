@@ -17,6 +17,7 @@ import {
   initialState, normalizeKatalog, pickKunden, startDialog, advanceDialog, chooseOption, isArrested, newDay, moodFor,
   kundeStatus, nearestKunde, wanderStep, inspectCamera, kundeLookYaw, TALK_DIST, idSeed,
   normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE, gagFor, nextIdleGagDelay,
+  mergeTexte, mergeKundenKatalog, normalizeOptionen,
   normalizeStimmen, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
   normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
@@ -107,7 +108,11 @@ ui.setHud(game);
 let audio = null;
 const SFX = { talk: 'ui_klick', kasse: 'kasse', alarm: 'heat', ablehnung: 'ablehnen', look: 'hinschauen', feierabend: 'ui_klick', verhaftet: 'verhaftet', ausverkauft: 'ausverkauft', schritt: 'schritt_sand', tuten: 'tuten', tuktuk: 'tuktuk_abwuergen' };
 const sfx = (name, opts) => { try { audio?.sfx?.(SFX[name] || name, opts); } catch (e) { /* ohne Ton weiter */ } };
-const muteBtn = ui.createMuteButton((m) => { try { audio?.setMuted?.(m); } catch (e) { /* ignorieren */ } });
+const muteBtn = ui.createMuteButton((m) => { optionen = { ...optionen, ton: !m }; saveOptionen(); try { audio?.setMuted?.(m); } catch (e) { /* ignorieren */ } });
+let paintMusic = null;
+function applyAudioOptionen() {
+  try { audio?.setMuted?.(!optionen.ton); muteBtn.set(!optionen.ton); audio?.music?.setEnabled?.(optionen.musik); paintMusic?.(); } catch (e) { /* ignorieren */ }
+}
 let audioStarted = false;
 function startAudio() {
   if (!audio) return;
@@ -131,22 +136,30 @@ function updateAmbience(now) {
 }
 import('./audio.js').then((m) => {
   audio = m;
-  try { audio.initAudio?.(); audio.loadStimmen?.(); muteBtn.set(!!audio.isMuted?.()); } catch (e) { /* ignorieren */ }
+  try { audio.initAudio?.(); audio.loadStimmen?.(); } catch (e) { /* ignorieren */ }
   const el = document.getElementById('mute');
   if (el) el.style.display = 'block';
   const mb = document.getElementById('music');
   if (mb && audio.music?.setEnabled) {
     mb.style.display = 'block';
     const paint = () => { const on = audio.music.isEnabled ? audio.music.isEnabled() : true; mb.textContent = on ? '🎵' : '🎵̸'; mb.classList.toggle('muted', !on); };
-    paint();
-    mb.addEventListener('click', () => { try { const on = audio.music.isEnabled ? !audio.music.isEnabled() : false; audio.music.setEnabled(on); paint(); sfx('talk'); } catch (e) { /* ignorieren */ } });
+    paintMusic = paint;
+    mb.addEventListener('click', () => { try { optionen = { ...optionen, musik: !optionen.musik }; saveOptionen(); audio.music.setEnabled(optionen.musik); paint(); sfx('talk'); } catch (e) { /* ignorieren */ } });
   }
+  applyAudioOptionen(); // gespeicherte Optionen (Ton/Musik) gelten ab dem Start
   if (gestureSeen) startAudio();
 }).catch(() => { /* kein Audio-Modul → stumm */ });
 let gestureSeen = false;
 const firstGesture = () => { gestureSeen = true; startAudio(); setTimeout(startAudio, 300); };
 window.addEventListener('pointerdown', firstGesture, { once: true });
 window.addEventListener('keydown', firstGesture, { once: true });
+// ---------- Optionen (⚙): Textsprache, Zivi-Beschlagnahme, Musik, Ton — im Browser gemerkt (privater Modus: nur für die Sitzung) ----------
+const OPT_KEY = 'bangi.optionen';
+let optionen = normalizeOptionen((() => { try { return JSON.parse(localStorage.getItem(OPT_KEY) || 'null'); } catch (e) { return null; } })());
+const LANG = q('lang'); // ?lang=en für Snaps
+if (LANG) optionen = { ...optionen, sprache: LANG === 'en' ? 'en' : 'de' };
+function saveOptionen() { try { localStorage.setItem(OPT_KEY, JSON.stringify(optionen)); } catch (e) { /* privat/gesperrt */ } }
+async function fetchJson(url) { try { const res = await fetch(url, { cache: 'no-store' }); return res.ok ? await res.json() : null; } catch (e) { return null; } }
 let texte = normalizeTexte(null);
 let abendTexte = normalizeAbend(null);
 let tagesuhr = initialClock();
@@ -243,11 +256,8 @@ const POSE_NAME = (a) => ({ sitzt: a.id.startsWith('liege') ? 'liegen' : 'sitzen
 const kundenPos = () => kunden.map((k) => ({ id: k.id, x: k.npc.x, z: k.npc.z, yaw: k.npc.yaw, ref: k }));
 
 async function loadTexte() {
-  let json = null;
-  try {
-    const res = await fetch('./data/texte.json', { cache: 'no-store' });
-    if (res.ok) json = await res.json();
-  } catch (e) { /* Datei fehlt → Platzhalter-Texte */ }
+  let json = await fetchJson('./data/texte.json'); // Datei fehlt → Platzhalter-Texte
+  if (json && optionen.sprache === 'en') { const en = await fetchJson('./data/texte.en.json'); if (en) json = mergeTexte(json, en); } // fehlende EN-Zweige bleiben DE
   texte = normalizeTexte(json);
   mentorSz = normalizeMentorSzene(json);
   posten7 = normalizePosten7(json);
@@ -306,12 +316,11 @@ function placeBarks() {
   }
 }
 async function loadKunden() {
-  let json = null;
-  try {
-    const res = await fetch('./data/kunden.json', { cache: 'no-store' });
-    if (res.ok) json = await res.json();
-  } catch (e) { /* Datei fehlt oder kaputt → Fallback unten */ }
+  let json = await fetchJson('./data/kunden.json'); // Datei fehlt oder kaputt → Fallback unten
+  if (json && optionen.sprache === 'en') { const en = await fetchJson('./data/kunden.en.json'); if (en) json = mergeKundenKatalog(json, en); }
   katalog = normalizeKatalog(json);
+  // schon gespawnte Kunden: Namen/Sätze nachziehen (Sprachwechsel mitten im Tag)
+  for (const k of kunden) { const d = katalog.find((x) => x.id === k.id); if (d) k.def = { ...k.def, name: d.name, typ: d.typ, tells: d.tells, saetze: d.saetze }; }
   if (katalog.length === 0) {
     katalog = normalizeKatalog([
       { id: 'fallback_schluffi', typ: 'Strandgast', schuhe: 'sandale', hemd: 'hawaii', accessoire: 'sonnenbrille' },
@@ -562,6 +571,8 @@ const touch = ui.createTouchControls({
 });
 if (TOUCH) touch.show();
 window.addEventListener('keydown', (e) => {
+  if (mode === 'menu') { if (e.code === 'Escape') closeMenu(); e.preventDefault(); return; }
+  if (e.code === 'Escape' && (mode === 'free')) { openMenu(); e.preventDefault(); return; }
   if (mode === 'arrest' || mode === 'card') { if (e.code === 'Enter' || e.code === 'Space') { startNewDay(); e.preventDefault(); } return; }
   if (mode === 'dialog') { dialogKey(e); return; }
   if (mode === 'mentor') { if (['Enter', 'Space', 'KeyE', 'Digit1'].includes(e.code)) advanceMentor(); else if (e.code === 'Escape') advanceMentor(); e.preventDefault(); return; }
@@ -589,6 +600,43 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
   const hit = new THREE.Vector3();
   if (ray.ray.intersectPlane(groundPlane, hit)) clickTarget = { x: hit.x, z: hit.z };
 });
+// ---------- Optionen-Menü (⚙): pausiert das Spiel (Modus menu), Esc oder „Schließen“ geht zurück ----------
+let menuPrev = 'free';
+function menuModel() {
+  const M = texte.menue;
+  const anAus = [{ v: true, label: M.an }, { v: false, label: M.aus }];
+  return {
+    titel: M.titel, hinweis: M.hinweis, schliessen: M.schliessen,
+    rows: [
+      { id: 'sprache', label: M.sprache, value: optionen.sprache, werte: [{ v: 'de', label: 'DE' }, { v: 'en', label: 'EN' }] },
+      { id: 'beschlagnahme', label: M.beschlagnahme, value: optionen.beschlagnahme, werte: anAus },
+      { id: 'musik', label: M.musik, value: optionen.musik, werte: anAus },
+      { id: 'ton', label: M.ton, value: optionen.ton, werte: anAus },
+    ],
+  };
+}
+function openMenu() {
+  if (mode === 'menu') return;
+  if (mode !== 'free' && mode !== 'inspect') return; // mitten im Gespräch/auf der Karte nicht
+  menuPrev = mode;
+  for (const key in keys) keys[key] = false;
+  clickTarget = null;
+  mode = 'menu';
+  ui.showMenu(menuModel());
+}
+function closeMenu() { if (mode !== 'menu') return; ui.hideMenu(); mode = menuPrev; sfx('talk'); }
+ui.createOptionsButton(() => { if (mode === 'menu') closeMenu(); else openMenu(); });
+ui.onMenu({
+  close: closeMenu,
+  change: async (id, raw) => {
+    const val = id === 'sprache' ? raw : raw === 'true';
+    if (optionen[id] === val) return;
+    optionen = normalizeOptionen({ ...optionen, [id]: val });
+    saveOptionen(); sfx('talk');
+    if (id === 'sprache') { await loadTexte(); await loadKunden(); refreshHud(); } else applyAudioOptionen();
+    if (mode === 'menu') ui.showMenu(menuModel());
+  },
+});
 ui.onOptionClick((i, where) => {
   sfx('talk');
   if (where === 'card') startNewDay();
@@ -606,7 +654,7 @@ function startTalk(k) {
   talking = k;
   for (const key in keys) keys[key] = false;
   clickTarget = null;
-  dialog = startDialog(k.def, game, lineIdx++);
+  dialog = startDialog(k.def, game, lineIdx++, texte);
   selected = 0;
   mode = 'dialog';
   ui.showPrompt(null);
@@ -637,7 +685,7 @@ function confirmDialog() {
   if (dialog.phase === 'wahl') {
     const heatBefore = game.heat;
     const inSicht = inPostenSicht(state, POSTEN_ZONE);
-    const r = chooseOption(game, dialog, talking.def, dialog.options[selected], lineIdx++, { posten: POSTEN_ZONE, pos: state });
+    const r = chooseOption(game, dialog, talking.def, selected, lineIdx++, { posten: POSTEN_ZONE, pos: state, beschlagnahmt: optionen.beschlagnahme }, texte);
     game = r.state; dialog = r.dialog;
     if (game.heat > heatBefore) { sfx('alarm'); if (inSicht) { sfx('pfeife'); pongSay('sichtung'); } }
     // Streife hat den Verkauf gesehen (egal an wen): Heat +1, Pfiff
@@ -657,7 +705,7 @@ function confirmDialog() {
     renderBubble();
     return;
   }
-  const next = advanceDialog(dialog);
+  const next = advanceDialog(dialog, texte);
   if (next) { dialog = next; selected = 0; renderBubble(); } else endDialog();
 }
 function endDialog() {
@@ -1105,6 +1153,7 @@ function setupScene() {
     showSoldOut();
     return;
   }
+  if (SCENE === 'menue') { openMenu(); return; }
   if (SCENE === 'figur') {
     // Einzelfigur auf offenem Sand, Blick zur Kamera: ?scene=figur&id=surfer_1[&cy=50]
     const k = (SCENE_ID && kundeById(SCENE_ID)) || kunden[0];
@@ -1138,7 +1187,7 @@ function setupScene() {
   applyKunde(k);
   talking = k;
   if (SCENE === 'dialog') {
-    dialog = advanceDialog(startDialog(k.def, game, 0));
+    dialog = advanceDialog(startDialog(k.def, game, 0, texte), texte);
     selected = 0;
     mode = 'dialog';
     renderBubble();

@@ -359,6 +359,7 @@ export function mailbox() {
 // ---------- Wegweiser ----------
 export function signpost() {
   const g = new THREE.Group();
+  const boards = [];
   g.add(limb(new THREE.Vector3(0, 0, 0), new THREE.Vector3(-0.25, 2.6, 0.1), 0.1, 0x7a4b22, { outline: 0.04 }));
   const items = [['BAR  →', 2.3, -0.3, 0x7a4b22], ['← STRAND', 1.8, 0.3, 0x7a4b22], ['POLIZEI 2km', 1.25, 0.05, 0x7a4b22]];
   for (const [txt, y, rot] of items) {
@@ -371,8 +372,105 @@ export function signpost() {
     board.position.set(px, y, 0.28);
     board.rotation.y = rot;
     board.rotation.z = (y % 0.5) * 0.3 - 0.08;
-    g.add(board);
+    board.userData.text = txt;
+    g.add(board); boards.push(board);
   }
+  g.userData.boards = boards;
+  return g;
+}
+
+// Text eines Wegweiser-Bretts tauschen (Index 0 = oben; 2 = „POLIZEI 2km“). Finale: „POLIZEI 2km. Jetzt stimmt es.“
+export function setWegweiserText(sp, index, text, { font = 'bold 66px sans-serif' } = {}) {
+  const board = sp.userData.boards?.[index];
+  if (!board) return;
+  const tex = textTexture(text, { bg: '#e8c57a', fg: '#2b1b0b', font, w: 640 });
+  board.material[4] = toon(0xffffff, { map: tex });
+  board.material.needsUpdate = true;
+  board.userData.text = text;
+}
+
+// ---------- Finale-Hütte am Verleih: Stelzenhütte auf den Felsen am Weststrand, umbaubar ----------
+// Zustände: 'verkauf' (Schild „ZU VERKAUFEN“, verrammeltes Fenster), 'halb' (Möwe sitzt schon drauf, Schild
+// „HALB VERKAUFT“), 'deine' (Veranda mit Hängematte, Möwe, Blumenkasten, Laterne, Hawaii-Flagge, Kräuterbeet
+// hinterm Haus), 'posten8' (blaues Schild „POLIZEI · POSTEN 8“, Gitter, Fahne, Hütchen, Rucksack des Zivis).
+export function finaleHuette() {
+  const g = new THREE.Group();
+  const base = hut({ w: 2.6, h: 2.1, d: 2.3, lean: 0.3, wall: 0x9fd8ff, roofColor: 0xd62e2e, straw: true, stilts: 1.2, seed: 27 });
+  g.add(base);
+  const S = {}; // Zustandsgruppen
+  const grp = (name) => { const o = new THREE.Group(); o.visible = false; g.add(o); S[name] = o; return o; };
+  const post = (o, x, z, h = 2.4) => o.add(limb(new THREE.Vector3(x, 0, z), new THREE.Vector3(x + 0.08, h, z), 0.08, 0x7a4b22, { outline: 0.035 }));
+  const schild = (o, text, x, z, y, { bg = '#fff1c2', fg = '#2b1b0b', w = 2.2, h = 0.5 } = {}) => {
+    const tex = textTexture(text, { bg, fg, font: 'bold 56px sans-serif', w: 1024, h: 160 });
+    const plain = toon(new THREE.Color(bg).getHex());
+    const b = toonMesh(new THREE.BoxGeometry(w, h, 0.06), [plain, plain, plain, plain, toon(0xffffff, { map: tex }), toon(0xffffff, { map: tex })], { outline: 0.03 });
+    b.position.set(x, y, z); b.rotation.z = 0.05; o.add(b); return b;
+  };
+  // Fenster-Position der Stelzenhütte (wie hut(): frontX(0.62, 0.75), frontZ(0.62))
+  const lean = 0.3, w = 2.6, d = 2.3, hh = 2.1, st = 1.2;
+  const fx = 0.75 * (1 + 0.14 * 0.62) + lean * 0.62, fz = (d / 2) * 0.38 + (d / 2 * 1.06 + lean * 0.25) * 0.62, fy = st + hh * 0.62;
+  // --- zu verkaufen ---
+  { const o = grp('verkauf');
+    post(o, 2.2, 1.6); schild(o, 'ZU VERKAUFEN', 2.25, 1.6, 2.2); schild(o, '1000 MÜNZEN · BIS SONNTAG', 2.22, 1.6, 1.65, { bg: '#e8c57a', w: 2.4, h: 0.36 });
+    for (const [dy, rz] of [[0.2, 0.35], [-0.15, -0.4]]) { const brett = toonMesh(new THREE.BoxGeometry(1.1, 0.16, 0.06), 0x8b5a2b, { outline: 0.025 }); brett.position.set(fx, fy + dy, fz + 0.12); brett.rotation.z = rz; o.add(brett); }
+  }
+  // --- halb deine: Möwe sitzt schon drauf ---
+  { const o = grp('halb');
+    post(o, 2.2, 1.6); schild(o, 'HALB VERKAUFT', 2.25, 1.6, 2.2); schild(o, 'REST: NONG (ODER DU)', 2.22, 1.6, 1.65, { bg: '#e8c57a', w: 2.4, h: 0.36 });
+    const m = gull(); m.position.set(0.3, st + hh + 1.5, 0.1); m.rotation.y = -0.6; o.add(m);
+  }
+  // --- deine: Veranda mit Hängematte, Möwe, Blumen, Laterne, Flagge, Kräuterbeet hinterm Haus ---
+  { const o = grp('deine');
+    post(o, 2.2, 1.6, 1.4); schild(o, 'VERKAUFT', 2.25, 1.6, 1.5, { bg: '#e8463a', fg: '#ffffff', w: 1.6, h: 0.45 });
+    const deck = toonMesh(new THREE.BoxGeometry(2.6, 0.14, 1.6), 0xd8a85a, { outline: 0.035 }); deck.position.set(0.2, st - 0.05, d / 2 + 1.0); o.add(deck);
+    for (const [x, z] of [[-1.0, d / 2 + 1.7], [1.4, d / 2 + 1.7]]) { o.add(limb(new THREE.Vector3(x, 0, z), new THREE.Vector3(x, st + 2.4, z), 0.09, 0x7a4b22, { outline: 0.035 })); }
+    o.add(hammock(new THREE.Vector3(-1.0, st + 1.6, d / 2 + 1.7), new THREE.Vector3(1.4, st + 1.7, d / 2 + 1.7)));
+    const m = gull(); m.position.set(0.3, st + hh + 1.5, 0.1); m.rotation.y = 0.4; o.add(m);
+    const fb = new THREE.Group(); // Blumenkasten unterm Fenster
+    const box = toonMesh(new THREE.BoxGeometry(0.9, 0.24, 0.3), 0x8b5a2b, { outline: 0.03 }); box.position.set(fx, fy - 0.55, fz + 0.2); fb.add(box);
+    [0xe8463a, 0xffd54a, 0xff5fa2, 0xffffff].forEach((c, i) => { const f = toonMesh(new THREE.SphereGeometry(0.1, 8, 6), c, { outline: 0.02 }); f.position.set(fx - 0.33 + i * 0.22, fy - 0.35, fz + 0.2); fb.add(f); });
+    o.add(fb);
+    const lantern = toonMesh(new THREE.SphereGeometry(0.16, 10, 8), 0xfff1c2, { outline: 0.03 }); lantern.position.set(-1.0, st + 2.1, d / 2 + 1.7); lantern.userData.nachtlicht = { color: 0xffd27a, staerke: 1.2 }; o.add(lantern);
+    o.add(limb(new THREE.Vector3(-1.2, st + hh + 1.2, -0.3), new THREE.Vector3(-1.3, st + hh + 2.8, -0.3), 0.03, 0x555566, { outline: 0.015 }));
+    const flag = toonMesh(new THREE.BoxGeometry(0.9, 0.55, 0.04), toon(0xffffff, { map: stripeTexture(['#ff7f3f', '#3bb84a', '#ffe14a', '#ff7f3f'], { vertical: true }) }), { outline: 0.02 }); flag.position.set(-0.85, st + hh + 2.5, -0.3); o.add(flag);
+    const bed = toonMesh(new THREE.BoxGeometry(2.2, 0.3, 1.0), 0x8b5a2b, { outline: 0.035 }); bed.position.set(0.2, 0.15, -d / 2 - 1.2); o.add(bed);
+    for (let i = 0; i < 5; i++) { const leaf = toonMesh(new THREE.ConeGeometry(0.06, 0.55, 5), i % 2 ? 0x3bb84a : 0x2f9f3a, { outline: 0.02 }); leaf.position.set(-0.6 + i * 0.4, 0.55, -d / 2 - 1.2); leaf.rotation.z = (i % 2 ? 1 : -1) * 0.2; o.add(leaf); }
+    const s = schild(o, 'KRÄUTER · PRIVAT', 0.2, -d / 2 - 1.75, 0.6, { bg: '#e8c57a', w: 1.4, h: 0.3 }); s.rotation.y = Math.PI;
+  }
+  // --- Posten 8 ---
+  { const o = grp('posten8');
+    schild(o, 'POLIZEI · POSTEN 8', fx - 0.9, fz + 0.22, st + hh - 0.35, { bg: '#2a3f8f', fg: '#ffffff', w: 2.4, h: 0.5 });
+    for (let i = -1; i <= 1; i++) { const bar = toonMesh(new THREE.BoxGeometry(0.05, 0.85, 0.05), 0x333344, { outline: 0.015 }); bar.position.set(fx + i * 0.28, fy, fz + 0.12); o.add(bar); }
+    o.add(limb(new THREE.Vector3(2.0, 0, -1.2), new THREE.Vector3(2.05, 5.0, -1.2), 0.07, 0xeeeeee, { outline: 0.03 }));
+    const fl = toonMesh(new THREE.BoxGeometry(0.05, 0.8, 1.1, 1, 4, 6), 0x2a3f8f, { outline: 0.03 }); deform(fl.geometry, (v) => { v.x += 0.06 * Math.sin(v.z * 4); v.y -= 0.2 * Math.max(0, v.z + 0.2); }); fl.position.set(2.1, 4.5, -0.6); o.add(fl);
+    const cap = toonMesh(new THREE.CylinderGeometry(0.35, 0.38, 0.22, 14), 0x2a3f8f, { outline: 0.035 }); cap.position.set(0.3, st + hh + 1.45, 0.1); cap.rotation.z = 0.15; o.add(cap);
+    const brim = toonMesh(new THREE.BoxGeometry(0.36, 0.04, 0.22), 0x111111, { outline: 0.025 }); brim.position.set(0.3, st + hh + 1.36, 0.42); o.add(brim);
+    const cone = toonMesh(new THREE.ConeGeometry(0.3, 0.8, 8), 0xff7f3f, { outline: 0.035 }); cone.position.set(2.4, 0.4, 1.6); o.add(cone);
+    const pack = toonMesh(new RoundedBoxGeometry(0.7, 0.9, 0.4, 3, 0.12), 0x3bb84a, { outline: 0.045 }); pack.position.set(-1.6, 0.45, 1.5); pack.rotation.set(0.3, 0.4, 0); o.add(pack); // Rucksack vom Typ mit den Fragen, endlich voll
+    const board = toonMesh(new THREE.BoxGeometry(2.4, 0.4, 0.1), toon(0xffffff, { map: stripeTexture(['#2a3f8f', '#ffffff', '#2a3f8f', '#ffffff', '#2a3f8f', '#ffffff'], { vertical: true }) }), { outline: 0.04 }); board.position.set(0.2, 0.9, d / 2 + 1.3); o.add(board);
+    for (const x of [-0.9, 1.3]) o.add(limb(new THREE.Vector3(x, 0, d / 2 + 1.3), new THREE.Vector3(x, 1.1, d / 2 + 1.3), 0.06, 0xeeeeee, { outline: 0.025 }));
+  }
+  g.userData.zustaende = S;
+  g.userData.zustand = null;
+  setHuette(g, 'verkauf');
+  return g;
+}
+
+export const HUETTE_ZUSTAENDE = ['verkauf', 'halb', 'deine', 'posten8'];
+export function setHuette(g, zustand) {
+  const S = g.userData.zustaende;
+  if (!S) return;
+  for (const [name, o] of Object.entries(S)) o.visible = name === zustand;
+  g.userData.zustand = zustand;
+}
+
+// Möwe (sitzend) — auch auf dem Bar-Schild und der Finale-Hütte
+export function gull() {
+  const g = new THREE.Group();
+  const body = toonMesh(new THREE.SphereGeometry(0.17, 10, 8), 0xffffff, { outline: 0.03 }); body.geometry.scale(1.5, 1, 1); g.add(body);
+  const head = toonMesh(new THREE.SphereGeometry(0.12, 8, 6), 0xffffff, { outline: 0.025 }); head.position.set(0.22, 0.17, 0); g.add(head);
+  const beak = toonMesh(new THREE.ConeGeometry(0.05, 0.18, 6), 0xffb13b, { outline: 0.02 }); beak.position.set(0.38, 0.15, 0); beak.rotation.z = -Math.PI / 2; g.add(beak);
+  const wing = toonMesh(new THREE.BoxGeometry(0.4, 0.04, 0.2), 0xc9cfdc, { outline: 0.015 }); wing.position.set(-0.05, 0.08, 0); g.add(wing);
   return g;
 }
 
