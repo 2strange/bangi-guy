@@ -144,7 +144,7 @@ function gull() {
   const wing = toonMesh(new THREE.BoxGeometry(0.4, 0.04, 0.2), 0xc9cfdc, { outline: 0.015 }); wing.position.set(-0.05, 0.08, 0); g.add(wing);
   return g;
 }
-function fisherman() {
+export function fisherman() {
   const root = new THREE.Group();
   const skin = 0xd9a06e;
   // sitzt auf der Stegkante, Beine baumeln nach +z
@@ -197,7 +197,7 @@ function boathouse() {
 }
 
 // Bauarbeiter schläft in der Schubkarre (Gag: Promenade seit 2019 im Bau). Blick nach +z
-function sleepingWorker() {
+export function sleepingWorker() {
   const g = new THREE.Group();
   const tub = new THREE.BoxGeometry(1.2, 0.5, 1.8);
   deform(tub, (v) => { if (v.y > 0) { v.x *= 1.3; v.z *= 1.15; } });

@@ -88,7 +88,7 @@ function fence() {
 }
 
 // Vogelscheuche mit Polizeimütze (Gag 16: die Hühner respektieren sie, der Mentor nicht)
-function scarecrow() {
+export function scarecrow() {
   const g = new THREE.Group();
   g.add(limb(V(0, 0, 0), V(0.05, 2.2, 0), 0.07, 0x7a4b22, { outline: 0.03 }));
   g.add(limb(V(-0.9, 1.6, 0.05), V(0.95, 1.7, -0.05), 0.05, 0x7a4b22, { outline: 0.025 }));

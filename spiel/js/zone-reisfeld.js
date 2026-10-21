@@ -66,7 +66,7 @@ function damm(a, b, width) {
 }
 
 // ---------- Bauer Nok: Kegelhut, hochgekrempelte Hose, barfuß, pflanzt gebückt ----------
-function nok() {
+export function nok() {
   const root = new THREE.Group();
   const skin = 0xd9a06e;
   const hipY = 1.05;
@@ -215,7 +215,7 @@ export function buildReisfeld(parent, colliders) {
 
 // ---------- Kokoshain ----------
 // Kokos-Kletterer: klammert am Stamm, Sack über der Schulter, lässt ab und zu eine Nuss fallen
-function climber(skin = 0x8d5a3a) {
+export function climber(skin = 0x8d5a3a) {
   const g = new THREE.Group();
   const torso = toonMesh(new THREE.CylinderGeometry(0.3, 0.33, 0.8, 10), 0xffd54a, { outline: 0.04 }); torso.position.set(0, 0.4, 0); g.add(torso);
   for (const s of [-1, 1]) {

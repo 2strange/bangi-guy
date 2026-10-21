@@ -17,7 +17,7 @@ import { STAENDE, GEDRAENGE, LANES, EXITS, POSTEN, PLATZ, MARKT_SPOTS, MARKT_ANC
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
 // ---------- Marktstand: krummer Tisch, Vorhang, Sonnensegel, Ware, Schild. Kundenseite = +z ----------
-function stand({ kind, sign, cloth, seed = 1 }) {
+export function stand({ kind, sign, cloth, seed = 1 }) {
   const g = new THREE.Group();
   const rand = rng(seed);
   const tex = stripeTexture([cloth[0], cloth[1], cloth[0], cloth[1], cloth[0], cloth[1]], { vertical: true });
@@ -112,7 +112,7 @@ function stand({ kind, sign, cloth, seed = 1 }) {
 }
 
 // ---------- Gedränge: einfache Leute ohne Gliedmaßen-Animation (Kulisse, Versteck V3) ----------
-function bystander(seed) {
+export function bystander(seed) {
   const g = new THREE.Group();
   const rand = rng(seed);
   const skins = [0xf5c9a0, 0xd9a06e, 0x8d5a3a, 0xf0876a];
@@ -225,7 +225,7 @@ function policeCar() {
 }
 
 // Polizist Pong: Sandalen (Dienstvorschrift Tropen), Bauch, Mütze, Trillerpfeife. Blick nach +z
-function pong() {
+export function pong() {
   const root = new THREE.Group();
   const skin = 0xd9a06e, blue = 0x2a3f8f;
   const hipY = 1.05;

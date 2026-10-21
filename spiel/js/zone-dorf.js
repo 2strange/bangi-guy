@@ -289,7 +289,7 @@ export function chicken(color = 0xfff5e0, seed = 1) {
 }
 
 // ---------- Oma: Blümchenrock, Strickjacke, Dutt, Brille, Hausschuhe, Gießkanne. Blick nach +z ----------
-function oma() {
+export function oma() {
   const g = new THREE.Group();
   const skin = 0xf2c7a8;
   for (const s of [-1, 1]) {

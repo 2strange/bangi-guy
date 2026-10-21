@@ -7,6 +7,7 @@ import { limb } from './props.js';
 import { faceDecal, schluffiFace, runnerFace, face, setFace } from './faces.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const smoothstep = (x, a, b) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 // ---------- Schuhe ----------
 // side: 'L' (links) | 'R' (rechts). Die Figur schaut nach +z, ihr linker Fuß steht bei -x; die Innenseite
@@ -157,28 +158,36 @@ export function schluffi() {
   inner.position.set(0, -(hipY - 0.1), 0);
   body.add(inner);
 
-  const tg = new THREE.SphereGeometry(0.5, 16, 12);
-  tg.scale(1.0, 1.0, 0.85);
+  // Hemd: eine geschlossene Kugel, die vorn unten selbst die Bauchwölbung trägt und am Saum glatt
+  // abgeschnitten ist (wellige Kante). Der nackte Bauch ist nur der Teil UNTER dem Saum; sein oberer Teil
+  // liegt mit Abstand im Hemd — Teile, die aus dem Hemd herausragen, würden samt Konturhülle durchstechen.
+  const shirtDeform = (v) => {
+    const bulge = smoothstep(-v.y, -0.15, 0.32);    // 0 an der Brust … 1 am Saum
+    v.z = v.z * 0.85 + 0.36 * bulge * Math.max(0, v.z) / 0.5;
+    const hem = -0.32 + 0.03 * Math.sin(5 * Math.atan2(v.z, v.x)); // Saum
+    if (v.y < hem) v.y = hem;
+  };
+  const tg = new THREE.SphereGeometry(0.5, 20, 16);
+  deform(tg, shirtDeform);
   const torso = toonMesh(tg, toon(0xffffff, { map: hawaiiTexture() }), { outline: 0.05 });
   torso.position.set(0, hipY + 0.42, 0.05);
   torso.rotation.x = 0.12;
   inner.add(torso);
-  // Bauch: lugt nur unten unterm Hemd hervor — das Hemd hat einen Saum, der über den oberen Teil fällt
-  const belly = toonMesh(new THREE.SphereGeometry(0.36, 14, 10), skin, { outline: 0.035 });
-  belly.position.set(0.02, hipY + 0.14, 0.3);
+  const bellyGeo = new THREE.SphereGeometry(0.34, 16, 12);
+  deform(bellyGeo, (v) => { const k = 1 - 0.7 * smoothstep(v.y, -0.15, 0.18); v.x *= k; v.z *= k; }); // oben schlanker: bleibt im Hemd
+  const belly = toonMesh(bellyGeo, skin, { outline: 0.035 });
+  belly.position.set(0.02, hipY - 0.02, 0.3);
   inner.add(belly);
   const navel = toonMesh(new THREE.SphereGeometry(0.035, 6, 5), BLACK, { outline: 0, basic: true });
-  navel.position.set(0, -0.12, 0.33);
+  navel.position.set(0, -0.08, 0.325);
   belly.add(navel);
-  const hemGeo = new THREE.CylinderGeometry(0.5, 0.56, 0.34, 16, 1, true);
-  deform(hemGeo, (v) => { if (v.y < 0) v.y += 0.06 * Math.sin(Math.atan2(v.z, v.x) * 5); }); // Saum hängt unregelmäßig
-  const hem = toonMesh(hemGeo, toon(0xffffff, { map: torso.material.map, side: THREE.DoubleSide }), { outline: 0.04 });
-  hem.position.set(0, hipY + 0.3, 0.1); hem.rotation.set(0.1, 0, 0.04);
-  inner.add(hem);
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 3; i++) { // Knöpfe sitzen auf der Hemdfläche (gleiche Verformung), als Kinder des Hemds
+    const p = new THREE.Vector3(-0.3 + i * 0.07, 0.2 - i * 0.14, 0);
+    p.z = Math.sqrt(Math.max(0, 0.25 - p.x * p.x - p.y * p.y));
+    shirtDeform(p);
     const btn = toonMesh(new THREE.SphereGeometry(0.035, 6, 5), 0xfff5e0, { outline: 0.012 });
-    btn.position.set(-0.3 + i * 0.07, hipY + 0.62 - i * 0.14, 0.44 - i * 0.03);
-    inner.add(btn);
+    btn.position.set(p.x, p.y, p.z + 0.012);
+    torso.add(btn);
   }
 
   // Arme: Pivot an der Schulter
@@ -603,9 +612,11 @@ export function kundenExtras(figur, k, { index = 0 } = {}) {
     const band = toonMesh(new THREE.TorusGeometry(0.12, 0.02, 6, 10, Math.PI), 0x222222, { outline: 0.01 }); band.position.set(0, -0.3, 0.2); band.rotation.x = 0.4; P.head.add(band);
   }
   if (k?.accessoire === 'helm_delle' && P.head) {
-    const helm = toonMesh(new THREE.SphereGeometry(0.56, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), 0xffd54a, { outline: 0.045 }); helm.position.set(0, 0.1, 0); helm.rotation.z = 0.12; P.head.add(helm);
-    const brim = toonMesh(new THREE.BoxGeometry(0.5, 0.05, 0.3), 0xffd54a, { outline: 0.03 }); brim.position.set(0, 0.18, 0.55); P.head.add(brim);
-    const dent = toonMesh(new THREE.SphereGeometry(0.16, 8, 6), 0xe8a034, { outline: 0.02 }); dent.geometry.scale(1, 0.5, 1); dent.position.set(0.22, 0.52, 0.15); dent.rotation.z = -0.6; P.head.add(dent);
+    // Helm groß genug, dass die Haarkappe (r 0.55 um y 0.12) samt Konturhülle ganz drunter bleibt — sonst sticht
+    // das Haar oben und an den Seiten durch; lockiges Haar passt unter keinen Helm (unter dem Helm kurz tragen)
+    const helm = toonMesh(new THREE.SphereGeometry(0.63, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.52), 0xffd54a, { outline: 0.045 }); helm.position.set(0, 0.14, 0); helm.rotation.z = 0.08; P.head.add(helm);
+    const brim = toonMesh(new THREE.BoxGeometry(0.5, 0.05, 0.3), 0xffd54a, { outline: 0.03 }); brim.position.set(0, 0.2, 0.64); P.head.add(brim);
+    const dent = toonMesh(new THREE.SphereGeometry(0.16, 8, 6), 0xe8a034, { outline: 0.02 }); dent.geometry.scale(1, 0.5, 1); dent.position.set(0.29, 0.66, 0.2); dent.rotation.z = -0.6; P.head.add(dent);
     E.helm = helm;
   }
   if (extras.has('schlamm_bis_knie')) {
@@ -647,8 +658,9 @@ export function kundenExtras(figur, k, { index = 0 } = {}) {
     const t = tag('JUST MARRIED', 0.56, 0.16); t.position.set(0, 0.48, 0.5); t.rotation.x = -0.3; P.head.add(t);
   }
   if (extras.has('blumenkranz') && P.head) {
-    const ring = toonMesh(new THREE.TorusGeometry(0.5, 0.05, 6, 20), 0x3bb84a, { outline: 0.02 }); ring.position.set(0, 0.34, 0); ring.rotation.x = Math.PI / 2 + 0.12; P.head.add(ring);
-    [0xe8463a, 0xffd54a, 0xff5fa2, 0xffffff, 0xff7f3f, 0xc9a0ff].forEach((c, i) => { const a = i / 6 * Math.PI * 2; const f = toonMesh(new THREE.SphereGeometry(0.09, 8, 6), c, { outline: 0.02 }); f.position.set(Math.cos(a) * 0.5, 0.36 + Math.sin(a) * 0.06, Math.sin(a) * 0.5); P.head.add(f); });
+    // Kranz außerhalb der Haarkappe (r 0.55 + Hülle): Radius 0.62, sonst steckt der Ring im Haar
+    const ring = toonMesh(new THREE.TorusGeometry(0.62, 0.05, 6, 20), 0x3bb84a, { outline: 0.02 }); ring.position.set(0, 0.32, 0); ring.rotation.x = Math.PI / 2 + 0.12; P.head.add(ring);
+    [0xe8463a, 0xffd54a, 0xff5fa2, 0xffffff, 0xff7f3f, 0xc9a0ff].forEach((c, i) => { const a = i / 6 * Math.PI * 2; const f = toonMesh(new THREE.SphereGeometry(0.09, 8, 6), c, { outline: 0.02 }); f.position.set(Math.cos(a) * 0.62, 0.34 + Math.sin(a) * 0.07, Math.sin(a) * 0.62); P.head.add(f); });
   }
   figur.userData.extrasDran = true;
   return figur;
