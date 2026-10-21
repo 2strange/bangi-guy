@@ -222,10 +222,19 @@ async function loadStimmen() {
   stimmen = normalizeStimmen(json);
 }
 // Bark: kurze englische Zeile als kleine Blase über dem Kopf (+ Gebrabbel-Hook fürs Audio)
+// Stereo-Position einer Figur relativ zur Kamera (−1 links … 1 rechts, gedämpft, damit es nie hart einseitig wird)
+const panV = new THREE.Vector3();
+function panFor(group) {
+  const head = group?.userData?.parts?.head || group;
+  if (!head) return 0;
+  head.getWorldPosition(panV);
+  panV.project(camera);
+  return Number.isFinite(panV.x) ? Math.max(-1, Math.min(1, panV.x)) * 0.7 : 0;
+}
 function bark(k, kind, ttl) {
-  // audio.bark() liefert Text + Dauer und brabbelt gleich mit; ohne Audio-Modul der eigene Picker
+  // audio.bark() liefert Text + Dauer und brabbelt gleich mit (gepannt nach Bildposition); ohne Audio-Modul der eigene Picker
   let r = null;
-  try { r = audio?.bark?.(k.def.id, kind) || null; } catch (e) { r = null; }
+  try { r = audio?.bark?.(k.def.id, kind, { pan: panFor(k.group) }) || null; } catch (e) { r = null; }
   if (r && r.text) { ui.showBark(k.id, r.text, ttl ?? Math.max(2.6, (r.dauer || 0) + 0.6)); return; }
   const list = barksFor(stimmen, k.def, kind);
   const key = `${k.id}/${kind}`;
@@ -290,7 +299,7 @@ function showMentorStep() {
   const e = mentorFolge[mentorIdx];
   const last = mentorIdx === mentorFolge.length - 1;
   ui.showBubble({ text: e.text, options: [last ? 'Danke' : 'Weiter'] }, e.titel ? `Mentor — ${e.titel}` : 'Mentor', 0);
-  try { const r = audio?.bark?.('mentor', e.bark); if (!r) audio?.babble?.('mentor', e.text.slice(0, 40)); } catch (err) { /* ohne Ton */ }
+  try { const pan = panFor(mentorRef.group); const r = audio?.bark?.('mentor', e.bark, { pan }); if (!r) audio?.babble?.('mentor', e.text.slice(0, 40), { pan }); } catch (err) { /* ohne Ton */ }
 }
 function advanceMentor() {
   if (!mentorFolge) return;

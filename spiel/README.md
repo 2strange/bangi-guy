@@ -31,7 +31,8 @@ Dann `http://localhost:8000/` öffnen.
 - **Ton:** 🔊/🔇 (alles) und 🎵 (nur Musik) oben rechts (erscheinen, sobald `js/audio.js` vorhanden ist). Audio startet erst nach der ersten
   Geste; die Spiellogik ruft nur Hooks (`sfx('kasse')`, `babble(kundeId, text)`, …); Brandung und Musik-Loop starten mit
   der ersten Geste; Schritte im Sand alle ~0,4 s Laufweg, Kasse/Heat/Verhaftet/Ausverkauft/Hinschauen/Klick als SFX.
-  Barks kommen aus `audio.bark(kundeId, situation)` (Text + Gebrabbel), ohne Audio aus dem eigenen Picker.
+  Barks kommen aus `audio.bark(kundeId, situation, { pan })` (Text + Gebrabbel, Stereo-Position aus der
+  Bildposition des Kopfs), ohne Audio aus dem eigenen Picker.
 - **E** – ansprechen (nur mit Kunde in Reichweite). In der Sprechblase: **1 / 2** oder Pfeile + **Enter**
   wählen (Verkaufen / Lieber nicht), **Esc** bricht ab.
 - **F** in Kundennähe – genau hinschauen: die Kamera fährt vor die Figur, Füße bis Kopf, der Spieler wird dabei
