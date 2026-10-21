@@ -17,9 +17,10 @@ import {
   normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE, gagFor, nextIdleGagDelay,
   normalizeStimmen, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
-  normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde, arrestNow,
+  normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
 } from './game.js';
 import { POSTEN as POSTEN_LAYOUT, MARKT as MARKT_AREA, STAENDE, LANES as MARKT_LANES } from './zone-markt-layout.js';
+import { HAFENPLATZ } from './zone-pier-layout.js';
 
 // Tastenbelegung (Konstanten, einfach umzulegen): E = immer ansprechen, F = hinschauen, Kamera Q/R
 const KEY_TALK = 'KeyE';
@@ -100,7 +101,7 @@ ui.setHud(game);
 // Audio (audio.js, eigenes Modul): optional geladen; initAudio() wartet selbst auf die erste Geste (Mobil!).
 // Die Spiellogik ruft nur Einzeiler-Hooks; ohne Modul bleibt alles stumm.
 let audio = null;
-const SFX = { talk: 'ui_klick', kasse: 'kasse', alarm: 'heat', ablehnung: 'ablehnen', look: 'hinschauen', feierabend: 'ui_klick', verhaftet: 'verhaftet', ausverkauft: 'ausverkauft', schritt: 'schritt_sand' };
+const SFX = { talk: 'ui_klick', kasse: 'kasse', alarm: 'heat', ablehnung: 'ablehnen', look: 'hinschauen', feierabend: 'ui_klick', verhaftet: 'verhaftet', ausverkauft: 'ausverkauft', schritt: 'schritt_sand', tuten: 'tuten', tuktuk: 'tuktuk_abwuergen' };
 const sfx = (name) => { try { audio?.sfx?.(SFX[name] || name); } catch (e) { /* ohne Ton weiter */ } };
 const muteBtn = ui.createMuteButton((m) => { try { audio?.setMuted?.(m); } catch (e) { /* ignorieren */ } });
 let audioStarted = false;
@@ -116,7 +117,8 @@ let audioRetryAt = 0;
 let ambienceAt = 0;
 const POSTEN_ZONE = world.markt?.posten || { x: POSTEN_LAYOUT.pong.x, z: POSTEN_LAYOUT.pong.z, r: 14 }; // Vorplatz des Postens (Heat doppelt), aus dem Markt-Modul
 const MARKT_ZONE = { x: (MARKT_AREA.minX + MARKT_AREA.maxX) / 2, z: (MARKT_AREA.minZ + MARKT_AREA.maxZ) / 2, r: 22 };
-const ZONE_DEFS = () => ({ markt: MARKT_ZONE, posten: POSTEN_ZONE });
+const PIER_ZONE = { x: HAFENPLATZ.x, z: HAFENPLATZ.z, r: 22 }; // Hafen: Tuk-Tuk-Leerlauf-Knattern
+const ZONE_DEFS = () => ({ markt: MARKT_ZONE, posten: POSTEN_ZONE, pier: PIER_ZONE });
 function updateAmbience(now) {
   if (!audio?.ambience?.setZone || now < ambienceAt) return;
   ambienceAt = now + 250;
@@ -262,6 +264,9 @@ const stopBabble = () => { try { audio?.stopBabble?.(); } catch (e) { /* ignorie
 const barkHead = new THREE.Vector3();
 function placeBarks() {
   const now = performance.now() / 1000;
+  cop.userData.parts.head.getWorldPosition(barkHead);
+  barkHead.y += 0.9; barkHead.project(camera);
+  ui.placeBark('streife_p1', (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now);
   for (const k of kunden) {
     k.group.userData.parts.head.getWorldPosition(barkHead);
     barkHead.y += 0.9;
@@ -303,6 +308,8 @@ const mangoStandDef = STAENDE.find((st) => st.kind === 'mango') || { x: 44, z: -
 const POINTS = [
   { id: 'mango_stand', x: mangoStandDef.x, z: mangoStandDef.z + 1.4, r: TALK_DIST + 0.6, name: 'Mango-Stand', obj: pointObj(mangoStandDef.x, 2.6, mangoStandDef.z) },
   { id: 'pong', x: POSTEN_LAYOUT.pong.x, z: POSTEN_LAYOUT.pong.z, r: TALK_DIST + 0.8, name: 'Pong', obj: world.markt?.pong || pointObj(POSTEN_LAYOUT.pong.x, 2.6, POSTEN_LAYOUT.pong.z) },
+  // Tuk-Tuk-Express am Hafen: Fahrt zur Bar (20 Mangos laut Schild, sonst Geld), beendet eine Verfolgung
+  { id: 'tuktuk', x: world.pier?.tuktuk?.x ?? 74, z: (world.pier?.tuktuk?.z ?? -4) + 2.4, r: TALK_DIST + 1.2, name: 'Somchai', obj: pointObj(world.pier?.tuktuk?.x ?? 74, 2.4, world.pier?.tuktuk?.z ?? -4) },
   // Bestechungs-Stand „1 MANGO = 1 GNADE“ neben Pong: dieselbe Abgabe wie bei Pong selbst
   { id: 'gnaden_stand', x: world.markt?.mangoStand?.x ?? 15.5, z: (world.markt?.mangoStand?.z ?? -82) + 1.4, r: TALK_DIST + 0.6, name: 'Pong', obj: world.markt?.pong || pointObj(POSTEN_LAYOUT.pong.x, 2.6, POSTEN_LAYOUT.pong.z) },
 ];
@@ -330,6 +337,20 @@ function usePoint(point) {
     try { audio?.ambience?.ruf?.(); } catch (e) { /* ignorieren */ }
     return;
   }
+  if (point.id === 'tuktuk') {
+    const r = tukTukRide(game);
+    if (r.result === 'zu_arm') { showInfo(point, `Somchai zeigt aufs Schild: ${TUKTUK_PREIS_MANGOS} Mangos. Oder ${TUKTUK_PREIS_GELD} Münzen, wenn's eilt. Du hast beides nicht.`); return; }
+    if (r.result === 'verhaftet') return;
+    game = r.state; ui.setHud(game);
+    sfx('tuktuk');
+    // Fahrt: Spieler landet an der Bar, die Streife verliert die Spur
+    const bar = world.spots.bar;
+    state = { ...state, x: bar.x, z: bar.z, yaw: bar.yaw, speed: 0 };
+    cam = { ...cam, x: bar.x, z: bar.z + (cam.z - state.z), tx: bar.x, tz: bar.z };
+    if (patrol.mode === 'chase') patrol = { ...patrol, mode: 'return', lost: 0, kante: false };
+    showInfo({ ...point, obj: P.head }, r.result === 'mangos' ? `Somchai nimmt die ${TUKTUK_PREIS_MANGOS} Mangos, der Motor säuft zweimal ab, dann sind wir an der Bar.` : `${TUKTUK_PREIS_GELD} Münzen, Motor säuft ab, läuft, säuft ab — Bar.`);
+    return;
+  }
   if (point.id === 'pong' || point.id === 'gnaden_stand') {
     const r = giveMango(game);
     game = r.state; ui.setHud(game);
@@ -344,6 +365,7 @@ function endInfo() { mentorFolge = null; ui.hideBubble(); stopBabble(); mode = '
 
 // ---------- Streife P1: läuft Posten ↔ Markt (Straßen aus dem Markt-Layout), sieht sie einen Verkauf → Heat + Pfiff ----------
 const PATROL_ROUTE = [[8, -82], ...MARKT_LANES.ring.slice().reverse()].map(([x, z]) => ({ x, z })); // Posten → Ringstraße → Marktzufahrt und zurück
+const STREIFE_SCHUHE = 'sandalen'; // Streife P1 in Sandalen: watet durch die Furt; 'turnschuhe' bleibt an der Kante
 const cop = buildKunde(normalizeKunde({ id: 'streife_p1', typ: 'Streife', name: 'Streife', schuhe: 'sandale', hemd: 'polo_sauber', hose: 'chino', accessoire: 'ohrknopf', extras: ['funkgeraet'], hautton: 'mittel', haare: 'kurz', zivi: true, stimmung_start: 'misstrauisch' }), 7);
 setRevealed(cop, true); // Polizeimütze: die Streife ist offen Polizei (Pong in Sandalen — kann nicht rennen)
 scene.add(cop);
@@ -366,7 +388,8 @@ function updatePatrol(dt, now) {
   const busy = mode === 'dialog' || mode === 'mentor' || mode === 'info' || mode === 'card' || mode === 'arrest';
   copSeesPlayer = seesTarget(patrol, state) && !inHideout(state, world.hideouts);
   // Verfolgung ab Heat 2: langsam (Sandalen), verliert den Spieler nach 6 s ohne Sicht oder im Versteck
-  const r = chaseStep(patrol, PATROL_ROUTE, state, dt, { sees: seesTarget(patrol, state), heat: game.heat, hideouts: world.hideouts });
+  const r = chaseStep(patrol, PATROL_ROUTE, state, dt, { sees: seesTarget(patrol, state), heat: game.heat, hideouts: world.hideouts, schuhe: STREIFE_SCHUHE });
+  if (r.event === 'kante') { ui.showBark('streife_p1', 'These are new!', 2.5); try { audio?.babble?.('pong', 'These are new!', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ } }
   patrol = r.st;
   if (r.event === 'chase_start') { sfx('pfeife'); try { audio?.bark?.('pong', 'verfolgung', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ } ui.showPrompt('Die Streife hat dich gesehen — lauf! (oder ab ins Gedränge)'); }
   if (r.event === 'lost') { try { audio?.bark?.('pong', 'sichtung', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ } if (mode === 'free') ui.showPrompt(null); }
@@ -748,7 +771,7 @@ function updateNearHint() {
     ui.showPrompt(txt); ui.showBadge(null); ui.pulseButtons({ talk: true }); return;
   }
   if (!nearK && nearPoint) {
-    const txt = nearPoint.id === 'mango_stand' ? 'Mango-Stand — E: Mango kaufen (10 Münzen)' : (game.mangos > 0 ? 'Pong — E: Mango abgeben (1 Mango = 1 Gnade)' : 'Pong — E: ansprechen');
+    const txt = nearPoint.id === 'mango_stand' ? 'Mango-Stand — E: Mango kaufen (10 Münzen)' : nearPoint.id === 'tuktuk' ? `Tuk-Tuk — E: zur Bar (${TUKTUK_PREIS_MANGOS} Mangos oder ${TUKTUK_PREIS_GELD} Münzen)` : (game.mangos > 0 ? 'Pong — E: Mango abgeben (1 Mango = 1 Gnade)' : 'Pong — E: ansprechen');
     ui.showPrompt(txt); ui.showBadge(null); ui.pulseButtons({ talk: true }); return;
   }
   if (!nearK) { ui.showPrompt(null); ui.showBadge(null); ui.pulseButtons(null); return; }
@@ -773,9 +796,13 @@ function updateNearHint() {
 
 // ---------- Fähre: wer mit der Fähre kommt (Spawn-Code K1), steigt beim Anlegen am Steg aus und geht zu seinem Platz ----------
 let ferryWasDocked = false;
+let ferryHorn = false;
 function updateFerry(t) {
   if (!world.pier?.ferry) return;
-  const docked = world.pier.ferry(t).state === 'docked';
+  const f = world.pier.ferry(t);
+  const docked = f.state === 'docked';
+  if (f.horn && !ferryHorn) sfx('tuten'); // Fährhorn, wenn das Pier-Modul es vorgibt (kurz vor dem Anlegen, beim Ablegen)
+  ferryHorn = !!f.horn;
   if (docked && !ferryWasDocked) {
     const sp = world.pier.ferrySpawn;
     for (const k of kunden) {
@@ -785,10 +812,15 @@ function updateFerry(t) {
       k.npc = { ...k.npc, x: sp.x, z: sp.z, points: [{ x: sp.x, z: sp.z }, { x: k.anchor.x, z: k.anchor.z }], idx: 1, pause: 1.5 + Math.random(), moving: false };
       k.group.userData.pose = null;
     }
-    try { audio?.sfx?.('ui_klick'); } catch (e) { /* ignorieren */ }
   }
   ferryWasDocked = docked;
+  // Tuk-Tuk-Gag: Motor säuft synchron zum 8-s-Takt des Pier-Moduls ab (Zyklusbeginn), nur in Hörweite
+  const tt = world.pier.tuktuk;
+  const k = t % 8;
+  if (tt && k < tuktukLastK && Math.hypot(tt.x - state.x, tt.z - state.z) < 18) sfx('tuktuk');
+  tuktukLastK = k;
 }
+let tuktukLastK = 0;
 
 // ---------- Kunden je Frame ----------
 function updateKunden(dt) {

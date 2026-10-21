@@ -5,7 +5,8 @@
 // Kurz-API (alles no-op, solange initAudio() noch nicht lief bzw. der Nutzer noch nicht geklickt hat):
 //   initAudio()                     einmal beim Start; wartet selbst auf die erste Geste (iOS: resume)
 //   setMuted(bool) / isMuted()      Mute mit localStorage
-//   sfx('kasse' | 'ablehnen' | 'heat' | 'verhaftet' | 'ausverkauft' | 'schritt_sand' | 'ui_klick' | 'hinschauen')
+//   sfx(name, { gain, pan })        name: kasse | ablehnen | heat | verhaftet | ausverkauft | schritt_sand | ui_klick | hinschauen |
+//                                   pfeife | mango | funk | tuten | tuktuk_abwuergen; gain 0..1 = Abstands-Lautstärke, pan -1..1
 //   ambience.start() / .stop()      Zonen-Ambience: strand (Brandung + Möwe), markt (Gewirr + Händlerrufe), posten (Funk), pier (Tuk-Tuk-Leerlauf)
 //   ambience.setZone({ strand: 1, markt: 0.3 })   Mischung 0..1 je Zone, weich; .ruf() / .funk() sofort
 //   music.start() / .stop() / .setVolume(0..1) / .setEnabled(bool)   Strand-Loop, ~75 BPM
@@ -523,10 +524,20 @@ const SFX = {
 export const SFX_NAMES = Object.keys(SFX);
 const warned = new Set();
 /** Spielt einen Effekt. Gibt die ungefähre Dauer in Sekunden zurück (0, wenn Audio nicht läuft). */
-export function sfx(name) {
+/** Optionen für sfx: gain 0..1 (Abstands-Lautstärke, Standard 1), pan -1..1 (Standard Mitte); ungültig → Standard */
+export function normalizeSfxOpts(o) {
+  const opts = o && typeof o === 'object' ? o : {};
+  const g = Number(opts.gain);
+  return { gain: Number.isFinite(g) ? clamp(g, 0, 1) : 1, pan: normalizePan(opts.pan) };
+}
+/** Spielt einen Effekt. opts { gain, pan } optional. Gibt die ungefähre Dauer in Sekunden zurück (0, wenn nichts spielt). */
+export function sfx(name, opts) {
   if (!SFX[name]) { if (!warned.has(name)) { warned.add(name); console.warn('audio: unbekannter Effekt', name); } return 0; }
   if (!ready()) return 0;
-  const out = ctx.createGain(); out.gain.value = VOL[name] ?? 1; out.connect(bus.sfx);
+  const { gain, pan: panPos } = normalizeSfxOpts(opts);
+  if (gain <= 0.001) return 0; // außer Hörweite: gar nicht erst Knoten bauen
+  const out = ctx.createGain(); out.gain.value = (VOL[name] ?? 1) * gain;
+  if (panPos) { const p = pan(panPos); out.connect(p); p.connect(bus.sfx); } else out.connect(bus.sfx);
   const d = SFX[name](now() + 0.005, out);
   setTimeout(() => out.disconnect(), (d + 0.5) * 1000);
   return d;

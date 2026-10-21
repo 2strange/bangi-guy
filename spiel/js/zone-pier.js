@@ -11,7 +11,7 @@ import { sandal } from './figures.js';
 import { face, faceDecal } from './faces.js';
 import { plate, cobbleTexture, paving } from './zone-dorf.js';
 import { WATER_Y } from './world.js';
-import { LANES, PROPS, EXITS, STEG, FERRY, FERRY_SPAWN, FURT, HAFENPLATZ, PIER_SPOTS, PIER_ANCHORS, WORLD_MAX_X, SHORE_Z, pierColliders, ferryAt, furtRadius } from './zone-pier-layout.js';
+import { LANES, PROPS, EXITS, STEG, FERRY, FERRY_SPAWN, FURT, HAFENPLATZ, PIER_SPOTS, PIER_ANCHORS, WORLD_MAX_X, SHORE_Z, SCHUPPEN, FELSNASE, BAUARBEITER, pierColliders, ferryAt, furtRadius } from './zone-pier-layout.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
@@ -168,13 +168,65 @@ function fisherman() {
   return root;
 }
 
+// ---------- Bootsschuppen: Sperre zwischen Promenade und Pier-Strand, Tür zur Promenade, „IM BAU SEIT 2019“ ----------
+function boathouse() {
+  const g = new THREE.Group();
+  const w = SCHUPPEN.w, d = SCHUPPEN.d, h = 3.2;
+  const walls = new THREE.BoxGeometry(w, h, d);
+  deform(walls, (v) => { if (v.y > 0) { v.x *= 1.06; v.z *= 1.03; } });
+  walls.translate(0, h / 2, 0);
+  g.add(toonMesh(walls, 0x8fb0bf, { outline: 0.06 }));
+  const roofGeo = new THREE.BoxGeometry(w + 1.2, 0.3, d + 1.0);
+  deform(roofGeo, (v) => { v.y += 0.5 * Math.max(0, -v.x / (w / 2)); }); // Pultdach, nach Osten abfallend
+  const roof = toonMesh(roofGeo, 0xd62e2e, { outline: 0.06 }); roof.position.set(0.1, h + 0.25, 0); roof.rotation.z = -0.06; g.add(roof);
+  // große Tortür zur Promenade (-z), verriegelt, mit Schild
+  const door = toonMesh(new THREE.BoxGeometry(2.6, 2.6, 0.14), 0x5a3b1a, { outline: 0.045 }); door.position.set(0.3, 1.3, -d / 2 - 0.03); g.add(door);
+  for (const y of [0.6, 1.9]) { const bar = toonMesh(new THREE.BoxGeometry(2.4, 0.14, 0.06), 0x3a2211, { outline: 0.02 }); bar.position.set(0.3, y, -d / 2 - 0.12); g.add(bar); }
+  const lock = toonMesh(new THREE.TorusGeometry(0.14, 0.04, 6, 10), 0xffd54a, { outline: 0.015 }); lock.position.set(-0.6, 1.25, -d / 2 - 0.15); g.add(lock);
+  const s1 = plate('PROMENADE · IM BAU SEIT 2019', 2.8, 0.42, { font: 'bold 54px sans-serif', tw: 1024, th: 160, thick: 0.05 });
+  s1.position.set(-0.2, 2.75, -d / 2 - 0.12); s1.rotation.set(0, Math.PI, 0.05); g.add(s1);
+  const s2 = plate('BOOTE · NETZE · GESCHLOSSEN', 2.6, 0.4, { bg: '#e8c57a', font: 'bold 54px sans-serif', tw: 1024, th: 160, thick: 0.05 });
+  s2.position.set(0, 2.6, d / 2 + 0.1); s2.rotation.z = -0.04; g.add(s2);
+  // Fenster zum Strand, Bojen und ein Ruder an der Wand
+  const win = toonMesh(new THREE.BoxGeometry(0.9, 0.7, 0.14), 0xfff4d6, { outline: 0.035 }); win.position.set(1.4, 1.9, d / 2 + 0.03); g.add(win);
+  const pane = toonMesh(new THREE.BoxGeometry(0.66, 0.5, 0.16), 0x7fd8ff, { outline: 0.02 }); pane.position.set(1.4, 1.9, d / 2 + 0.03); g.add(pane);
+  for (const [x, c] of [[-2.2, 0xe8463a], [-1.5, 0xffd54a], [-0.8, 0xffffff]]) { const b = toonMesh(new THREE.SphereGeometry(0.28, 10, 8), c, { outline: 0.03 }); b.position.set(x, 1.6, d / 2 + 0.3); g.add(b); g.add(limb(V(x, 1.85, d / 2 + 0.3), V(x, 2.6, d / 2 + 0.1), 0.02, 0x222222, { outline: 0.01 })); }
+  g.add(limb(V(2.4, 0.2, d / 2 + 0.25), V(2.9, 2.8, d / 2 + 0.15), 0.05, 0xd8a85a, { outline: 0.025 }));
+  const blade = toonMesh(new THREE.BoxGeometry(0.3, 0.8, 0.05), 0xd8a85a, { outline: 0.025 }); blade.position.set(2.42, 0.5, d / 2 + 0.25); g.add(blade);
+  return g;
+}
+
+// Bauarbeiter schläft in der Schubkarre (Gag: Promenade seit 2019 im Bau). Blick nach +z
+function sleepingWorker() {
+  const g = new THREE.Group();
+  const tub = new THREE.BoxGeometry(1.2, 0.5, 1.8);
+  deform(tub, (v) => { if (v.y > 0) { v.x *= 1.3; v.z *= 1.15; } });
+  const barrow = toonMesh(tub, 0x3a7bd5, { outline: 0.04 }); barrow.position.set(0, 0.55, 0); barrow.rotation.x = -0.12; g.add(barrow);
+  const wheel = toonMesh(new THREE.TorusGeometry(0.3, 0.1, 8, 14), 0x222222, { outline: 0.03 }); wheel.position.set(0, 0.3, 1.1); g.add(wheel);
+  for (const sd of [-1, 1]) g.add(limb(V(sd * 0.5, 0.45, -0.8), V(sd * 0.55, 0.35, -1.9), 0.05, 0x8b5a2b, { outline: 0.025 }));
+  const skin = 0xd9a06e;
+  const body = toonMesh(new THREE.SphereGeometry(0.5, 12, 9), 0xff7f3f, { outline: 0.045 }); body.geometry.scale(1, 0.8, 1.4); body.position.set(0, 0.95, 0.1); g.add(body);
+  const head = new THREE.Group(); head.position.set(0, 1.25, -0.75); head.rotation.x = -0.9; g.add(head);
+  head.add(toonMesh(new THREE.SphereGeometry(0.4, 14, 10), skin, { outline: 0.04 }));
+  head.add(faceDecal(face('kunde', 'selig', { skin: '#d9a06e', bart: 'stoppel', seed: 97 }), 0.405, null));
+  const helmet = toonMesh(new THREE.SphereGeometry(0.44, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), 0xffd54a, { outline: 0.04 }); helmet.position.set(0, 0.1, 0); head.add(helmet);
+  const brim = toonMesh(new THREE.BoxGeometry(0.5, 0.05, 0.3), 0xffd54a, { outline: 0.03 }); brim.position.set(0, 0.12, 0.45); head.add(brim);
+  for (const sd of [-1, 1]) { const boot = toonMesh(new RoundedBoxGeometry(0.3, 0.3, 0.6, 3, 0.08), 0x5a3b1a, { outline: 0.035 }); boot.position.set(sd * 0.35, 0.95, 1.1); boot.rotation.x = -0.6; g.add(boot); }
+  const zzz = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.7), new THREE.MeshBasicMaterial({ map: textTexture('z z Z', { bg: 'rgba(0,0,0,0)', fg: '#1a1a1a', font: 'bold 100px sans-serif', w: 256, h: 128 }), transparent: true, depthWrite: false }));
+  zzz.position.set(0.6, 2.1, -0.9); zzz.rotation.set(-0.5, 0.3, 0.2); g.add(zzz);
+  const shovel = limb(V(1.2, 0, -0.5), V(1.0, 2.2, -0.3), 0.04, 0xd8a85a, { outline: 0.02 }); g.add(shovel);
+  const spade = toonMesh(new THREE.BoxGeometry(0.4, 0.5, 0.05), 0x8d8fa0, { outline: 0.025 }); spade.position.set(1.2, 0.3, -0.5); g.add(spade);
+  g.userData.zzz = zzz;
+  return g;
+}
+
 /**
  * Baut die Pier-Zone in `parent`, pusht Collider. Rückgabe { spots, update(t), ferry(t), anchors, hideouts, tuktuk, furt, steg, bounds }.
  */
 export function buildPier(parent, colliders) {
   const rand = rng(67);
   const add = (o) => { parent.add(o); return o; };
-  paving(parent, cobbleTexture(), { zufahrt: LANES.hafen_zufahrt, promenade: LANES.hafen_promenade, quer: LANES.markt_quer }, HAFENPLATZ);
+  paving(parent, cobbleTexture(), { zufahrt: LANES.hafen_zufahrt, quer: LANES.markt_quer }, HAFENPLATZ);
 
   // Steg + Fähre
   const steg = dock(); steg.position.set(STEG.x, 0, STEG.z0); add(steg);
@@ -218,13 +270,30 @@ export function buildPier(parent, colliders) {
       const st = toonMesh(new THREE.SphereGeometry(0.7, 8, 6), 0x8d8fa0, { outline: 0.04 }); st.geometry.scale(1.3, 0.5, 1.1);
       st.position.set(x, WATER_Y + 0.1, z); st.rotation.y = rand() * 3; st.userData.noFade = true; add(st);
     }
-    const s = new THREE.Group();
-    s.add(limb(V(0, 0, 0), V(0.08, 2.2, 0), 0.07, 0x7a4b22, { outline: 0.03 }));
-    const b = plate('FURT → HOTEL · NUR SANDALEN', 2.6, 0.42, { font: 'bold 54px sans-serif', tw: 1024, th: 160, thick: 0.05 });
-    b.position.set(0.08, 2.2, 0); b.rotation.set(0, 0.9, 0.05); s.add(b);
-    const b2 = plate('(Turnschuhe werden nass)', 2.0, 0.3, { bg: '#e8c57a', font: 'bold 54px sans-serif', tw: 1024, th: 160, thick: 0.05 });
-    b2.position.set(0.05, 1.7, 0); b2.rotation.set(0, 1.0, -0.05); s.add(b2);
-    s.position.set(68, 0, 10.5); add(s); colliders.push({ x: 68, z: 10.5, r: 0.25 });
+    const furtSign = (text, x, z, ry) => {
+      const s = new THREE.Group();
+      s.add(limb(V(0, 0, 0), V(0.08, 2.2, 0), 0.07, 0x7a4b22, { outline: 0.03 }));
+      const b = plate(text, 2.6, 0.42, { font: 'bold 54px sans-serif', tw: 1024, th: 160, thick: 0.05 });
+      b.position.set(0.08, 2.2, 0); b.rotation.set(0, ry, 0.05); s.add(b);
+      const b2 = plate('NUR SANDALEN · Turnschuhe werden nass', 2.4, 0.3, { bg: '#e8c57a', font: 'bold 50px sans-serif', tw: 1024, th: 140, thick: 0.05 });
+      b2.position.set(0.05, 1.7, 0); b2.rotation.set(0, ry + 0.1, -0.05); s.add(b2);
+      s.position.set(x, 0, z); add(s); colliders.push({ x, z, r: 0.25 });
+    };
+    furtSign('FURT → PIER', 56.5, 10.8, -0.6);
+    furtSign('FURT → HOTEL', 75.2, 10.8, 0.6);
+  }
+  // Sperre an Land: Bootsschuppen, Felsnase bis ins Wasser, schlafender Bauarbeiter an der Promenaden-Absperrung
+  {
+    const sh = boathouse(); sh.position.set(SCHUPPEN.x, 0, SCHUPPEN.z); sh.rotation.y = SCHUPPEN.rot; add(sh);
+    FELSNASE.forEach((f, i) => {
+      const rg = new THREE.SphereGeometry(f.r, 7, 5);
+      deform(rg, (v) => { v.multiplyScalar(0.85 + 0.3 * rand()); });
+      rg.scale(1.1, 0.75, 1.0);
+      const rock = toonMesh(rg, i % 2 ? 0x8d8fa0 : 0x7f8292, { outline: 0.06 });
+      rock.position.set(f.x, f.z > SHORE_Z ? WATER_Y + 0.1 : 0.1, f.z); rock.rotation.y = rand() * 3; add(rock);
+    });
+    const worker = sleepingWorker(); worker.position.set(BAUARBEITER.x, 0, BAUARBEITER.z); worker.rotation.y = BAUARBEITER.rot; add(worker);
+    const cone = toonMesh(new THREE.ConeGeometry(0.3, 0.8, 8), 0xff7f3f, { outline: 0.035 }); cone.position.set(BAUARBEITER.x + 1.2, 0.4, BAUARBEITER.z + 1.6); cone.rotation.z = 0.1; add(cone);
   }
 
   // Kulissen

@@ -9,7 +9,7 @@ import {
   normalizeStimmen, stimmeSlug, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, applyMentorAktion, mentorBesucht,
   POSTEN_DEFAULT, inPostenSicht, buyMango, giveMango, mangoAbgegeben, tafelText, MANGO_PREIS,
-  normalizePosten7, mangoText, pongText, tafelLines, DEFAULT_POSTEN7, patrolSpotted, arrestNow,
+  normalizePosten7, mangoText, pongText, tafelLines, DEFAULT_POSTEN7, patrolSpotted, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
 } from '../js/game.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -569,4 +569,16 @@ test('arrestNow: Verhaftung durch die Streife — Heat voll, Tag verloren, Geld 
   assert.ok(isArrested(a)); assert.equal(a.geld, 40);
   assert.equal(tafelText(a), 'TAGE OHNE VORFALL: 0');
   assert.equal(newDay(a).tageOhneVorfall, 0); assert.equal(newDay(a).geld, 40);
+});
+
+test('Tuk-Tuk F3: zahlt zuerst mit Mangos (Schild), sonst mit Geld, sonst nichts; Ziel Bar; nicht nach Verhaftung', () => {
+  const rich = { ...initialState(), mangos: 21, geld: 100 };
+  const m = tukTukRide(rich);
+  assert.equal(m.result, 'mangos'); assert.equal(m.state.mangos, 1); assert.equal(m.state.geld, 100); assert.equal(m.ziel, 'bar');
+  const g = tukTukRide({ ...initialState(), mangos: 3, geld: 45 });
+  assert.equal(g.result, 'geld'); assert.equal(g.state.geld, 45 - TUKTUK_PREIS_GELD); assert.equal(g.state.mangos, 3);
+  const poor = tukTukRide({ ...initialState(), mangos: 0, geld: 10 });
+  assert.equal(poor.result, 'zu_arm'); assert.equal(poor.state.geld, 10);
+  assert.equal(tukTukRide({ ...rich, verhaftet: true }).result, 'verhaftet');
+  assert.equal(TUKTUK_PREIS_MANGOS, 20);
 });

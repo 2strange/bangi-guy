@@ -375,6 +375,9 @@ test('zoneMix: Strand überall ≥ 0.2 und am Strand 1, Zonen fallen linear mit 
   const mid = zoneMix({ x: 0, z: -39 }, defs);
   close(mid.strand, 0.5);
   assert.deepEqual(zoneMix({ x: 0, z: 0 }, { markt: null }), { strand: 1, markt: 0 });
+  // Hafen-Zone wie die anderen: 1 in der Mitte, linear abfallend
+  close(zoneMix({ x: 79, z: -5 }, { pier: { x: 79, z: -5, r: 22 } }).pier, 1);
+  close(zoneMix({ x: 90, z: -5 }, { pier: { x: 79, z: -5, r: 22 } }).pier, 0.5);
   assert.deepEqual(zoneMix({ x: 0, z: 0 }), { strand: 1 });
 });
 
@@ -468,4 +471,30 @@ test('Steg: auf dem Steg darf man weit hinaus, daneben nur knöcheltief; Furt nu
   for (let t = 0; t < 12; t += 1 / 60) t2 = stepPlayer(t2, { dir: { x: 0, z: 1 }, run: true }, 1 / 60, [], WORLD, { sandalen: false });
   close(t2.z, shoreZ(fx) + WADE_DEPTH, 1e-6, 'Turnschuhe bleiben an der Kante');
   assert.ok(ANCHORS.filter((a) => a.zone === 'pier').length === PIER_ANCHORS.length && PIER_ANCHORS.length >= 3);
+});
+
+// ---------- Streife in der Furt ----------
+import { inFurtWasser, WADE_FACTOR } from '../js/logic.js';
+import { SHORE_Z as SHORE_E } from '../js/zone-pier-layout.js';
+test('Furt als Fluchtroute: Sandalen-Streife watet mit halbem Tempo, Turnschuh-Streife bleibt an der Kante („kante“ einmal)', () => {
+  const fx = (FURT.x0 + FURT.x1) / 2;
+  const player = { x: fx, z: FURT.maxZ - 0.5 };
+  assert.equal(inFurtWasser(player), true);
+  assert.equal(inFurtWasser({ x: fx, z: SHORE_E }), false);
+  const start = { ...patrolStart([{ x: fx, z: 0 }, { x: fx, z: 5 }]), x: fx, z: SHORE_E + WADE_DEPTH + 0.2, mode: 'chase', lastSeen: { ...player }, lost: 0 };
+  // Sandalen: kommt voran, aber langsam
+  let s = start;
+  for (let t = 0; t < 2; t += 1 / 60) s = chaseStep(s, [], player, 1 / 60, { sees: true, heat: 3, schuhe: 'sandalen' }).st;
+  const expected = start.z + CHASE_SPEED * WADE_FACTOR * 2;
+  assert.ok(Math.abs(s.z - expected) < 0.15, `Wat-Tempo (${s.z.toFixed(2)} vs ${expected.toFixed(2)})`);
+  // Turnschuhe: bleibt an der Kante, genau ein „kante“-Event
+  let t2 = { ...start, z: SHORE_E + WADE_DEPTH - 0.1 };
+  const events = [];
+  for (let t = 0; t < 3; t += 1 / 60) { const r = chaseStep(t2, [], player, 1 / 60, { sees: true, heat: 3, schuhe: 'turnschuhe' }); t2 = r.st; if (r.event) events.push(r.event); }
+  assert.ok(t2.z <= SHORE_E + WADE_DEPTH + 1e-9, 'nicht ins Wasser');
+  assert.deepEqual(events, ['kante']);
+  assert.ok(!events.includes('caught'));
+  // außerhalb der Furt laufen Turnschuhe normal
+  const land = chaseStep({ ...start, x: 0, z: 0, lastSeen: { x: 0, z: -5 } }, [], { x: 0, z: -5 }, 1 / 60, { sees: true, heat: 3, schuhe: 'turnschuhe' });
+  assert.ok(land.st.moving);
 });

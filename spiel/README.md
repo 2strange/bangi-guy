@@ -31,7 +31,7 @@ Dann `http://localhost:8000/` öffnen.
 - **Ton:** 🔊/🔇 (alles) und 🎵 (nur Musik) oben rechts (erscheinen, sobald `js/audio.js` vorhanden ist). Audio startet erst nach der ersten
   Geste; die Spiellogik ruft nur Hooks (`sfx('kasse')`, `babble(kundeId, text)`, …); Brandung und Musik-Loop starten mit
   der ersten Geste; Schritte im Sand alle ~0,4 s Laufweg, Kasse/Heat/Verhaftet/Ausverkauft/Hinschauen/Klick als SFX.
-  Die Ambience-Mischung (Strand / Markt / Posten) folgt der Spielerposition (`zoneMix`, getestet; Mitten aus dem
+  Die Ambience-Mischung (Strand / Markt / Posten / Hafen) folgt der Spielerposition (`zoneMix`, getestet; Mitten aus dem
   Markt-Layout).
   Barks kommen aus `audio.bark(kundeId, situation, { pan })` (Text + Gebrabbel, Stereo-Position aus der
   Bildposition des Kopfs), ohne Audio aus dem eigenen Picker.
@@ -86,14 +86,19 @@ Dann `http://localhost:8000/` öffnen.
 - **Hafen:** Die Welt reicht jetzt bis x 100. Auf dem Steg darf man bis zum Anleger hinaus, durch die Furt (Untiefe mit
   Trittsteinen) kommt man nur mit Sandalen oder barfuß — Turnschuhe bleiben an der Wasserkante (`resolveCollisions`
   mit `sandalen`, getestet). Kunden mit Spawn-Code K1 kommen mit der Fähre: sie steigen beim Anlegen am Steg aus und
-  gehen zu ihrem Platz. Der Pier-Ausgang des Markts ist offen, die Ost-Absperrung der Promenade ist weg.
+  gehen zu ihrem Platz; die Fähre tutet beim An- und Ablegen, am Tuk-Tuk würgt Somchai den Motor ab. Der
+  Pier-Ausgang des Markts ist offen, die Ost-Absperrung der Promenade ist weg.
+- **Tuk-Tuk-Express (F3):** E am Tuk-Tuk — Somchai fährt dich zur Bar; Preis laut Schild 20 Mangos, sonst 40 Münzen,
+  sonst nichts. Die Fahrt beendet eine Verfolgung (die Streife verliert die Spur). Logik `tukTukRide` in `js/game.js`,
+  getestet. Der Motor säuft im 8-s-Takt ab (Sound nur in Hörweite).
 - **Streife P1:** ein Polizist in Sandalen (Mütze, Ohrknopf, Funkgerät) läuft Posten 7 ↔ Markt über die Ringstraße
   (Wegfolgen und Sichtkegel als reine Funktionen in `js/logic.js`, getestet: ±60°, 12 Einheiten). Sieht er einen
   Verkauf, gibt es Heat +1 und Trillerpfeife; ab Heat 1 pfeift er bei jeder Sichtung (höchstens alle 8 s).
   **Verfolgung:** ab Heat 2 folgt sie dem Spieler (3,0 statt 4,0 Einheiten/s — Sandalen, zu Fuß entkommt man),
   verliert ihn nach 6 s ohne Sicht oder sobald er in einem Versteck steht (Bettlaken, Gedränge), und kehrt dann zur
-  Route zurück; fängt sie ihn, ist das eine Verhaftung (Tag verloren, Geld bleibt). Reine Logik `chaseStep` in
-  `js/logic.js`, getestet. `?snap=1&scene=streife` / `scene=verfolgung`.
+  Route zurück; fängt sie ihn, ist das eine Verhaftung (Tag verloren, Geld bleibt). Schalter `schuhe`: in Sandalen
+  watet sie mit halbem Tempo durch die Furt, in Turnschuhen bleibt sie an der Wasserkante stehen („These are new!“).
+  Reine Logik `chaseStep` in `js/logic.js`, getestet. `?snap=1&scene=streife` / `scene=verfolgung`.
 - **Reveal-Gags:** `data/texte.json → reveal_gags[]` (id, wann = kauf | ablehnung | immer, mood, extra, dauer_s) werden
   von `js/gags.js` gespielt: nach Verkauf bzw. Ablehnung der passende Gag des Kunden (hält den Endzustand, bis man
   weitergeht), „immer“-Gags alle 6–10 s als Idle-Tick, wenn der Spieler in der Nähe ist — der Hinweis zum

@@ -551,3 +551,13 @@ export function patrolSpotted(state, { selling = false } = {}) {
 export function arrestNow(state) {
   return { ...state, heat: MAX_HEAT, verhaftet: true };
 }
+
+// ---------- Tuk-Tuk-Express (F3): Fahrt zur Bar, beendet eine Verfolgung. Preis laut Schild 20 Mangos, sonst Geld ----------
+export const TUKTUK_PREIS_MANGOS = 20;
+export const TUKTUK_PREIS_GELD = 40;
+export function tukTukRide(state, { mangos = TUKTUK_PREIS_MANGOS, geld = TUKTUK_PREIS_GELD } = {}) {
+  if (state.verhaftet) return { state, result: 'verhaftet' };
+  if ((state.mangos || 0) >= mangos) return { state: { ...state, mangos: state.mangos - mangos }, result: 'mangos', ziel: 'bar' };
+  if (state.geld >= geld) return { state: { ...state, geld: state.geld - geld }, result: 'geld', ziel: 'bar' };
+  return { state, result: 'zu_arm' };
+}

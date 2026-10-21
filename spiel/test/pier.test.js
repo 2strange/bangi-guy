@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  PIER, LANES, EXITS, PROPS, STEG, FERRY, FERRY_SPAWN, FURT, PIER_SPOTS, PIER_ANCHORS, WORLD_MAX_X, LANE_WIDTH, SHORE_Z, furtRadius,
+  PIER, LANES, EXITS, PROPS, STEG, FERRY, FERRY_SPAWN, FURT, PIER_SPOTS, PIER_ANCHORS, WORLD_MAX_X, LANE_WIDTH, SHORE_Z, furtRadius, SCHUPPEN, FELSNASE, PROMENADE_SPERRE,
   pierColliders, allColliders, ferryAt, ferryDocked, furtDepthLimit, stegDepthLimit, laneLength,
 } from '../js/zone-pier-layout.js';
 import { segmentColliderDistance, reachableWaypoints, LANES as DORF_LANES } from '../js/zone-dorf-layout.js';
@@ -76,8 +76,17 @@ test('Fähre: kommt von Osten, legt am Steg an, tutet vorher, fährt wieder, ist
 
 test('Furt und Steg: Sandalen dürfen bei der Furt tiefer, auf dem Steg bis zum Stegende, sonst knöcheltief', () => {
   assert.equal(furtDepthLimit(50), SHORE_Z + WADE_DEPTH);
-  assert.equal(furtDepthLimit((FURT.x0 + FURT.x1) / 2), FURT.maxZ);
+  assert.ok(Math.abs(furtDepthLimit(65) - FURT.maxZ) < 1e-9, 'Korridor-Scheitel liegt nicht bei maxZ');
+  assert.ok(furtDepthLimit(FURT.x0) < furtDepthLimit(65), 'Korridor ist am Ufer nicht flacher als am Scheitel');
   assert.ok(FURT.maxZ > SHORE_Z + WADE_DEPTH);
+  // Steinbogen: jeder Stein im Wasser, innerhalb des Watkorridors, nicht im Fels; der Bogen führt um die Felsnase
+  for (const [x, z] of FURT.stones) {
+    assert.ok(z > SHORE_Z && z <= furtDepthLimit(x) + 1e-9, `Trittstein (${x}, ${z}) außerhalb des Korridors (max ${furtDepthLimit(x).toFixed(1)})`);
+    for (const f of FELSNASE) assert.ok(Math.hypot(x - f.x, z - f.z) > f.r + 0.5, `Trittstein (${x}, ${z}) steckt im Fels`);
+  }
+  const tip = FELSNASE[FELSNASE.length - 1];
+  assert.ok(Math.max(...FURT.stones.map((s) => s[1])) > tip.z + tip.r + 1, 'Bogen geht nicht um die Felsnase herum');
+  assert.ok(FURT.stones[0][0] < tip.x - 3 && FURT.stones[FURT.stones.length - 1][0] > tip.x + 3, 'Bogen endet nicht beidseits der Nase');
   for (const [x, z] of FURT.stones) assert.ok(x >= FURT.x0 && x <= FURT.x1 && z > SHORE_Z && z <= FURT.maxZ, 'Trittstein außerhalb der Furt');
   // Umriss bleibt positiv und geschlossen, Trittsteine liegen in der Untiefe
   for (let a = 0; a < Math.PI * 2; a += 0.1) assert.ok(furtRadius(a) > 0.8 && furtRadius(a) < 1.2);
@@ -95,4 +104,20 @@ test('Furt und Steg: Sandalen dürfen bei der Furt tiefer, auf dem Steg bis zum 
   assert.ok(q.x < STEG.x + STEG.w / 2 - 0.4, 'Geländer hält nicht');
   const mid = resolveCollisions({ x: STEG.x, z: 16 }, PLAYER_RADIUS, colliders, { minX: -66, maxX: WORLD_MAX_X, minZ: -98 });
   assert.ok(Math.abs(mid.x - STEG.x) < 1e-9, 'Stegmitte wird verschoben');
+});
+
+test('Sperre an Land: zwischen Promenaden-Absperrung, Bootsschuppen und Felsnase kommt niemand durch', () => {
+  const colliders = [...pierColliders(), PROMENADE_SPERRE];
+  const world = { minX: -66, maxX: WORLD_MAX_X, minZ: -98 };
+  // Probe-Punkte entlang der Linie x = 65 von der Promenade bis zur Uferlinie: jeder wird rausgedrückt
+  for (let z = -13; z <= SHORE_Z + 0.5; z += 0.5) {
+    const q = resolveCollisions({ x: SCHUPPEN.x, z }, PLAYER_RADIUS, colliders, world);
+    assert.ok(Math.hypot(q.x - SCHUPPEN.x, q.z - z) > 1e-6, `Lücke in der Sperre bei (${SCHUPPEN.x}, ${z})`);
+  }
+  // Lücken zwischen den Einzelteilen sind schmaler als der Spieler
+  const parts = [{ ...PROMENADE_SPERRE, z0: PROMENADE_SPERRE.z - PROMENADE_SPERRE.d / 2, z1: PROMENADE_SPERRE.z + PROMENADE_SPERRE.d / 2 }, { z0: SCHUPPEN.z - SCHUPPEN.d / 2, z1: SCHUPPEN.z + SCHUPPEN.d / 2 }];
+  assert.ok(parts[1].z0 - parts[0].z1 < PLAYER_RADIUS * 2, 'Lücke Absperrung–Schuppen');
+  assert.ok(FELSNASE[0].z - FELSNASE[0].r - parts[1].z1 < PLAYER_RADIUS * 2, 'Lücke Schuppen–Fels');
+  for (let i = 1; i < FELSNASE.length; i++) assert.ok(Math.hypot(FELSNASE[i].x - FELSNASE[i - 1].x, FELSNASE[i].z - FELSNASE[i - 1].z) < FELSNASE[i].r + FELSNASE[i - 1].r, `Lücke im Fels ${i}`);
+  assert.ok(FELSNASE[FELSNASE.length - 1].z + FELSNASE[FELSNASE.length - 1].r > SHORE_Z + WADE_DEPTH, 'Felsnase reicht nicht bis ins Wasser');
 });

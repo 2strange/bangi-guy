@@ -6,7 +6,7 @@ import {
   syllables, babblePlan, normalizeStimme, normalizeStimmen, STIL, DEFAULT_STIMME, slugFor, pickBark, bark,
   musicPattern, PROGRESSION, BARS, STEPS_PER_BAR, BPM, stepSeconds, nextGullDelay, rng, hashStr, midiToFreq, SFX_NAMES,
   babble, sfx, setMuted, isMuted, ambience, music, stimmeFor, setStimmen, normalizePan,
-  ZONES, normalizeZones, pseudoWords, nextRufDelay, nextFunkDelay, sputterTimes,
+  ZONES, normalizeZones, pseudoWords, nextRufDelay, nextFunkDelay, sputterTimes, normalizeSfxOpts,
 } from '../js/audio.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -167,6 +167,16 @@ test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Daue
   assert.equal(SFX_NAMES.length, 13);
   for (const n of SFX_NAMES) assert.equal(sfx(n), 0);
   assert.equal(sfx('gibtsnicht'), 0);
+  assert.equal(sfx('tuktuk_abwuergen', { gain: 0.5, pan: -0.3 }), 0, 'Optionen ohne Audio: no-op');
+  // Optionen: Standard 1/Mitte, geclampt, Unsinn → Standard
+  assert.deepEqual(normalizeSfxOpts(undefined), { gain: 1, pan: 0 });
+  assert.deepEqual(normalizeSfxOpts({}), { gain: 1, pan: 0 });
+  assert.deepEqual(normalizeSfxOpts({ gain: 0.4, pan: 0.6 }), { gain: 0.4, pan: 0.6 });
+  assert.deepEqual(normalizeSfxOpts({ gain: 3, pan: -5 }), { gain: 1, pan: -1 });
+  assert.deepEqual(normalizeSfxOpts({ gain: -1 }), { gain: 0, pan: 0 });
+  assert.deepEqual(normalizeSfxOpts({ gain: 'x', pan: NaN }), { gain: 1, pan: 0 });
+  assert.deepEqual(normalizeSfxOpts({ gain: 0 }), { gain: 0, pan: 0 }, '0 bleibt 0 (außer Hörweite), nicht Standard');
+  assert.deepEqual(normalizeSfxOpts({ gain: '0.25' }), { gain: 0.25, pan: 0 });
   ambience.start(); ambience.stop(); music.start(); music.stop();
   assert.equal(ambience.isPlaying(), false); assert.equal(music.isPlaying(), false);
   assert.equal(ambience.ruf(), 0); assert.equal(ambience.funk(), 0);

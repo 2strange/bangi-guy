@@ -278,7 +278,7 @@ export function rotateDir(dir, camYaw = 0) {
 // ---------- Ankerplätze für die Kundschaft: fester Ort + Tätigkeit, kein Kreisen ----------
 // Tätigkeiten: sitzt | telefoniert | fotografiert | schaut | steht. `blick` = Blickrichtung (yaw), sonst zum Meer (+z).
 import { MARKT_ANCHORS } from './zone-markt-layout.js';
-import { PIER_ANCHORS, SHORE_Z, stegDepthLimit, furtDepthLimit } from './zone-pier-layout.js';
+import { PIER_ANCHORS, SHORE_Z, FURT, stegDepthLimit, furtDepthLimit } from './zone-pier-layout.js';
 // Zonen der Ankerplätze; Mischung pro Tag über ZONE_MIX (Anteile, nur Zonen mit vorhandenen Plätzen zählen)
 export const ZONES = ['strand', 'dorf', 'markt', 'pier'];
 export const ZONE_MIX = { strand: 4, dorf: 2, markt: 2, pier: 1 };
@@ -421,7 +421,10 @@ export const inHideout = (pos, hideouts = []) => hideouts.some((h) => Math.hypot
  * sees = Sichtkegel-Ergebnis (ohne Versteck), hideouts = Verstecke (Spieler darin = unsichtbar).
  * Rückgabe { st, event }: event = null | 'chase_start' | 'lost' | 'caught'.
  */
-export function chaseStep(st, route, player, dt, { sees = false, heat = 0, hideouts = [], speed = CHASE_SPEED, loseAfter = CHASE_LOSE_AFTER, catchDist = CATCH_DIST, chaseHeat = CHASE_HEAT } = {}) {
+// Furt-Wasser (Untiefe östlich der Bucht): jenseits der Wasserkante zwischen FURT.x0 und FURT.x1
+export const inFurtWasser = (pos) => pos.x >= FURT.x0 && pos.x <= FURT.x1 && pos.z > SHORE_Z + WADE_DEPTH;
+export const WADE_FACTOR = 0.5; // Sandalen in der Furt: Wat-Tempo
+export function chaseStep(st, route, player, dt, { sees = false, heat = 0, hideouts = [], speed = CHASE_SPEED, loseAfter = CHASE_LOSE_AFTER, catchDist = CATCH_DIST, chaseHeat = CHASE_HEAT, schuhe = 'sandalen' } = {}) {
   const hidden = inHideout(player, hideouts);
   const visible = sees && !hidden;
   const mode = st.mode || 'patrol';
@@ -434,12 +437,22 @@ export function chaseStep(st, route, player, dt, { sees = false, heat = 0, hideo
     const lost = visible ? 0 : (st.lost || 0) + dt;
     const d = Math.hypot(player.x - st.x, player.z - st.z);
     if (visible && d <= catchDist) return { st: { ...st, lastSeen, lost, moving: false }, event: 'caught' };
-    if (lost >= loseAfter) return { st: { ...st, mode: 'return', lastSeen, lost: 0, moving: false }, event: 'lost' };
+    if (lost >= loseAfter) return { st: { ...st, mode: 'return', lastSeen, lost: 0, moving: false, kante: false }, event: 'lost' };
     // zum zuletzt gesehenen Punkt laufen (nicht ganz hinein, sonst überrennt sie ihn beim Stehenbleiben)
     const dx = lastSeen.x - st.x, dz = lastSeen.z - st.z, dl = Math.hypot(dx, dz);
     if (dl < 0.3) return { st: { ...st, mode: 'chase', lastSeen, lost, moving: false }, event: null };
-    const step = Math.min(dl, speed * dt);
-    return { st: { ...st, mode: 'chase', lastSeen, lost, x: st.x + (dx / dl) * step, z: st.z + (dz / dl) * step, yaw: Math.atan2(dx, dz), phase: (st.phase || 0) + step * (Math.PI * 2 / 1.6), moving: true }, event: null };
+    // Furt: Sandalen waten (halbes Tempo), Turnschuhe bleiben an der Wasserkante stehen („These are new!“)
+    const inWater = inFurtWasser(st);
+    const v = speed * (schuhe === 'sandalen' && inWater ? WADE_FACTOR : 1);
+    const step = Math.min(dl, v * dt);
+    let nx = st.x + (dx / dl) * step, nz = st.z + (dz / dl) * step;
+    let event = null;
+    if (schuhe !== 'sandalen' && inFurtWasser({ x: nx, z: nz })) {
+      nz = Math.min(nz, SHORE_Z + WADE_DEPTH);
+      if (!st.kante) event = 'kante';
+      return { st: { ...st, mode: 'chase', lastSeen, lost, x: nx, z: nz, yaw: Math.atan2(dx, dz), kante: true, moving: false }, event };
+    }
+    return { st: { ...st, mode: 'chase', lastSeen, lost, x: nx, z: nz, yaw: Math.atan2(dx, dz), phase: (st.phase || 0) + step * (Math.PI * 2 / 1.6), moving: true }, event };
   }
   // return: zurück zum nächsten Routenpunkt, dann wieder Streife
   const idx = Math.max(0, Math.min(route.length - 1, st.idx ?? 0));

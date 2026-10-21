@@ -16,7 +16,6 @@ export const LANES = {
   markt_quer: [[46, -40], [54, -45], [59, -50], [64.5, -51]],   // quer über den Marktplatz zur Absperrung
   hafen_zufahrt: [[64.5, -51], [70, -48], [74, -40], [74, -14]],
   hafen_platz: [[74, -14], [74, -8], [84, 0], [84, 4]],
-  hafen_promenade: [[64.5, -10.8], [74, -8]],
   hafen_steg: [[84, 4], [84, 10]],
 };
 
@@ -26,10 +25,22 @@ export const STEG = { x: 84, z0: 4, z1: 28, w: 4.4 };
 export const FERRY = { dockX: 92, dockZ: 25, farX: 140, period: 60, approach: 12, wait: 16, leave: 12 };
 export const FERRY_SPAWN = { x: 84, z: 16 };          // auf dem Steg: hier steigen Backpacker und Zivi P3 aus
 
-// Furt F2 (Untiefe Hotelstrand ↔ Pier): nur mit Sandalen/barfuß; Turnschuhe bleiben an der Wasserkante
-export const FURT = { x0: 58, x1: 74, maxZ: 22.5, cx: 66, cz: 18, rx: 9.5, rz: 4.6, stones: [[60, 16], [63, 18], [66, 19.5], [69, 18.5], [72, 16.5]] }; // Untiefe ganz im Wasser (Ufer bei z 12)
+// Furt F2 (Untiefe Hotelstrand ↔ Pier): nur mit Sandalen/barfuß; Turnschuhe bleiben an der Wasserkante.
+// An Land trennen Bootsschuppen + Felsnase (x ≈ 63…67) Hotelstrand und Pier-Strand; die Furt läuft als
+// Steinbogen außen um die Felsnase herum (path = Mittellinie, width = Breite des Watkorridors).
+export const FURT = {
+  x0: 57, x1: 74.5, maxZ: 22.5, cx: 65.5, cz: 17.5, rx: 10.2, rz: 5.8,
+  path: [[57.5, 12.5], [60.5, 16], [63, 20.5], [67.5, 20.5], [70, 18.2], [74, 13.5]], width: 4, // Scheitel flach um (x0+x1)/2
+  stones: [[59, 14.2], [60.5, 16], [62.8, 18.6], [65.2, 20.3], [67.8, 19.8], [70.2, 18], [72.5, 15.5]],
+};
 // Umriss der Untiefe: wabbelige Ellipse (Winkel → Radiusfaktor), für Mesh und Schaumrand
 export const furtRadius = (a) => 1 + 0.1 * Math.sin(3 * a + 0.4) + 0.06 * Math.sin(7 * a + 1.3);
+// Sperre an Land: Bootsschuppen (Tür zur Promenade, „IM BAU SEIT 2019“) und Felsnase bis ins Wasser
+export const SCHUPPEN = { x: 65, z: -4.5, rot: 0.05, w: 6, d: 7 };
+export const FELSNASE = [{ x: 64.8, z: 1.2, r: 2.0 }, { x: 65.6, z: 4.8, r: 1.9 }, { x: 66.2, z: 8.0, r: 1.8 }, { x: 66.6, z: 11.0, r: 1.6 }, { x: 67, z: 13.8, r: 1.4 }];
+export const BAUARBEITER = { x: 67.6, z: -11.2, r: 1.0, rot: -Math.PI / 2 };
+// Absperrung „PROMENADE – im Bau“ aus world.js (bleibt stehen, schließt die Lücke zum Schuppen)
+export const PROMENADE_SPERRE = { x: 64.5, z: -10.8, w: 1.5, d: 6.5 };
 
 // Kulissen mit Collidern
 export const PROPS = [
@@ -55,7 +66,7 @@ export const PIER_SPOTS = {
   pier: { x: 79, z: -3, yaw: Math.PI },
   steg: { x: 84, z: 14, yaw: 0 },
   tuktuk: { x: 74, z: -4, yaw: -Math.PI / 2 },
-  furt: { x: 66, z: 11, yaw: Math.PI / 2 },
+  furt: { x: 59, z: 11, yaw: Math.PI / 2 },
   zufahrt: { x: 74, z: -30, yaw: Math.PI },
 };
 
@@ -66,7 +77,7 @@ export const PIER_ANCHORS = [
   { zone: 'pier', id: 'pier_boot', x: 84, z: -9, r: 1.0, activity: 'fotografiert', blick: 0.4 },
   { zone: 'pier', id: 'pier_netz', x: 70, z: -12, r: 1.0, activity: 'telefoniert', blick: -2.5 },
   { zone: 'pier', id: 'pier_steg', x: 84, z: 17, r: 1.0, activity: 'schaut', blick: 0 },
-  { zone: 'pier', id: 'pier_furt', x: 66, z: 9, r: 1.0, activity: 'schaut', blick: 1.2 },
+  { zone: 'pier', id: 'pier_furt', x: 72, z: 9, r: 1.0, activity: 'schaut', blick: -1.2 },
 ];
 
 export function aabb(x, z, w, d, rot = 0, margin = 0.1) {
@@ -84,6 +95,9 @@ export function pierColliders() {
   out.push({ x: S.x - S.w / 2 - 0.2, z: (S.z0 + S.z1) / 2, w: 0.3, d: S.z1 - S.z0 });
   out.push({ x: S.x + S.w / 2 + 0.2, z: (S.z0 + S.z1) / 2, w: 0.3, d: S.z1 - S.z0 });
   out.push({ x: S.x, z: S.z1 + 0.3, w: S.w + 1, d: 0.4 }); // Stegende
+  out.push(aabb(SCHUPPEN.x, SCHUPPEN.z, SCHUPPEN.w, SCHUPPEN.d, SCHUPPEN.rot));
+  for (const f of FELSNASE) out.push({ x: f.x, z: f.z, r: f.r });
+  out.push({ x: BAUARBEITER.x, z: BAUARBEITER.z, r: BAUARBEITER.r });
   return out;
 }
 export const allColliders = pierColliders;
@@ -107,9 +121,17 @@ export function ferryAt(t) {
 export const ferryDocked = (t) => ferryAt(t).state === 'docked';
 
 // Furt: bis zu welchem z darf man bei x ins Wasser? (nur Sandalen/barfuß; Turnschuhe bleiben bei WADE_DEPTH)
+// Signatur bleibt (x, shore, wade): Rückgabe = Südrand des Watkorridors an dieser x-Stelle (Bogen um die Felsnase)
 export function furtDepthLimit(x, shore = SHORE_Z, wade = 1.6) {
   if (x < FURT.x0 || x > FURT.x1) return shore + wade;
-  return FURT.maxZ;
+  const P = FURT.path;
+  let z = P[0][1];
+  for (let i = 1; i < P.length; i++) {
+    const [ax, az] = P[i - 1], [bx, bz] = P[i];
+    if (x >= ax && x <= bx) { z = az + (bz - az) * (x - ax) / (bx - ax); break; }
+    if (x > bx) z = bz;
+  }
+  return Math.max(shore + wade, Math.min(FURT.maxZ, z + FURT.width / 2));
 }
 
 // Steg begehbar: Spieler darf auf dem Steg über die Uferlinie hinaus (bis Stegende)
