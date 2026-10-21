@@ -87,7 +87,8 @@ export function pushOutRect(p, r, b) {
 
 // Alle Collider + Welt-Grenzen + Ufer; zwei Durchgänge, damit Ecken sauber werden.
 // Ins Wasser darf man knöcheltief; auf dem Steg weiter hinaus; durch die Furt nur mit Sandalen/barfuß.
-export function resolveCollisions(p, r, colliders, world = WORLD, { sandalen = true } = {}) {
+export function resolveCollisions(p, r, colliders, world = WORLD, { sandalen = true, schuhe = null } = {}) {
+  const furtOk = schuhe ? darfInFurt(schuhe) : sandalen;
   let q = { x: p.x, z: p.z };
   for (let pass = 0; pass < 2; pass++) {
     for (const c of colliders) {
@@ -96,7 +97,7 @@ export function resolveCollisions(p, r, colliders, world = WORLD, { sandalen = t
     q.x = Math.max(world.minX + r, Math.min(world.maxX - r, q.x));
     q.z = Math.max(world.minZ + r, q.z);
     let limit = shoreZ(q.x) + WADE_DEPTH;
-    if (q.x >= BAY.maxX - 8) limit = Math.max(limit, stegDepthLimit(q.x, SHORE_Z, WADE_DEPTH), sandalen ? furtDepthLimit(q.x, SHORE_Z, WADE_DEPTH) : 0);
+    if (q.x >= BAY.maxX - 8) limit = Math.max(limit, stegDepthLimit(q.x, SHORE_Z, WADE_DEPTH), furtOk ? furtDepthLimit(q.x, SHORE_Z, WADE_DEPTH) : 0);
     if (q.z > limit) q.z = limit;
   }
   return q;
@@ -107,7 +108,11 @@ export function resolveCollisions(p, r, colliders, world = WORLD, { sandalen = t
  * state: { x, z, yaw, phase, speed }  input: { dir:{x,z}|null, run:boolean }
  * Gibt einen neuen State zurück (keine Mutation).
  */
-export function stepPlayer(state, input, dt, colliders = [], world = WORLD, { sandalen = true } = {}) {
+export function stepPlayer(state, input, dt, colliders = [], world = WORLD, { sandalen = true, schuhe = null } = {}) {
+  // Schuhwerk: explizit (schuhe) oder aus dem alten Schalter sandalen abgeleitet
+  const footwear = schuhe || (sandalen ? 'sandalen' : 'turnschuh');
+  // Stolperer (Flip-Flops auf den Trittsteinen): kurz stehen bleiben
+  if (state.stumble > 0) return { ...state, stumble: Math.max(0, state.stumble - dt), speed: 0, moving: false, running: false, stumbled: false };
   const dir = input.dir;
   const moving = !!dir && (dir.x !== 0 || dir.z !== 0);
   const target = moving ? (input.run ? RUN_SPEED : WALK_SPEED) : 0;
@@ -116,17 +121,24 @@ export function stepPlayer(state, input, dt, colliders = [], world = WORLD, { sa
   let speed = state.speed ?? 0;
   speed += Math.max(-accel * dt, Math.min(accel * dt, target - speed));
   let x = state.x, z = state.z, yaw = state.yaw;
+  const wf = wadeFactor(state, footwear) || 1; // in der Untiefe Wat-Tempo
   if (moving) {
     const wantYaw = Math.atan2(dir.x, dir.z); // 0 = Blick nach +z (Süden/Meer)
     yaw = angleLerp(yaw, wantYaw, 1 - Math.exp(-TURN_RATE * dt));
-    x += dir.x * speed * dt;
-    z += dir.z * speed * dt;
+    x += dir.x * speed * wf * dt;
+    z += dir.z * speed * wf * dt;
   }
-  const q = resolveCollisions({ x, z }, PLAYER_RADIUS, colliders, world, { sandalen });
+  const q = resolveCollisions({ x, z }, PLAYER_RADIUS, colliders, world, { schuhe: footwear });
   const moved = Math.hypot(q.x - state.x, q.z - state.z);
   // Phase läuft mit der tatsächlich zurückgelegten Strecke (Schrittlänge ≈ 1.6 Einheiten pro Doppelschritt)
   const phase = (state.phase ?? 0) + moved * (Math.PI * 2 / 1.6);
-  return { x: q.x, z: q.z, yaw, phase, speed, moving: moved > 1e-4 && moving, running: moving && input.run };
+  // Flip-Flops in der Untiefe: Weg zählen, alle STUMBLE_EVERY Einheiten ein Stolperer
+  let wadeDist = state.wadeDist || 0, stumble = 0, stumbled = false;
+  if (footwear === 'flipflop' && inUntiefe(q)) {
+    wadeDist += moved;
+    if (wadeDist >= STUMBLE_EVERY) { wadeDist = 0; stumble = STUMBLE_TIME; stumbled = true; }
+  } else wadeDist = 0;
+  return { x: q.x, z: q.z, yaw, phase, speed, moving: moved > 1e-4 && moving, running: moving && input.run, wadeDist, stumble, stumbled };
 }
 
 /**
@@ -346,12 +358,13 @@ export function assignAnchors(kunden, anchors = ANCHORS, { minDist = ZIVI_MIN_DI
   const others = kunden.filter((k) => !k.zivi), zivis = kunden.filter((k) => k.zivi);
   const seq = zoneSequence(kunden.length, anchors, { day, mix });
   others.forEach((k, i) => {
-    const zone = seq[i];
+    // Fähren-Gäste (Spawn K1) bleiben im Hafen: vom Steg aus ist nur der Hafenplatz ohne Umweg erreichbar
+    const zone = k.spawn === 'K1' && free('pier').length ? 'pier' : seq[i];
     const cands = free(zone).length ? free(zone) : free();
     pick(k, rot(cands, day + i));
   });
   zivis.forEach((z, j) => {
-    const zone = seq[others.length + j];
+    const zone = z.spawn === 'K1' && free('pier').length ? 'pier' : seq[others.length + j];
     const inZone = free(zone).length ? free(zone) : free();
     const ok = inZone.filter((a) => taken.every((t) => dist2(a, t) >= minDist));
     const okAny = ok.length ? ok : free().filter((a) => taken.every((t) => dist2(a, t) >= minDist));
@@ -423,7 +436,17 @@ export const inHideout = (pos, hideouts = []) => hideouts.some((h) => Math.hypot
  */
 // Furt-Wasser (Untiefe östlich der Bucht): jenseits der Wasserkante zwischen FURT.x0 und FURT.x1
 export const inFurtWasser = (pos) => pos.x >= FURT.x0 && pos.x <= FURT.x1 && pos.z > SHORE_Z + WADE_DEPTH;
-export const WADE_FACTOR = 0.5; // Sandalen in der Furt: Wat-Tempo
+export const WADE_FACTOR = 0.6; // Wat-Tempo in der Untiefe (Spieler und Streife)
+export const STUMBLE_EVERY = 3.0; // Flip-Flops: alle ~3 Einheiten in der Untiefe ein Stolperer
+export const STUMBLE_TIME = 0.8;  // Sekunden Stillstand pro Stolperer
+// „in der Untiefe“ = jenseits der Uferlinie innerhalb der Furt-Breite (Absprache mit dem Pier-Modul)
+export const inUntiefe = (pos) => pos.x >= FURT.x0 && pos.x <= FURT.x1 && pos.z > SHORE_Z;
+// Tempofaktor nach Schuhwerk im Wasser: Sandalen/barfuß/Flip-Flops waten, Turnschuhe/Stiefel kommen gar nicht hinein
+export function wadeFactor(pos, schuhe = 'sandalen') {
+  if (!inUntiefe(pos)) return 1;
+  return ['sandale', 'sandalen', 'barfuss', 'flipflop'].includes(schuhe) ? WADE_FACTOR : 0;
+}
+export const darfInFurt = (schuhe) => ['sandale', 'sandalen', 'barfuss', 'flipflop'].includes(schuhe);
 export function chaseStep(st, route, player, dt, { sees = false, heat = 0, hideouts = [], speed = CHASE_SPEED, loseAfter = CHASE_LOSE_AFTER, catchDist = CATCH_DIST, chaseHeat = CHASE_HEAT, schuhe = 'sandalen' } = {}) {
   const hidden = inHideout(player, hideouts);
   const visible = sees && !hidden;
@@ -442,12 +465,11 @@ export function chaseStep(st, route, player, dt, { sees = false, heat = 0, hideo
     const dx = lastSeen.x - st.x, dz = lastSeen.z - st.z, dl = Math.hypot(dx, dz);
     if (dl < 0.3) return { st: { ...st, mode: 'chase', lastSeen, lost, moving: false }, event: null };
     // Furt: Sandalen waten (halbes Tempo), Turnschuhe bleiben an der Wasserkante stehen („These are new!“)
-    const inWater = inFurtWasser(st);
-    const v = speed * (schuhe === 'sandalen' && inWater ? WADE_FACTOR : 1);
+    const v = speed * (darfInFurt(schuhe) && inUntiefe(st) ? WADE_FACTOR : 1);
     const step = Math.min(dl, v * dt);
     let nx = st.x + (dx / dl) * step, nz = st.z + (dz / dl) * step;
     let event = null;
-    if (schuhe !== 'sandalen' && inFurtWasser({ x: nx, z: nz })) {
+    if (!darfInFurt(schuhe) && inFurtWasser({ x: nx, z: nz })) {
       nz = Math.min(nz, SHORE_Z + WADE_DEPTH);
       if (!st.kante) event = 'kante';
       return { st: { ...st, mode: 'chase', lastSeen, lost, x: nx, z: nz, yaw: Math.atan2(dx, dz), kante: true, moving: false }, event };
