@@ -326,14 +326,15 @@ test('Anker tragen eine Zone; zoneSequence mischt nach Gewichten und rotiert pro
   for (const a of ANCHORS) assert.ok(ZONES.includes(a.zone), `${a.id} ohne Zone`);
   const seq = zoneSequence(7, ANCHORS, { day: 1 });
   const count = (z) => seq.filter((x) => x === z).length;
-  // ohne Markt-Plätze: strand 4 : dorf 2 → bei 7 Kunden 4–5 Strand, 2–3 Dorf
-  assert.ok(count('strand') >= 4 && count('strand') <= 5, `strand ${count('strand')}`);
-  assert.ok(count('dorf') >= 2 && count('dorf') <= 3, `dorf ${count('dorf')}`);
-  assert.equal(count('markt'), 0, 'noch keine Markt-Plätze');
+  // strand 4 : dorf 2 : markt 2 → bei 7 Kunden 3–4 Strand, 1–2 Dorf, 1–2 Markt
+  assert.ok(count('strand') >= 3 && count('strand') <= 4, `strand ${count('strand')}`);
+  assert.ok(count('dorf') >= 1 && count('dorf') <= 2, `dorf ${count('dorf')}`);
+  assert.ok(count('markt') >= 1 && count('markt') <= 2, `markt ${count('markt')}`);
   assert.notDeepEqual(zoneSequence(7, ANCHORS, { day: 2 }), seq, 'anderer Tag, andere Reihenfolge');
-  // mit Markt-Plätzen taucht der Markt auf
-  const withMarkt = ANCHORS.concat([{ zone: 'markt', id: 'm1', x: 100, z: -100, r: 1, activity: 'steht' }, { zone: 'markt', id: 'm2', x: 110, z: -100, r: 1, activity: 'steht' }]);
-  assert.ok(zoneSequence(8, withMarkt, { day: 1 }).includes('markt'));
+  // ohne Markt-Plätze verschwindet der Markt aus der Mischung
+  const ohneMarkt = ANCHORS.filter((a) => a.zone !== 'markt');
+  assert.equal(zoneSequence(8, ohneMarkt, { day: 1 }).filter((z) => z === 'markt').length, 0);
+  assert.ok(ANCHORS.filter((a) => a.zone === 'markt').length >= 6, 'Markt-Plätze aus dem Layout übernommen');
   assert.deepEqual(zoneSequence(3, [], { day: 1 }), [null, null, null]);
 });
 
@@ -342,7 +343,7 @@ test('assignAnchors: pro Tag eine Mischung über Strand und Dorf, Zivi-Abstand g
   for (let day = 1; day <= 5; day++) {
     const m = assignAnchors(ks, ANCHORS, { day });
     const zones = new Set(Object.values(m).map((a) => a.zone));
-    assert.ok(zones.has('strand') && zones.has('dorf'), `Tag ${day}: beide Zonen besetzt (${[...zones]})`);
+    assert.ok(zones.has('strand') && zones.has('dorf') && zones.has('markt'), `Tag ${day}: alle drei Zonen besetzt (${[...zones]})`);
     assert.equal(new Set(Object.values(m).map((a) => a.id)).size, ks.length, 'Plätze eindeutig');
     for (const z of ['z1', 'z2']) for (const k of ks) {
       if (k.id === z) continue;
@@ -368,4 +369,36 @@ test('zoneMix: Strand überall ≥ 0.2 und am Strand 1, Zonen fallen linear mit 
   close(mid.strand, 0.5);
   assert.deepEqual(zoneMix({ x: 0, z: 0 }, { markt: null }), { strand: 1, markt: 0 });
   assert.deepEqual(zoneMix({ x: 0, z: 0 }), { strand: 1 });
+});
+
+// ---------- Streife ----------
+import { patrolStart, patrolStep, seesTarget, PATROL_SPEED } from '../js/logic.js';
+test('patrolStep: läuft die Route ab, kehrt an den Enden um, wartet dort, ist deterministisch', () => {
+  const route = [{ x: 0, z: 0 }, { x: 10, z: 0 }, { x: 10, z: 10 }];
+  let p = patrolStart(route);
+  let t = 0;
+  const seen = new Set();
+  for (let i = 0; i < 60 * 40; i++) { p = patrolStep(p, route, 1 / 60); t += 1 / 60; if (p.wait > 0) seen.add(`${Math.round(p.x)},${Math.round(p.z)}`); }
+  // nach 40 s ist sie mindestens einmal hin und zurück (20 Einheiten bei 2.2/s ≈ 9 s + Pausen): an beiden Enden gewartet
+  assert.ok(seen.has('0,0') && seen.has('10,10'), `an beiden Enden gewartet (${[...seen]})`);
+  // Geschwindigkeit: in 1 s ≈ PATROL_SPEED Einheiten
+  let q = patrolStart(route);
+  for (let i = 0; i < 60; i++) q = patrolStep(q, route, 1 / 60);
+  close(q.x, PATROL_SPEED, 0.05); close(q.yaw, Math.PI / 2, 1e-6, 'Blick nach +x');
+  assert.ok(q.moving && q.phase > 0);
+  // Pause: während wait keine Bewegung
+  const w = patrolStep({ ...q, wait: 1 }, route, 0.5);
+  close(w.x, q.x); assert.equal(w.moving, false); close(w.wait, 0.5);
+  assert.deepEqual(patrolStep(patrolStart(route), route, 0.1), patrolStep(patrolStart(route), route, 0.1));
+  assert.equal(patrolStep(patrolStart([{ x: 0, z: 0 }]), [{ x: 0, z: 0 }], 1).moving, false);
+});
+
+test('seesTarget: vorne im Kegel ja, hinter dem Rücken nein, außerhalb der Reichweite nein', () => {
+  const g = { x: 0, z: 0, yaw: 0 }; // schaut nach +z
+  assert.equal(seesTarget(g, { x: 0, z: 8 }), true);
+  assert.equal(seesTarget(g, { x: 5, z: 5 }), true, '45° seitlich');
+  assert.equal(seesTarget(g, { x: 8, z: 1 }), false, '83° seitlich, außerhalb ±60°');
+  assert.equal(seesTarget(g, { x: 0, z: -8 }), false, 'hinter ihr');
+  assert.equal(seesTarget(g, { x: 0, z: 13 }), false, 'zu weit');
+  assert.equal(seesTarget({ ...g, yaw: Math.PI }, { x: 0, z: -8 }), true, 'umgedreht');
 });

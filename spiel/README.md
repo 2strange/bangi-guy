@@ -83,6 +83,10 @@ Dann `http://localhost:8000/` öffnen.
   Mango den Heat um 1 — einmal pro Tag, nur mit Mango und nur bei Heat > 0 (Texte aus `texte.json → posten7`).
   Die Tafel am Posten zeigt den echten Stand „Tage ohne Vorfall“ (zählt pro Tag hoch, Verhaftung → 0). Logik in
   `js/game.js`, getestet. `?snap=1&scene=mango` zeigt den Kauf.
+- **Streife P1:** ein Polizist in Sandalen (Mütze, Ohrknopf, Funkgerät) läuft Posten 7 ↔ Markt über die Ringstraße
+  (Wegfolgen und Sichtkegel als reine Funktionen in `js/logic.js`, getestet: ±60°, 12 Einheiten). Sieht er einen
+  Verkauf, gibt es Heat +1 und Trillerpfeife; ab Heat 1 pfeift er bei jeder Sichtung (höchstens alle 8 s).
+  Verfolgung gibt es noch nicht. `?snap=1&scene=streife` zeigt sie auf der Straße.
 - **Reveal-Gags:** `data/texte.json → reveal_gags[]` (id, wann = kauf | ablehnung | immer, mood, extra, dauer_s) werden
   von `js/gags.js` gespielt: nach Verkauf bzw. Ablehnung der passende Gag des Kunden (hält den Endzustand, bis man
   weitergeht), „immer“-Gags alle 6–10 s als Idle-Tick, wenn der Spieler in der Nähe ist — der Hinweis zum

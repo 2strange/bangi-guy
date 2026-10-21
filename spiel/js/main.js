@@ -9,7 +9,7 @@ import { createUI, isTouchDevice, hintSeen, markHint } from './ui.js';
 import { prepareGags, playGag, stopGag } from './gags.js';
 import {
   inputToDir, dirToTarget, stepPlayer, followCamera, waddlePose, CAM_OFFSET, DEFAULT_CAM_YAW, isOccluder, joystickInput, rotateDir,
-  ANCHORS, assignAnchors, zoneMix,
+  ANCHORS, assignAnchors, zoneMix, patrolStart, patrolStep, seesTarget,
 } from './logic.js';
 import {
   initialState, normalizeKatalog, pickKunden, startDialog, advanceDialog, chooseOption, isArrested, newDay, moodFor,
@@ -17,9 +17,9 @@ import {
   normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE, gagFor, nextIdleGagDelay,
   normalizeStimmen, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
-  normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht,
+  normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde,
 } from './game.js';
-import { POSTEN as POSTEN_LAYOUT, MARKT as MARKT_AREA, STAENDE } from './zone-markt-layout.js';
+import { POSTEN as POSTEN_LAYOUT, MARKT as MARKT_AREA, STAENDE, LANES as MARKT_LANES } from './zone-markt-layout.js';
 
 // Tastenbelegung (Konstanten, einfach umzulegen): E = immer ansprechen, F = hinschauen, Kamera Q/R
 const KEY_TALK = 'KeyE';
@@ -33,7 +33,7 @@ const SNAP = q('snap') === '1';
 const STATS = q('stats') === '1';
 const AT = q('at');
 const CY = q('cy'); // Kamera-Gierung in Grad relativ zum Standard, z. B. ?at=hotel&cy=-90 (Kamera im Osten, Blick nach Westen)
-const SCENE = q('scene'); // dialog | inspect | lineup | ausverkauft | bilanz | gag | mentor | mango (nur Snap)
+const SCENE = q('scene'); // dialog | inspect | lineup | ausverkauft | bilanz | gag | mentor | mango | streife (nur Snap)
 const SCENE_ID = q('id'); // Kunde für scene=gag
 const TOUCH = q('touch') === '1' || isTouchDevice(); // Touch-Steuerung einblenden
 
@@ -114,7 +114,7 @@ function startAudio() {
 let audioRetryAt = 0;
 // Zonen-Ambience: Mischung aus der Spielerposition, alle 250 ms (Zonen-Mitten kommen vom Markt-Modul, bis dahin Platzhalter)
 let ambienceAt = 0;
-const POSTEN_ZONE = { x: POSTEN_LAYOUT.pong.x, z: POSTEN_LAYOUT.pong.z, r: 15 }; // Sichtweite von Pong (Heat-Zone)
+const POSTEN_ZONE = world.markt?.posten || { x: POSTEN_LAYOUT.pong.x, z: POSTEN_LAYOUT.pong.z, r: 14 }; // Vorplatz des Postens (Heat doppelt), aus dem Markt-Modul
 const MARKT_ZONE = { x: (MARKT_AREA.minX + MARKT_AREA.maxX) / 2, z: (MARKT_AREA.minZ + MARKT_AREA.maxZ) / 2, r: 22 };
 const ZONE_DEFS = () => ({ markt: MARKT_ZONE, posten: POSTEN_ZONE });
 function updateAmbience(now) {
@@ -166,7 +166,7 @@ function spawnKunden(day = 1) {
   clearKunden();
   const list = pickKunden(katalog, undefined, 2, day);
   const outfits = assignOutfits(list, day); // keine Doppel-Outfits pro Tag
-  const anchors = assignAnchors(list, ANCHORS.concat(world.markt?.anchors || []), { day }); // feste Plätze über alle Zonen, Zivis mit Abstand
+  const anchors = assignAnchors(list, ANCHORS, { day }); // feste Plätze über alle Zonen (Markt-Plätze stecken in ANCHORS), Zivis mit Abstand
   const seen = {};
   list.forEach((def, i) => {
     const a = anchors[def.id];
@@ -301,6 +301,8 @@ const mangoStandDef = STAENDE.find((st) => st.kind === 'mango') || { x: 44, z: -
 const POINTS = [
   { id: 'mango_stand', x: mangoStandDef.x, z: mangoStandDef.z + 1.4, r: TALK_DIST + 0.6, name: 'Mango-Stand', obj: pointObj(mangoStandDef.x, 2.6, mangoStandDef.z) },
   { id: 'pong', x: POSTEN_LAYOUT.pong.x, z: POSTEN_LAYOUT.pong.z, r: TALK_DIST + 0.8, name: 'Pong', obj: world.markt?.pong || pointObj(POSTEN_LAYOUT.pong.x, 2.6, POSTEN_LAYOUT.pong.z) },
+  // Bestechungs-Stand „1 MANGO = 1 GNADE“ neben Pong: dieselbe Abgabe wie bei Pong selbst
+  { id: 'gnaden_stand', x: world.markt?.mangoStand?.x ?? 15.5, z: (world.markt?.mangoStand?.z ?? -82) + 1.4, r: TALK_DIST + 0.6, name: 'Pong', obj: world.markt?.pong || pointObj(POSTEN_LAYOUT.pong.x, 2.6, POSTEN_LAYOUT.pong.z) },
 ];
 let nearPoint = null;
 function pongSay(situation) {
@@ -326,7 +328,7 @@ function usePoint(point) {
     try { audio?.ambience?.ruf?.(); } catch (e) { /* ignorieren */ }
     return;
   }
-  if (point.id === 'pong') {
+  if (point.id === 'pong' || point.id === 'gnaden_stand') {
     const r = giveMango(game);
     game = r.state; ui.setHud(game);
     if (r.result === 'gnade') { sfx('mango'); pongSay('mango_gnaedig'); }
@@ -337,6 +339,38 @@ function usePoint(point) {
   }
 }
 function endInfo() { mentorFolge = null; ui.hideBubble(); stopBabble(); mode = 'free'; }
+
+// ---------- Streife P1: läuft Posten ↔ Markt (Straßen aus dem Markt-Layout), sieht sie einen Verkauf → Heat + Pfiff ----------
+const PATROL_ROUTE = [[8, -82], ...MARKT_LANES.ring.slice().reverse()].map(([x, z]) => ({ x, z })); // Posten → Ringstraße → Marktzufahrt und zurück
+const cop = buildKunde(normalizeKunde({ id: 'streife_p1', typ: 'Streife', name: 'Streife', schuhe: 'sandale', hemd: 'polo_sauber', hose: 'chino', accessoire: 'ohrknopf', extras: ['funkgeraet'], hautton: 'mittel', haare: 'kurz', zivi: true, stimmung_start: 'misstrauisch' }), 7);
+setRevealed(cop, true); // Polizeimütze: die Streife ist offen Polizei (Pong in Sandalen — kann nicht rennen)
+scene.add(cop);
+let patrol = patrolStart(PATROL_ROUTE);
+const copCollider = { x: patrol.x, z: patrol.z, r: 0.7 };
+colliders.push(copCollider);
+let copSeesPlayer = false;
+let sightCooldown = 0;
+function applyCop() {
+  cop.position.set(patrol.x, 0, patrol.z);
+  cop.rotation.y = patrol.yaw;
+  copCollider.x = patrol.x; copCollider.z = patrol.z;
+  const pose = waddlePose(patrol.phase || 0, patrol.moving ? 2.2 : 0);
+  const P = cop.userData.parts;
+  P.legs[0].rotation.x = pose.legL; P.legs[1].rotation.x = pose.legR;
+  P.arms[0].rotation.x = pose.armL; P.arms[1].rotation.x = pose.armR;
+  P.head.rotation.y = copSeesPlayer ? Math.max(-1, Math.min(1, Math.atan2(Math.sin(Math.atan2(state.x - patrol.x, state.z - patrol.z) - patrol.yaw), Math.cos(Math.atan2(state.x - patrol.x, state.z - patrol.z) - patrol.yaw)))) : 0;
+}
+function updatePatrol(dt, now) {
+  patrol = patrolStep(patrol, PATROL_ROUTE, dt);
+  copSeesPlayer = seesTarget(patrol, state);
+  // Sichtung (ohne Verkauf): Pfiff + Funkspruch, alle 8 s höchstens einmal, nur ab Heat 1
+  if (copSeesPlayer && game.heat >= 1 && now > sightCooldown) {
+    sightCooldown = now + 8000;
+    sfx('pfeife');
+    try { audio?.bark?.('pong', 'sichtung', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ }
+  }
+  applyCop();
+}
 let mentorFolge = null; // laufende Blasenfolge
 let mentorIdx = 0;
 function startMentor() {
@@ -456,6 +490,12 @@ function confirmDialog() {
     const r = chooseOption(game, dialog, talking.def, dialog.options[selected], lineIdx++, { posten: POSTEN_ZONE, pos: state });
     game = r.state; dialog = r.dialog;
     if (game.heat > heatBefore) { sfx('alarm'); if (inSicht) { sfx('pfeife'); pongSay('sichtung'); } }
+    // Streife hat den Verkauf gesehen (egal an wen): Heat +1, Pfiff
+    if ((dialog.result === 'kauf' || dialog.result === 'reveal') && copSeesPlayer) {
+      const sp = patrolSpotted(game, { selling: true });
+      game = sp.state; ui.setHud(game);
+      sfx('pfeife'); try { audio?.bark?.('pong', 'sichtung', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ }
+    }
     ui.setHud(game);
     setMood(talking.group, moodFor(kundeStatus(game, talking.id)));
     if (dialog.result === 'kauf' || dialog.result === 'reveal') sfx('kasse'); else sfx('ablehnung');
@@ -692,7 +732,7 @@ function updateNearHint() {
     ui.showPrompt(txt); ui.showBadge(null); ui.pulseButtons({ talk: true }); return;
   }
   if (!nearK && nearPoint) {
-    const txt = nearPoint.id === 'mango_stand' ? `Mango-Stand — E: Mango kaufen (10 Münzen)` : (game.mangos > 0 ? 'Pong — E: Mango abgeben (1 Mango = 1 Gnade)' : 'Pong — E: ansprechen');
+    const txt = nearPoint.id === 'mango_stand' ? 'Mango-Stand — E: Mango kaufen (10 Münzen)' : (game.mangos > 0 ? 'Pong — E: Mango abgeben (1 Mango = 1 Gnade)' : 'Pong — E: ansprechen');
     ui.showPrompt(txt); ui.showBadge(null); ui.pulseButtons({ talk: true }); return;
   }
   if (!nearK) { ui.showPrompt(null); ui.showBadge(null); ui.pulseButtons(null); return; }
@@ -763,6 +803,17 @@ function setupScene() {
     const entry = gagFor(texte, k.id, 'kauf') || gagFor(texte, k.id, 'immer') || gagFor(texte, k.id, 'ablehnung');
     if (entry) { k.gag = { entry, t0: 0 }; playGag(k.group, entry, entry.dauer_s * 0.6); }
     mode = 'inspect'; // Hinschau-Kamera + Spieler ausgeblendet, damit der Gag frei steht
+    return;
+  }
+  if (SCENE === 'streife') {
+    // Streife auf der Straße am Posten, Spieler davor im Sichtkegel
+    patrol = { ...patrol, x: 12, z: -78, yaw: Math.PI / 2, idx: 2, moving: true, phase: 2.2 };
+    state = { ...state, x: 18, z: -77, yaw: -Math.PI / 2, speed: 0 };
+    game = { ...game, heat: 1 };
+    ui.setHud(game);
+    copSeesPlayer = seesTarget(patrol, state);
+    applyCop();
+    mode = 'free';
     return;
   }
   if (SCENE === 'mango') {
@@ -860,6 +911,7 @@ if (SNAP) {
     camera.updateMatrixWorld();
     world.huegel.update(3.2);
     world.markt?.update?.(3.2);
+    if (SCENE !== 'streife') applyCop();
     try { world.markt?.setTafel?.(0); } catch (e) { /* ignorieren */ }
     world.group.updateMatrixWorld(true);
     kundenGroup.updateMatrixWorld(true);
@@ -904,6 +956,7 @@ if (SNAP) {
       state = stepPlayer(state, { dir: null, run: false }, dt, colliders);
     }
     applyPose(state);
+    updatePatrol(dt, now);
     // Schritt im Sand: jede volle Watschel-Periode (1.6 Einheiten ≈ 0.4 s Gehen)
     if (state.moving && Math.floor(state.phase / (Math.PI * 2)) !== Math.floor(lastStepPhase / (Math.PI * 2))) sfx('schritt');
     lastStepPhase = state.phase;

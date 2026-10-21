@@ -272,6 +272,7 @@ export function rotateDir(dir, camYaw = 0) {
 
 // ---------- Ankerplätze für die Kundschaft: fester Ort + Tätigkeit, kein Kreisen ----------
 // Tätigkeiten: sitzt | telefoniert | fotografiert | schaut | steht. `blick` = Blickrichtung (yaw), sonst zum Meer (+z).
+import { MARKT_ANCHORS } from './zone-markt-layout.js';
 // Zonen der Ankerplätze; Mischung pro Tag über ZONE_MIX (Anteile, nur Zonen mit vorhandenen Plätzen zählen)
 export const ZONES = ['strand', 'dorf', 'markt'];
 export const ZONE_MIX = { strand: 4, dorf: 2, markt: 2 };
@@ -294,6 +295,8 @@ export const ANCHORS = [
   { zone: 'dorf', id: 'dorf_hunde', x: 7.5, z: -50, r: 1.2, activity: 'fotografiert', blick: Math.PI },
   { zone: 'dorf', id: 'dorf_ost', x: 26, z: -35.5, r: 1.2, activity: 'schaut', blick: -Math.PI / 2 },
   { zone: 'dorf', id: 'dorf_nord', x: 8, z: -62, r: 1.2, activity: 'steht', blick: Math.PI },
+  // Markt + Posten: Plätze aus dem Markt-Layout
+  ...MARKT_ANCHORS,
 ];
 export const ZIVI_MIN_DIST = 8;
 const dist2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -362,4 +365,39 @@ export function zoneMix(pos, defs = {}, { strandMin = 0.2, heckeZ = -24, fade = 
     out[name] = 1 - clamp01(Math.hypot(pos.x - z.x, pos.z - z.z) / z.r);
   }
   return out;
+}
+
+// ---------- Streife P1: Wegfolgen auf einer Polylinie (hin und zurück, Pause an den Enden) + Sichtkegel ----------
+export const PATROL_SPEED = 2.2;
+export const PATROL_WAIT = 2.5;
+// state: { x, z, yaw, idx (Ziel-Index), dir (+1/−1), wait, phase, moving }
+export function patrolStart(route) {
+  const p = route[0];
+  return { x: p.x, z: p.z, yaw: 0, idx: 1, dir: 1, wait: 0, phase: 0, moving: false };
+}
+export function patrolStep(st, route, dt, { speed = PATROL_SPEED, wait = PATROL_WAIT, arrive = 0.25 } = {}) {
+  if (!route || route.length < 2) return { ...st, moving: false };
+  if (st.wait > 0) return { ...st, wait: Math.max(0, st.wait - dt), moving: false };
+  const idx = Math.max(0, Math.min(route.length - 1, st.idx));
+  const t = route[idx];
+  const dx = t.x - st.x, dz = t.z - st.z, d = Math.hypot(dx, dz);
+  if (d <= arrive) {
+    // Wegpunkt erreicht: weiter, an den Enden umkehren und kurz warten
+    let dir = st.dir, next = idx + dir;
+    let w = 0;
+    if (next < 0 || next >= route.length) { dir = -dir; next = idx + dir; w = wait; }
+    return { ...st, x: t.x, z: t.z, idx: next, dir, wait: w, moving: false };
+  }
+  const step = Math.min(d, speed * dt);
+  return { ...st, x: st.x + (dx / d) * step, z: st.z + (dz / d) * step, yaw: Math.atan2(dx, dz), phase: (st.phase || 0) + step * (Math.PI * 2 / 1.6), moving: true };
+}
+// Sichtkegel: Ziel innerhalb range und innerhalb ±fov/2 um die Blickrichtung (yaw, 0 = +z)
+export function seesTarget(guard, target, { range = 12, fov = 2.1 } = {}) {
+  const dx = target.x - guard.x, dz = target.z - guard.z;
+  const d = Math.hypot(dx, dz);
+  if (d > range) return false;
+  if (d < 1e-6) return true;
+  const ang = Math.atan2(dx, dz) - guard.yaw;
+  const rel = Math.atan2(Math.sin(ang), Math.cos(ang));
+  return Math.abs(rel) <= fov / 2;
 }

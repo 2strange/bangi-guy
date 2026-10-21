@@ -56,15 +56,8 @@ export function buildWorld() {
   }
 
   // Hügel im Nordwesten (Kiffer-Kuppe, nur Kulisse) + Kokoshain-Hügel im Nordosten
-  // Hügel im Nordwesten = Mentor-Hügel (eigenes Modul, siehe unten); Kokoshain-Hügel im Nordosten bleibt Kulisse
-  const hillGeo = new THREE.SphereGeometry(1, 28, 16);
-  hillGeo.scale(44, 14, 30);
-  const hill2Geo = hillGeo.clone();
-  hill2Geo.scale(0.6, 0.5, 0.7); // vor toonMesh skalieren, sonst passt die Kontur-Hülle nicht
-  const hill2 = toonMesh(hill2Geo, 0x4cae3c, { outline: 0.12 });
-  hill2.position.set(88, -2, -62); // Kokoshain-Hügel weiter nach Osten, der Markt braucht den Platz
-  hill2.userData.noFade = true;
-  g.add(hill2);
+  // Hügel im Nordwesten = Mentor-Hügel (eigenes Modul, siehe unten). Der frühere Kokoshain-Kulissenhügel im
+  // Nordosten ist weg: sein flacher Rand lag als Ring/Streifen unter dem Markt (Platz gehört jetzt Markt + Pier-Ausgang).
   // Mentor-Hütte oben auf dem Hügel
 
   // Dorf „Krummgassen“ nördlich der Hecke (eigenes Modul): Häuser, Gassen, Wäscheleinen, Collider inkl. Heckenrand

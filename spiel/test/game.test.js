@@ -9,7 +9,7 @@ import {
   normalizeStimmen, stimmeSlug, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, applyMentorAktion, mentorBesucht,
   POSTEN_DEFAULT, inPostenSicht, buyMango, giveMango, mangoAbgegeben, tafelText, MANGO_PREIS,
-  normalizePosten7, mangoText, pongText, tafelLines, DEFAULT_POSTEN7,
+  normalizePosten7, mangoText, pongText, tafelLines, DEFAULT_POSTEN7, patrolSpotted,
 } from '../js/game.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -552,4 +552,13 @@ test('chooseOption reicht Posten-Optionen an sell durch (doppelt Heat in Sicht)'
   assert.equal(r.state.heat, 2);
   const far = chooseOption(initialState(), d, { ...zivi, heat: 1 }, 'Verkaufen', 0, { posten, pos: { x: 50, z: 50 } });
   assert.equal(far.state.heat, 1);
+});
+
+test('patrolSpotted: nur beim Verkauf in Sicht Heat +1, gedeckelt bis zur Verhaftung', () => {
+  const s = { ...initialState(), heat: 1 };
+  assert.equal(patrolSpotted(s).result, 'gesehen'); assert.equal(patrolSpotted(s).state.heat, 1);
+  const e = patrolSpotted(s, { selling: true });
+  assert.equal(e.result, 'erwischt'); assert.equal(e.state.heat, 2); assert.equal(e.heatPlus, 1);
+  const v = patrolSpotted({ ...s, heat: 2 }, { selling: true });
+  assert.equal(v.state.heat, MAX_HEAT); assert.ok(isArrested(v.state));
 });

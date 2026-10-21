@@ -539,3 +539,10 @@ export function tafelLines(p7, state) {
   const tage = isArrested(state) ? 0 : (state.tageOhneVorfall || 0);
   return [fillText(P.tafel.zeile1, { tage }), P.tafel.zeile2[Math.max(0, Math.min(MAX_HEAT, state.heat))]];
 }
+
+// ---------- Streife: sieht den Spieler. Beim Verkauf in Sicht: Heat +1 (gedeckelt) ----------
+export function patrolSpotted(state, { selling = false } = {}) {
+  if (!selling) return { state, result: 'gesehen' };
+  const heat = Math.min(MAX_HEAT, state.heat + 1);
+  return { state: { ...state, heat, verhaftet: heat >= MAX_HEAT }, result: 'erwischt', heatPlus: heat - state.heat };
+}
