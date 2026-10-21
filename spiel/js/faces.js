@@ -293,7 +293,7 @@ function stubble(ctx, m, seed = 9) {
 
 // Vollbart: Blob über die untere Gesichtshälfte, hautfarbenes Loch um den Mund, Schnauzer obendrauf
 function beard(ctx, m, skin, color, big) {
-  ctx.fillStyle = color; ctx.strokeStyle = INK; ctx.lineWidth = 14; ctx.lineJoin = 'round';
+  ctx.fillStyle = color; ctx.strokeStyle = INK; ctx.lineWidth = 20; ctx.lineJoin = 'round'; // deckend, dicke Kontur
   ctx.beginPath();
   ctx.moveTo(150, 360); ctx.quadraticCurveTo(170, 700, 260, 860);
   ctx.quadraticCurveTo(380, 1010, 512, 990); ctx.quadraticCurveTo(644, 1010, 764, 860);
@@ -303,8 +303,9 @@ function beard(ctx, m, skin, color, big) {
   ctx.closePath(); ctx.fill(); ctx.stroke();
   // Haarstriche im Bart, sonst wirkt ein heller Bart wie ein grauer Schleier überm Gesicht
   for (let i = 0; i < 7; i++) { const x = 300 + i * 70, y = 700 + (i % 2) * 40; strokePath(ctx, [[x, y], [x - 10, y + 110]], 6, 'rgba(17,17,17,0.45)'); }
+  // Loch um den Mund nur so groß wie der Mund selbst — ein großes Hautfeld im Bart sah aus, als schiene die Haut durch
   ctx.fillStyle = skin;
-  ctx.beginPath(); ctx.ellipse(m.x, m.y + (big ? 40 : 14), m.w * (big ? 0.62 : 0.54), big ? 170 : 84, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(m.x, m.y + (big ? 30 : 10), m.w * (big ? 0.46 : 0.42), big ? 86 : 60, 0, 0, Math.PI * 2); ctx.fill();
   mustache(ctx, m, color);
 }
 function mustache(ctx, m, color) {
