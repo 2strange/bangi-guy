@@ -278,7 +278,7 @@ function applyKunde(k) {
   const parts = k.group.userData.parts;
   if (!k.npc.moving) {
     // steht am Platz: Tätigkeits-Pose aus figures.js (einmal gesetzt), nur der Kopf folgt dem Spieler
-    if (!k.group.userData.pose) {
+    if (!k.group.userData.pose && !k.group.userData.inspectPose) {
       const { offsetY } = figurePose(k.group, POSE_NAME(k.anchor));
       holdPose(k.group, POSE_NAME(k.anchor)); // Surfbrett in den Händen oder im Sand
       k.group.userData.poseOffset = offsetY;
@@ -937,13 +937,24 @@ function morgen() {
 // Kamera-Abstand und Blickhöhe wachsen mit der Statur des Kunden (Figuren sind ±15 % groß)
 function inspectOpts(k) {
   const sc = k.group.scale.x || 1;
-  return { dist: 5.4 * sc, height: 1.8 * sc, targetY: 1.4 * sc };
+  return { dist: 5.4 * sc, height: 1.95 * sc, targetY: 1.55 * sc }; // Blick etwas höher: Stirn (Mützen-Streifen) bleibt im Bild
+}
+// Beim Hinschauen sollen Hände nicht vor dem Gesicht sein (Foto, Handy, Hand über den Augen): solange neutral stehen, danach zurück in die Tätigkeit
+const HAENDE_VORM_GESICHT = ['foto', 'handy', 'meer', 'winken'];
+function inspectPoseAn(k) {
+  if (!k || !HAENDE_VORM_GESICHT.includes(k.group.userData.pose)) return;
+  figurePose(k.group, 'stehen'); holdPose(k.group, 'stehen');
+  k.group.userData.inspectPose = true; k.group.userData.poseOffset = 0; k.group.position.y = 0;
+}
+function inspectPoseAus(k) {
+  if (!k?.group.userData.inspectPose) return;
+  k.group.userData.inspectPose = false; k.group.userData.pose = null; // applyKunde setzt die Tätigkeits-Pose wieder
 }
 function toggleInspect() {
   if (mode === 'inspect') endInspect();
-  else if (nearK) { talking = nearK; mode = 'inspect'; markHint('look'); sfx('look'); showInspectHint(); if (nearK.def.zivi) bark(nearK, 'zivi_verdaechtig', 3.5); }
+  else if (nearK) { talking = nearK; mode = 'inspect'; inspectPoseAn(nearK); markHint('look'); sfx('look'); showInspectHint(); if (nearK.def.zivi) bark(nearK, 'zivi_verdaechtig', 3.5); }
 }
-function endInspect() { mode = 'free'; markHint('end'); ui.showPrompt(null); stopBabble(); tutorialFire('nach_hinschauen'); }
+function endInspect() { mode = 'free'; inspectPoseAus(talking); markHint('end'); ui.showPrompt(null); stopBabble(); tutorialFire('nach_hinschauen'); }
 // Inspect-Ansicht bleibt frei: Beenden-Hinweis als kleine Pille am Rand, groß nur beim ersten Mal
 function showInspectHint() {
   if (!hintSeen('end')) ui.showPrompt(TOUCH ? 'Nochmal Schauen oder weggehen: fertig' : 'F oder Esc: fertig geschaut — weggehen geht auch', { small: true });
@@ -1395,6 +1406,7 @@ function setupScene() {
   k.look = 0;
   applyKunde(k);
   talking = k;
+  if (SCENE === 'inspect') inspectPoseAn(k);
   if (SCENE === 'dialog') {
     dialog = advanceDialog(startDialog(k.def, game, 0, texte), texte);
     selected = 0;

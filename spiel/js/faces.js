@@ -396,10 +396,13 @@ function paint(kind, mood, o) {
   const lidColor = K.lid ?? skin;
 
   const [c, ctx] = makeCanvas();
-  if (o.stirnstreifen) { // blasser Streifen auf der Stirn, wo sonst die Dienstmütze sitzt (Zivi-Tell)
-    ctx.fillStyle = 'rgba(255, 236, 214, 0.85)';
-    ctx.beginPath(); ctx.moveTo(130, 70); ctx.quadraticCurveTo(512, 20, 894, 70); ctx.lineTo(884, 185); ctx.quadraticCurveTo(512, 150, 140, 185); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = 'rgba(120, 60, 40, 0.35)'; ctx.lineWidth = 5; ctx.stroke();
+  if (o.stirnstreifen) { // blasser Streifen über die ganze Stirn wie ein Mützenrand, wo sonst die Dienstmütze sitzt (Zivi-Tell):
+    // deutlich heller als die Haut, klare Kante mit dunklem Rand, unten bis knapp über die Brauen (bleibt auch bei angeschnittener Stirn im Bild)
+    const band = () => { ctx.beginPath(); ctx.moveTo(60, 40); ctx.quadraticCurveTo(512, -10, 964, 40); ctx.lineTo(948, 215); ctx.quadraticCurveTo(512, 165, 76, 215); ctx.closePath(); };
+    ctx.fillStyle = '#fff0dc'; band(); ctx.fill();
+    ctx.strokeStyle = 'rgba(90, 40, 30, 0.7)'; ctx.lineWidth = 9; ctx.lineJoin = 'round'; band(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 4; // heller Saum innen, damit die Kante auch gegen hellen Sonnenbrand steht
+    ctx.beginPath(); ctx.moveTo(90, 200); ctx.quadraticCurveTo(512, 152, 934, 200); ctx.stroke();
   }
   if (K.blush) {
     ctx.fillStyle = 'rgba(255, 110, 120, 0.55)';
