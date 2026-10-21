@@ -35,6 +35,8 @@
       <button id="stopall">⏹ Alles aus</button>
       <button id="mood-tag">☀️ Tag</button>
       <button id="mood-abend">🌙 Abend</button>
+      <button id="wetter-klar">🌤 Klar</button>
+      <button id="wetter-regen">🌧 Regen</button>
       <span id="bpm" class="small"></span>
     </div>
   </div>
@@ -106,6 +108,8 @@
     $('mute').classList.toggle('on', A.isMuted());
     $('mood-tag').classList.toggle('on', A.getMood() === 'tag');
     $('mood-abend').classList.toggle('on', A.getMood() === 'abend');
+    $('wetter-klar').classList.toggle('on', A.ambience.getWetter() === 'klar');
+    $('wetter-regen').classList.toggle('on', A.ambience.getWetter() === 'regen');
     $('bpm').textContent = `${A.getMood()} · ${A.music.getBpm().toFixed(1)} BPM`;
     $('mus').classList.toggle('on', A.music.isPlaying());
     $('amb').classList.toggle('on', A.ambience.isPlaying());
@@ -132,6 +136,8 @@
   $('stopall').onclick = () => { A.ambience.stop(); A.music.stop(); A.stopBabble(); };
   $('mood-tag').onclick = () => A.setMood('tag');
   $('mood-abend').onclick = () => A.setMood('abend');
+  $('wetter-klar').onclick = () => A.ambience.setWetter('klar');
+  $('wetter-regen').onclick = () => A.ambience.setWetter('regen');
 
   // Stimmen: aus data/stimmen.json, sonst Default + Stil-Liste
   await A.loadStimmen();

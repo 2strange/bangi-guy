@@ -28,7 +28,7 @@ export const EXTRAS = ['socken', 'preisschild', 'stirnband', 'halstuch_hund', 'f
 export const SPAWNS = ['K1', 'K2', 'K3', 'K4', 'K5', 'K6'];
 
 export function initialState() {
-  return { geld: 0, ware: START_WARE, heat: 0, tag: 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, mangos: 0, tageOhneVorfall: 0, verkaeufeHeute: [], zivisAbgelehntHeute: 0, mangosHeute: 0, finale: null, woche: 1 };
+  return { geld: 0, ware: START_WARE, heat: 0, tag: 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, mangos: 0, tageOhneVorfall: 0, verkaeufeHeute: [], zivisAbgelehntHeute: 0, mangosHeute: 0, finale: null, woche: 1, seed: 1, ereignis: null };
 }
 
 // ---------- Kundschaft: fehlende/kaputte Felder robust auffüllen ----------
@@ -93,7 +93,8 @@ export function pickLine(list, idx = 0) {
 export function kundeStatus(state, id) { return state.status[id] || 'neutral'; }
 
 export function sell(state, kunde, lineIdx = 0, { beschlagnahmt = ZIVI_BESCHLAGNAHMT, posten = null, pos = null, preis = null } = {}) {
-  const zahlt = Number.isFinite(preis) ? preis : kunde.zahlt; // Verhandlung kann den Preis anheben
+  const faktor = Number.isFinite(state.ereignis?.wirkung?.preis_faktor) ? state.ereignis.wirkung.preis_faktor : 1; // Tagesereignis (Markttag, Flaute)
+  const zahlt = Math.round((Number.isFinite(preis) ? preis : kunde.zahlt) * faktor); // Verhandlung kann den Preis anheben
   if (state.verhaftet) return { state, result: 'verhaftet', text: '' };
   if (kundeStatus(state, kunde.id) !== 'neutral') return { state, result: 'schon_erledigt', text: '' };
   if (state.ware <= 0) return { state, result: 'keine_ware', text: pickLine(state.texte?.ausverkauft_kunde, lineIdx) || 'Alles leer, Mann. Morgen wieder.' };
@@ -131,15 +132,16 @@ export const streifeP2Aktiv = (state) => (state.tag || 1) >= STREIFE_P2_AB_TAG;
 
 // Verhaftung mild: Tag verloren, Ware weg, Geld bleibt, alle Kunden wieder neutral
 export const NACHT_ABKUEHLUNG = { bar: 2, haengematte: 1 };
-export function newDay(state, { nacht = 'bar', modifikator = null } = {}) {
+export function newDay(state, { nacht = 'bar', modifikator = null, ereignis = null } = {}) {
   // Tafel „Tage ohne Vorfall“: zählt hoch, springt bei einer Verhaftung auf 0
   const tageOhneVorfall = isArrested(state) ? 0 : (state.tageOhneVorfall || 0) + 1;
   // Über Nacht kühlt der Heat: Bar −2, Hängematte −1; nach einer Verhaftung ist er ohnehin abgegolten (0)
   const gekuehlt = isArrested(state) ? 0 : Math.max(0, state.heat - (NACHT_ABKUEHLUNG[nacht] ?? NACHT_ABKUEHLUNG.bar));
-  const heat = Math.min(MAX_HEAT - 1, Math.max(gekuehlt, Number.isFinite(modifikator?.heat_start) ? modifikator.heat_start : 0)); // Tagesmodifikator „Razzia“: Heat startet höher
+  const w = ereignis?.wirkung || {};
+  const heat = Math.min(MAX_HEAT - 1, Math.max(0, Math.max(gekuehlt, Number.isFinite(modifikator?.heat_start) ? modifikator.heat_start : 0) + (w.heat || 0))); // Tagesmodifikator „Razzia“ + Ereignis
   // Restware bleibt über Nacht in der Tasche (Nachschub gibt es morgens beim Mentor obendrauf); nach einer Verhaftung ist sie weg
-  const ware = isArrested(state) ? 0 : state.ware;
-  return { ...state, geld: state.geld, ware, heat, tag: state.tag + 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, tageOhneVorfall, verkaeufeHeute: [], zivisAbgelehntHeute: 0, mangosHeute: 0 };
+  const ware = Math.max(0, Math.min(MAX_WARE, (isArrested(state) ? 0 : state.ware) + (w.ware || 0))); // Ereignis: Möwe klaut / Geschenk
+  return { ...state, geld: state.geld, ware, heat, ereignis: ereignis || null, tag: state.tag + 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, tageOhneVorfall, verkaeufeHeute: [], zivisAbgelehntHeute: 0, mangosHeute: 0 };
 }
 
 // Heat als Text/Icons für das HUD
@@ -441,6 +443,50 @@ export function hudZiel(state, woche, lineIdx = 0) {
   return { titel: tz.titel, ziel: tz.ziel, fortschritt, erreicht: f.every((e) => e.ok), woche: fillText(pickLine(woche.zwischenstand, lineIdx), st), ...st };
 }
 
+// ---------- Tages-Ereignisse (data/texte.json → ereignisse[]): pro Tag 0–1, deterministisch aus Seed/Woche/Tag ----------
+export const EREIGNIS_WIRKUNGEN = ['kunden_faktor', 'preis_faktor', 'heat', 'ware', 'zivi_extra'];
+export const EREIGNIS_CHANCE = 0.6;
+export const DEFAULT_EREIGNISSE = [
+  { id: 'regen', titel: 'Regenschauer', ankuendigung: 'Es riecht nach Regen. Heute kommt nur, wer muss.', hinweis: 'Regenschauer: weniger Leute am Strand.', abends: 'Nass war’s. Trocken wird’s.', wirkung: { kunden_faktor: 0.6 }, gewicht: 2, ab_tag: 2, requisite: 'wolke', sound: 'regen' },
+  { id: 'kreuzfahrt', titel: 'Kreuzfahrtschiff', ankuendigung: 'Ein Schiff am Horizont. Die zahlen alles, die haben Urlaub.', hinweis: 'Kreuzfahrtschiff: mehr Gäste, bessere Preise.', abends: 'Das Schiff ist weg. Das Geld nicht.', wirkung: { kunden_faktor: 1.4, preis_faktor: 1.2 }, gewicht: 2, ab_tag: 2, requisite: 'schiff', sound: 'horn' },
+  { id: 'moewe', titel: 'Die Möwe', ankuendigung: 'Die Möwe hat einen Beutel. Frag nicht, wie.', hinweis: 'Die Möwe hat sich einen Beutel geholt.', abends: null, wirkung: { ware: -1 }, gewicht: 1, ab_tag: 2, requisite: 'moewe', sound: 'moewen' },
+  { id: 'markttag', titel: 'Markttag', ankuendigung: 'Markttag. Alles kostet mehr, auch deins.', hinweis: 'Markttag: alle zahlen mehr.', abends: null, wirkung: { preis_faktor: 1.3 }, gewicht: 1, ab_tag: 2, requisite: null, sound: null },
+  { id: 'razzia_geruecht', titel: 'Gerücht', ankuendigung: 'Pong hat schlecht geschlafen. Heute vorsichtig.', hinweis: 'Gerücht: Pong ist nervös, Heat startet höher.', abends: null, wirkung: { heat: 1 }, gewicht: 1, ab_tag: 3, requisite: null, sound: null },
+];
+export function normalizeEreignisse(json) {
+  const list = json && typeof json === 'object' && Array.isArray(json.ereignisse) && json.ereignisse.length ? json.ereignisse : DEFAULT_EREIGNISSE;
+  const out = list.filter((e) => e && typeof e === 'object' && typeof e.id === 'string' && e.id).map((e) => {
+    const w = e.wirkung && typeof e.wirkung === 'object' ? e.wirkung : {};
+    const wirkung = {};
+    for (const k of EREIGNIS_WIRKUNGEN) if (Number.isFinite(w[k])) wirkung[k] = w[k];
+    return {
+      id: e.id, titel: str(e.titel, e.id), ankuendigung: str(e.ankuendigung, ''), hinweis: str(e.hinweis, str(e.titel, e.id)), abends: str(e.abends, null),
+      wirkung, gewicht: Number.isFinite(e.gewicht) && e.gewicht > 0 ? e.gewicht : 1, ab_tag: Number.isFinite(e.ab_tag) ? Math.max(2, Math.round(e.ab_tag)) : 2,
+      requisite: str(e.requisite, null), sound: str(e.sound, null),
+    };
+  });
+  return out.length ? out : DEFAULT_EREIGNISSE;
+}
+// kleine deterministische Streuung 0..1 aus Seed, Woche, Tag (und Salz)
+export function tagesWuerfel(seed, woche, tag, salz = 0) {
+  let h = Math.imul(seed | 0, 73856093) ^ Math.imul(woche | 0, 19349663) ^ Math.imul(tag | 0, 83492791) ^ Math.imul(salz | 0, 0x9e3779b1);
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b); h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35); h ^= h >>> 16; // Murmur3-Finalizer: gleichmäßig verteilt
+  return (h >>> 0) / 4294967296;
+}
+/** Ereignis des Tages oder null: nie an Tag 1 (und nie, wenn `tutorial` läuft), Chance `chance`, gewichtete Auswahl; gleicher Seed/Woche/Tag → gleiches Ergebnis */
+export function ereignisFuerTag(ereignisse, { seed = 1, woche = 1, tag = 1, tutorial = false, chance = EREIGNIS_CHANCE } = {}) {
+  if (tag < 2 || tutorial) return null;
+  const list = (ereignisse || DEFAULT_EREIGNISSE).filter((e) => tag >= e.ab_tag);
+  if (!list.length) return null;
+  if (tagesWuerfel(seed, woche, tag, 1) >= chance) return null;
+  const total = list.reduce((a, e) => a + e.gewicht, 0);
+  let r = tagesWuerfel(seed, woche, tag, 2) * total;
+  for (const e of list) { r -= e.gewicht; if (r < 0) return e; }
+  return list[list.length - 1];
+}
+export const ereignisKundenFaktor = (ereignis) => (Number.isFinite(ereignis?.wirkung?.kunden_faktor) ? ereignis.wirkung.kunden_faktor : 1);
+export const ereignisZiviExtra = (ereignis) => (Number.isFinite(ereignis?.wirkung?.zivi_extra) ? Math.max(0, Math.round(ereignis.wirkung.zivi_extra)) : 0);
+
 // ---------- Kalibrierung des Wochenziels: was ein guter Spieler in der Woche einnimmt, davon ein Anteil ----------
 export const WOCHENZIEL = { anteil: 0.7, quote: 0.9, kostenProTag: 10, schritt: 50, mittelAnteil: 0.6 }; // kostenProTag = eine Mango (MANGO_PREIS)
 /**
@@ -521,11 +567,11 @@ export function tutorialEvent(tut, T, trigger) {
 
 // ---------- Spielstand: automatisch am Tagesende (Morgenstand des neuen Tages), „Weiter“/„Neues Spiel“ beim Start ----------
 export const SAVE_VERSION = 1;
-export const SAVE_FELDER = ['tag', 'geld', 'ware', 'heat', 'mangos', 'tageOhneVorfall', 'finale', 'woche'];
+export const SAVE_FELDER = ['tag', 'geld', 'ware', 'heat', 'mangos', 'tageOhneVorfall', 'finale', 'woche', 'seed'];
 /** Nur das, was über Nacht zählt: Tag, Kasse, Tasche, Heat, Mangos, Tafel. Tagesinternes (status, verkauftHeute …) ist morgens ohnehin frisch. */
 export function toSave(state) {
   const n = (v, d = 0) => (Number.isFinite(v) ? v : d);
-  return { version: SAVE_VERSION, tag: Math.max(1, Math.round(n(state.tag, 1))), geld: Math.max(0, n(state.geld)), ware: Math.max(0, Math.min(MAX_WARE, n(state.ware))), heat: Math.max(0, Math.min(MAX_HEAT, n(state.heat))), mangos: Math.max(0, n(state.mangos)), tageOhneVorfall: Math.max(0, n(state.tageOhneVorfall)), finale: FINALE_STUFEN.includes(state.finale) ? state.finale : null, woche: Math.max(1, Math.round(n(state.woche, 1))) };
+  return { version: SAVE_VERSION, tag: Math.max(1, Math.round(n(state.tag, 1))), geld: Math.max(0, n(state.geld)), ware: Math.max(0, Math.min(MAX_WARE, n(state.ware))), heat: Math.max(0, Math.min(MAX_HEAT, n(state.heat))), mangos: Math.max(0, n(state.mangos)), tageOhneVorfall: Math.max(0, n(state.tageOhneVorfall)), finale: FINALE_STUFEN.includes(state.finale) ? state.finale : null, woche: Math.max(1, Math.round(n(state.woche, 1))), seed: Math.max(1, Math.round(n(state.seed, 1))) };
 }
 /** Gespeicherter Stand → Spielzustand (auf initialState gelegt); null bei fremder Version, Müll oder Tag 1 ohne Fortschritt. */
 export function fromSave(json) {
@@ -739,6 +785,7 @@ export function mentorSzene(state, sz, lineIdx = 0, { woche = null } = {}) {
         if (state.tag === 1) woche.intro.forEach((t, i) => out.push({ id: `intro:${i}`, text: t, bark }));
         out.push({ id: 'tagesziel', text: tz.mentor, titel: tz.titel, bark });
       }
+      if (state.ereignis?.ankuendigung) out.push({ id: 'ereignis', text: state.ereignis.ankuendigung, titel: state.ereignis.titel, bark });
     } else {
       const list = step.text === '@ankunft' ? S.ankunft : Array.isArray(step.text) ? step.text : [step.text];
       const entry = { id: step.id, text: pickLine(list, lineIdx), bark };
@@ -911,6 +958,7 @@ export function barAbend(state, abend, lineIdx = 0, { woche = null } = {}) {
     { id: 'gruss', wer: 'barkeeper', text: pickLine(A.barkeeper.gruss, lineIdx), bark: 'gruss' },
     { id: 'rueckblick', wer: 'mentor', text: fillText(pickLine(A.mentor[lage], lineIdx), rep), bark: 'abend', lage },
     ...(tz && lage !== 'verhaftet' ? [{ id: 'tagesziel', wer: 'mentor', text: zielErreicht(state, tz) ? tz.geschafft : tz.verfehlt, bark: 'abend' }] : []),
+    ...(state.ereignis?.abends ? [{ id: 'ereignis', wer: 'mentor', text: state.ereignis.abends, bark: 'abend' }] : []),
     ...finale.map((t, i) => ({ id: `finale:${i}`, wer: /^Nong/.test(t) ? 'barkeeper' : 'mentor', text: t, bark: 'abend' })),
     { id: 'letzte_runde', wer: 'barkeeper', text: pickLine(A.barkeeper.letzte_runde, lineIdx), bark: 'letzte_runde' },
     // Nach dem Gespräch fragt Nong „Feierabend?“ — Ja = Bilanz, sonst zurück an den Strand. Nach einer Verhaftung gibt es keine Wahl.

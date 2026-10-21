@@ -252,7 +252,7 @@ export function buildWorld() {
 
   // Snap-/Startpunkte: Spielerposition + Blickrichtung (Kamera steht im Norden → yaw ≈ π schaut zur Kamera)
   const spots = {
-    start: { x: -14, z: 5, yaw: 2.7 }, // etwas östlich: das Bar-Dach ragt sonst unten rechts ins Startbild
+    start: { x: -11, z: 5, yaw: 2.7 }, // östlich der Hängematten-Palme: Bar-Dach und Palmenkrone bleiben aus dem Startbild
     bar: { x: -27, z: 2.5, yaw: 0.4 },
     pier: { x: -37, z: 9, yaw: 0.4 },
     mitte: { x: 6, z: 5, yaw: -2.4 },

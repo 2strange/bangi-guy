@@ -10,6 +10,7 @@
 //   ambience.start() / .stop()      Zonen-Ambience: strand (Brandung + Möwe), markt (Gewirr + Händlerrufe), posten (Funk), pier (Tuk-Tuk-Leerlauf)
 //   ambience.setZone({ strand: 1, markt: 0.3 })   Mischung 0..1 je Zone (+ bar: Klirren, Gemurmel), weich; .ruf() / .funk() sofort
 //   setMood('tag' | 'abend')        Musik (langsamer, kein Kick, Hall, dunkler) + Ambience (Grillen an, Möwen stumm), weich
+//   ambience.setWetter('klar' | 'regen')   Regen-Layer weich ein/aus, Möwen stumm bei Regen
 //   music.start() / .stop() / .setVolume(0..1) / .setEnabled(bool)   Strand-Loop, ~75 BPM
 //   loadStimmen() → stimmeFor(id)   Stimmprofile + Barks aus data/stimmen.json
 //   babble(stimmeOderId, text, { pan }) → Dauer in Sekunden; stopBabble()
@@ -28,6 +29,8 @@ export const VOL = {
   pfeife: 0.45, mango: 0.6, funk: 0.4, tuten: 0.55, tuktuk_abwuergen: 0.5, gaehnen: 0.5,
   ui_oeffnen: 0.35, ui_schliessen: 0.3, ui_umschalten: 0.3, ui_schritt: 0.45,
   ziel: 0.55, morgen: 0.5, woche_gut: 0.6, woche_fail: 0.5, woche_mittel: 0.5,
+  schiffshorn_fern: 0.4, moewe_klaut: 0.5, party: 0.5, stromausfall: 0.45,
+  regen: 0.3,
   // Ambience-Details (relativ zum Ambience-Bus)
   moewe: 0.35, walla: 0.16, ruf: 0.3, funkspruch: 0.45, tuktuk: 0.22, klirren: 0.2, grillen: 0.1,
   frosch: 0.28, wasser: 0.2,
@@ -206,6 +209,10 @@ export const MOODS = {
   abend: { bpm: 66, drums: 0.5, skank: 0.75, bass: 0.9, lead: 0.9, reverb: 0.38, echo: 0.32, tone: 2600 },
 };
 export const normalizeMood = (m) => (MOODS[m] ? m : 'tag');
+export const WETTER = ['klar', 'regen'];
+export const normalizeWetter = (w) => (WETTER.includes(w) ? w : 'klar');
+/** Regentropfen-Ticks: nächster in 0.02–0.12 s (dichter Regen), rein */
+export const nextDropDelay = (r) => 0.02 + r() * 0.1;
 /** Tempo gleitet pro 16tel ein Stück zum Ziel (kein Sprung beim Stimmungswechsel) */
 export const nextBpm = (cur, target) => (Math.abs(target - cur) < 0.05 ? target : cur + (target - cur) * 0.06);
 /** Events eines Taktes (bar ≥ 0, wird modulo BARS gewickelt). Deterministisch. mood: tag | abend */
@@ -621,6 +628,65 @@ const SFX = {
     });
     return 3.2;
   },
+  // --- Tages-Ereignisse ---
+  // Kreuzfahrtschiff am Horizont: sehr tiefes Horn, dumpf (Lowpass 260), lang, danach ein leiseres Echo
+  schiffshorn_fern(t, out) {
+    const lp = filt('lowpass', 260, 1.0); lp.connect(out);
+    [[0, 1], [1.9, 0.45]].forEach(([dt, v]) => {
+      const tt = t + dt;
+      const g = gainEnv(tt, { a: 0.35, peak: 0.6 * v, d: 0.9, hold: 1.2 });
+      g.connect(lp);
+      [[65.4, 1, 'sawtooth'], [98, 0.5, 'sawtooth'], [32.7, 0.6, 'sine'], [66, 0.4, 'square']].forEach(([f, vv, w]) => {
+        const o = osc(w, f, tt); o.frequency.setValueAtTime(f, tt + 1.4); o.frequency.exponentialRampToValueAtTime(f * 0.94, tt + 2.4);
+        const og = ctx.createGain(); og.gain.value = vv; o.connect(og); og.connect(g); o.start(tt); o.stop(tt + 2.6);
+      });
+    });
+    return 4.6;
+  },
+  // Möwe klaut: Gezeter (vier schnelle, hohe, böse Rufe) plus Flattern (Rauschen im 12-Hz-Takt)
+  moewe_klaut(t, out) {
+    for (let i = 0; i < 4; i++) {
+      const tt = t + i * 0.19, f0 = 1500 + i * 120;
+      const o = osc('sawtooth', f0, tt); o.frequency.exponentialRampToValueAtTime(f0 * 1.5, tt + 0.05); o.frequency.exponentialRampToValueAtTime(f0 * 0.9, tt + 0.16);
+      const v = osc('sine', 34, tt); const vg = ctx.createGain(); vg.gain.value = 70; v.connect(vg); vg.connect(o.frequency);
+      const bp = filt('bandpass', 2200, 1.5); const g = gainEnv(tt, { a: 0.01, peak: 0.55, d: 0.1, hold: 0.06 });
+      o.connect(bp); bp.connect(g); g.connect(out); o.start(tt); v.start(tt); stopAt([o, v], tt + 0.25);
+    }
+    const n = noise(); const hp = filt('highpass', 1200, 0.7); const bp = filt('bandpass', 2600, 0.6);
+    const am = ctx.createGain(); am.gain.value = 0.5; const lfo = osc('sine', 12, t); const lg = ctx.createGain(); lg.gain.value = 0.5; lfo.connect(lg); lg.connect(am.gain);
+    const g = gainEnv(t, { a: 0.05, peak: 0.5, d: 0.3, hold: 0.55 });
+    n.connect(hp); hp.connect(bp); bp.connect(am); am.connect(g); g.connect(out); n.start(t); lfo.start(t); stopAt([n, lfo], t + 1.0);
+    return 1.0;
+  },
+  // Party: Tröte („pääp pääääp“, Sägezahn durch Näsel-Formant mit Vibrato) und Konfetti-Rasseln
+  party(t, out) {
+    const bp = filt('bandpass', 950, 2.5); const lp = filt('lowpass', 3200, 0.7); bp.connect(lp); lp.connect(out);
+    [[0, 0.22], [0.3, 0.6]].forEach(([dt, d]) => {
+      const tt = t + dt;
+      const o = osc('sawtooth', 415, tt); o.frequency.exponentialRampToValueAtTime(440, tt + 0.08); o.frequency.exponentialRampToValueAtTime(400, tt + d);
+      const o2 = osc('square', 207, tt); const o2g = ctx.createGain(); o2g.gain.value = 0.3;
+      const v = osc('sine', 7, tt); const vg = ctx.createGain(); vg.gain.value = 10; v.connect(vg); vg.connect(o.frequency);
+      const g = gainEnv(tt, { a: 0.02, peak: 0.55, d: 0.08, hold: d - 0.06 });
+      o.connect(g); o2.connect(o2g); o2g.connect(g); g.connect(bp); o.start(tt); o2.start(tt); v.start(tt); stopAt([o, o2, v], tt + d + 0.1);
+    });
+    for (let i = 0; i < 6; i++) shaker(t + 0.95 + i * 0.07, 0.7 - i * 0.08, out);
+    return 1.6;
+  },
+  // Stromausfall: Netzbrummen mit Neonröhren-Sirren, bricht mit einem Klack ab, Tonhöhe sackt kurz weg
+  stromausfall(t, out) {
+    const cut = t + 1.1;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.5, t + 0.08); g.gain.setValueAtTime(0.5, cut); g.gain.exponentialRampToValueAtTime(0.0001, cut + 0.14);
+    g.connect(out);
+    [[50, 1, 'sine'], [100, 0.5, 'sine'], [150, 0.3, 'triangle']].forEach(([f, v, w]) => {
+      const o = osc(w, f, t); o.frequency.setValueAtTime(f, cut); o.frequency.exponentialRampToValueAtTime(f * 0.5, cut + 0.14);
+      const og = ctx.createGain(); og.gain.value = v; o.connect(og); og.connect(g); o.start(t); o.stop(cut + 0.2);
+    });
+    const buzz = osc('sawtooth', 100, t); const bh = filt('highpass', 2500, 0.7); const bg = ctx.createGain(); bg.gain.value = 0.08;
+    buzz.connect(bh); bh.connect(bg); bg.connect(g); buzz.start(t); buzz.stop(cut + 0.05);
+    const n = noise(); const nb = filt('bandpass', 1800, 2); const ng = gainEnv(cut, { a: 0.001, peak: 0.5, d: 0.03 }); // Klack
+    n.connect(nb); nb.connect(ng); ng.connect(out); n.start(cut); n.stop(cut + 0.05);
+    return 1.35;
+  },
   // Woche so lala: zwei Steel-Drum-Akkorde (Em → D), der zweite bleibt in der Luft hängen, kein Abschluss
   woche_mittel(t, out) {
     const bassNotes = [40, 50];
@@ -923,6 +989,27 @@ function layerReisfeld(out) {
 
 const LAYERS = { strand: layerStrand, markt: layerMarkt, posten: layerPosten, pier: layerPier, bar: layerBar, reisfeld: layerReisfeld };
 let ambMood = 'tag';
+let ambWetter = 'klar';
+// Regen: breites Rauschen (Bandpass 1–4 kHz) mit leichtem Wabern plus einzelne Tropfen-Ticks auf Blättern/Blech
+function layerRegen(out) {
+  const nodes = [], timers = [];
+  const layer = { nodes, timers, weight: 0 };
+  const n = noise(); const hp = filt('highpass', 900, 0.6); const lp = filt('lowpass', 4200, 0.6); const g = ctx.createGain(); g.gain.value = VOL.regen;
+  const l = osc('sine', 0.17, now()); const lg = ctx.createGain(); lg.gain.value = VOL.regen * 0.2; l.connect(lg); lg.connect(g.gain);
+  n.connect(hp); hp.connect(lp); lp.connect(g); g.connect(out); n.start(); l.start(); nodes.push(n, l);
+  const drop = () => {
+    if (!amb) return;
+    if (layer.weight > 0.02 && ready() && !muted) {
+      const t = now() + 0.01, f = 2200 + Math.random() * 3000;
+      const o = osc('sine', f, t); o.frequency.exponentialRampToValueAtTime(f * 0.7, t + 0.02);
+      const dg = gainEnv(t, { a: 0.001, peak: 0.08 + Math.random() * 0.1, d: 0.02 });
+      const p = pan(Math.random() * 1.6 - 0.8); o.connect(dg); dg.connect(p); p.connect(out); o.start(t); o.stop(t + 0.05);
+    }
+    timers[0] = setTimeout(drop, nextDropDelay(Math.random) * 1000);
+  };
+  timers[0] = setTimeout(drop, 200);
+  return layer;
+}
 let zoneWeights = normalizeZones(null);
 export const ambience = {
   start() {
@@ -941,8 +1028,11 @@ export const ambience = {
     // Grillen hängen an der Stimmung, nicht an der Zone
     const gg = ctx.createGain(); gg.gain.value = ambMood === 'abend' ? 1 : 0; gg.connect(fade);
     amb.gains.grillen = gg; amb.layers.grillen = layerGrillen(gg); amb.layers.grillen.weight = gg.gain.value;
+    // Regen hängt am Wetter
+    const rg = ctx.createGain(); rg.gain.value = ambWetter === 'regen' ? 1 : 0; rg.connect(fade);
+    amb.gains.regen = rg; amb.layers.regen = layerRegen(rg); amb.layers.regen.weight = rg.gain.value;
     const scheduleGull = () => {
-      amb.gullTimer = setTimeout(() => { if (!amb) return; if (ready() && !muted && zoneWeights.strand > 0.05 && ambMood !== 'abend') gull(now() + 0.05, amb.gains.strand); scheduleGull(); }, nextGullDelay(Math.random) * 1000);
+      amb.gullTimer = setTimeout(() => { if (!amb) return; if (ready() && !muted && zoneWeights.strand > 0.05 && ambMood !== 'abend' && ambWetter !== 'regen') gull(now() + 0.05, amb.gains.strand); scheduleGull(); }, nextGullDelay(Math.random) * 1000);
     };
     amb.gullTimer = setTimeout(scheduleGull, 2500);
   },
@@ -962,6 +1052,13 @@ export const ambience = {
     return ambMood;
   },
   getMood: () => ambMood,
+  /** Wetter 'klar' | 'regen': Regen-Layer blendet weich (~2 s) ein/aus; bei Regen verstummen die Möwen */
+  setWetter(w) {
+    ambWetter = normalizeWetter(w);
+    if (amb) { const v = ambWetter === 'regen' ? 1 : 0; amb.gains.regen.gain.setTargetAtTime(v, now(), 0.8); amb.layers.regen.weight = v; }
+    return ambWetter;
+  },
+  getWetter: () => ambWetter,
   /** Zonen-Mischung, z. B. { strand: 1, markt: 0.3 }; fehlende Zonen = 0, weich überblendet (~1 s). null = nur Strand. */
   setZone(gewichte) {
     zoneWeights = normalizeZones(gewichte);

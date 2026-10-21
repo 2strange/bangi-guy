@@ -8,6 +8,7 @@ import {
   babble, sfx, setMuted, isMuted, ambience, music, stimmeFor, setStimmen, normalizePan,
   ZONES, normalizeZones, pseudoWords, nextRufDelay, nextFunkDelay, sputterTimes, normalizeSfxOpts,
   MOODS, normalizeMood, nextBpm, setMood, getMood, cricketBurst, nextClinkDelay, frogCall, nextFrogDelay, JINGLES,
+  WETTER, normalizeWetter, nextDropDelay,
 } from '../js/audio.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -206,8 +207,9 @@ test('Helfer: rng deterministisch im Bereich, hash stabil, Möwenpause 8–22 s,
 
 test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Dauer', () => {
   for (const n of ['kasse', 'ablehnen', 'heat', 'verhaftet', 'ausverkauft', 'schritt_sand', 'ui_klick', 'hinschauen', 'pfeife', 'mango', 'funk', 'tuten', 'tuktuk_abwuergen', 'gaehnen',
-    'ui_oeffnen', 'ui_schliessen', 'ui_umschalten', 'ui_schritt', 'ziel', 'morgen', 'woche_gut', 'woche_fail', 'woche_mittel']) assert.ok(SFX_NAMES.includes(n), n);
-  assert.equal(SFX_NAMES.length, 23);
+    'ui_oeffnen', 'ui_schliessen', 'ui_umschalten', 'ui_schritt', 'ziel', 'morgen', 'woche_gut', 'woche_fail', 'woche_mittel',
+    'schiffshorn_fern', 'moewe_klaut', 'party', 'stromausfall']) assert.ok(SFX_NAMES.includes(n), n);
+  assert.equal(SFX_NAMES.length, 27);
   for (const n of SFX_NAMES) assert.equal(sfx(n), 0);
   assert.equal(sfx('gibtsnicht'), 0);
   assert.equal(sfx('tuktuk_abwuergen', { gain: 0.5, pan: -0.3 }), 0, 'Optionen ohne Audio: no-op');
@@ -229,6 +231,12 @@ test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Daue
   assert.equal(setMood('abend'), 'abend'); assert.equal(getMood(), 'abend'); assert.equal(music.getMood(), 'abend'); assert.equal(ambience.getMood(), 'abend');
   assert.equal(music.getBpm(), MOODS.abend.bpm);
   assert.equal(setMood('nacht'), 'tag'); assert.equal(getMood(), 'tag');
+  // Wetter ohne Audio: gemerkt, Unsinn → klar
+  assert.deepEqual(WETTER, ['klar', 'regen']);
+  assert.equal(normalizeWetter('regen'), 'regen'); assert.equal(normalizeWetter('schnee'), 'klar'); assert.equal(normalizeWetter(undefined), 'klar');
+  assert.equal(ambience.setWetter('regen'), 'regen'); assert.equal(ambience.getWetter(), 'regen');
+  assert.equal(ambience.setWetter('hagel'), 'klar'); assert.equal(ambience.getWetter(), 'klar');
+  assert.equal(nextDropDelay(() => 0), 0.02); close(nextDropDelay(() => 1), 0.12);
   ambience.setZone(null);
   setMuted(true); assert.equal(isMuted(), true); setMuted(false); assert.equal(isMuted(), false);
   const d = babble('zivi_polo', 'Nice shoes. Where did you get them?');

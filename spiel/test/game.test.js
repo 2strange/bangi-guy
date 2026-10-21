@@ -867,3 +867,46 @@ test('Neue Woche und Finale-Karte: Start auf Tag 1 mit Wochenzähler +1; bei fai
   assert.equal(fromSave(toSave(n)).woche, 2); assert.equal(fromSave(toSave({ ...s, woche: 'x' })).woche, 1);
   assert.equal(nT(null).hud.tag, 'Tag'); assert.equal(nT({ ui: { hud: { tag: 'Day' } } }).hud.tag, 'Day');
 });
+
+import { normalizeEreignisse, ereignisFuerTag, tagesWuerfel, ereignisKundenFaktor, ereignisZiviExtra, DEFAULT_EREIGNISSE, EREIGNIS_CHANCE } from '../js/game.js';
+test('Ereignisse: deterministisch je Seed/Woche/Tag, nie Tag 1 oder Tutorial, gewichtet, ca. 60 % der Tage; Normalisierung robust', () => {
+  const E = normalizeEreignisse({ ereignisse: [
+    { id: 'a', titel: 'A', ankuendigung: 'A!', wirkung: { kunden_faktor: 0.5, quatsch: 9, heat: '1' }, gewicht: 3 },
+    { id: 'b', titel: 'B', wirkung: { ware: -1 }, ab_tag: 1 }, { id: '', titel: 'kaputt' }, { titel: 'ohne id' },
+  ] });
+  assert.deepEqual(E.map((e) => e.id), ['a', 'b']); assert.deepEqual(E[0].wirkung, { kunden_faktor: 0.5 }); assert.equal(E[0].gewicht, 3);
+  assert.equal(E[1].ab_tag, 2, 'nie vor Tag 2'); assert.equal(E[1].hinweis, 'B', 'Hinweis fällt auf den Titel zurück'); assert.equal(E[1].abends, null);
+  assert.deepEqual(normalizeEreignisse(null), normalizeEreignisse({ ereignisse: DEFAULT_EREIGNISSE })); assert.deepEqual(normalizeEreignisse({ ereignisse: [{ id: '' }] }).map((e) => e.id), DEFAULT_EREIGNISSE.map((e) => e.id));
+  assert.equal(ereignisFuerTag(E, { seed: 7, woche: 1, tag: 1 }), null, 'Tag 1 nie');
+  assert.equal(ereignisFuerTag(E, { seed: 7, woche: 1, tag: 3, tutorial: true }), null, 'Tutorial-Tag nie');
+  const a = ereignisFuerTag(E, { seed: 7, woche: 1, tag: 3 }), b = ereignisFuerTag(E, { seed: 7, woche: 1, tag: 3 });
+  assert.deepEqual(a, b, 'deterministisch');
+  // über viele Tage/Seeds: Trefferquote nahe der Chance, Gewichte spürbar (a dreimal so oft wie b)
+  let hits = 0, na = 0, nb = 0, N = 0;
+  for (let seed = 1; seed <= 60; seed++) for (let tag = 2; tag <= 8; tag++) { N++; const e = ereignisFuerTag(E, { seed, woche: 1, tag }); if (e) { hits++; if (e.id === 'a') na++; else nb++; } }
+  assert.ok(Math.abs(hits / N - EREIGNIS_CHANCE) < 0.08, `Quote ${(hits / N).toFixed(2)}`);
+  assert.ok(na > nb * 2, `Gewichte: a ${na}, b ${nb}`);
+  assert.equal(ereignisFuerTag(E, { seed: 7, woche: 1, tag: 3, chance: 0 }), null); assert.ok(ereignisFuerTag(E, { seed: 7, woche: 1, tag: 3, chance: 1 }));
+  assert.notEqual(tagesWuerfel(1, 1, 2), tagesWuerfel(1, 2, 2), 'andere Woche, anderer Wurf');
+  assert.ok(tagesWuerfel(5, 1, 3) >= 0 && tagesWuerfel(5, 1, 3) < 1);
+  assert.equal(ereignisKundenFaktor(E[0]), 0.5); assert.equal(ereignisKundenFaktor(null), 1); assert.equal(ereignisZiviExtra({ wirkung: { zivi_extra: 1.4 } }), 1); assert.equal(ereignisZiviExtra(E[1]), 0);
+});
+test('Ereignis-Wirkung: Heat/Ware am Morgen, Preisfaktor beim Verkauf, Mentor kündigt an, Bar kommentiert abends; Spielstand trägt den Seed', () => {
+  const E = normalizeEreignisse(null);
+  const moewe = E.find((e) => e.id === 'moewe'), markt = E.find((e) => e.id === 'markttag'), geruecht = E.find((e) => e.id === 'razzia_geruecht'), regen = E.find((e) => e.id === 'regen');
+  const s = { ...initialState(), ware: 3, heat: 0 };
+  assert.equal(newDay(s, { ereignis: moewe }).ware, 2, 'Möwe klaut einen Beutel'); assert.equal(newDay({ ...s, ware: 0 }, { ereignis: moewe }).ware, 0);
+  assert.equal(newDay(s, { ereignis: geruecht }).heat, 1); assert.equal(newDay({ ...s, heat: 2 }, { nacht: 'haengematte', ereignis: geruecht }).heat, 2, 'Nachtkühlung zuerst, dann +1');
+  assert.equal(newDay(s, { modifikator: { heat_start: 2 }, ereignis: geruecht }).heat, MAX_HEAT - 1, 'nie direkt verhaftet');
+  const m = newDay(s, { ereignis: markt });
+  assert.equal(m.ereignis.id, 'markttag'); assert.equal(sell(m, schluffi).state.geld, 26, '20 × 1,3 = 26');
+  assert.equal(sell(newDay(s), schluffi).state.geld, 20, 'ohne Ereignis normaler Preis');
+  assert.equal(sell(m, { ...schluffi, id: 'x' }, 0, { preis: 30 }).state.geld, 39, 'Verhandlungspreis × Faktor');
+  const r = newDay(s, { ereignis: regen });
+  assert.ok(mS({ ...r, ware: 0 }, SZ, 0, { woche: normalizeWoche(null) }).some((e) => e.id === 'ereignis' && e.text === regen.ankuendigung), 'Mentor kündigt an');
+  assert.ok(!mS({ ...newDay(s), ware: 0 }, SZ, 0).some((e) => e.id === 'ereignis'));
+  assert.ok(bA(r, DEFAULT_ABEND, 0).some((e) => e.id === 'ereignis' && e.text === regen.abends), 'abends an der Bar');
+  assert.ok(!bA(m, DEFAULT_ABEND, 0).some((e) => e.id === 'ereignis'), 'ohne abends-Satz nichts');
+  assert.equal(fromSave(toSave({ ...s, seed: 4242 })).seed, 4242); assert.equal(fromSave(toSave({ ...s, seed: 'x' })).seed, 1);
+  assert.equal(fromSave(toSave(r)).ereignis, null, 'Ereignis ist tagesintern, wird morgens neu gewürfelt');
+});

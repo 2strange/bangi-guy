@@ -22,6 +22,7 @@ import {
   mergeTexte, mergeKundenKatalog, normalizeOptionen, toSave, fromSave, hatFortschritt, fillText,
   normalizeTutorial, tutorialStart, tutorialEvent, tutorialSkip,
   normalizeWoche, tagesziel, tagModifikator, hudZiel, finaleStufe, KUNDEN_PRO_TAG, kalibriereWoche, neueWoche, finaleKarte,
+  normalizeEreignisse, ereignisFuerTag, ereignisKundenFaktor, ereignisZiviExtra,
   normalizeStimmen, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
   normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
@@ -99,7 +100,8 @@ let camYaw = DEFAULT_CAM_YAW + (CY ? parseFloat(CY) * Math.PI / 180 : 0);
 let cam = { x: state.x, y: CAM_OFFSET.up, z: state.z - CAM_OFFSET.back, tx: state.x, ty: CAM_OFFSET.targetY, tz: state.z };
 let clickTarget = null;
 
-let game = initialState();
+const neuerSeed = () => 1 + Math.floor(Math.random() * 999983); // Spielstand-Seed: Tages-Ereignisse sind damit je Spiel verschieden, aber reproduzierbar
+let game = { ...initialState(), seed: neuerSeed() };
 let mode = 'free';          // free | dialog | inspect | arrest
 let dialog = null;          // aus game.js
 let selected = 0;           // gewählte Option in der Sprechblase
@@ -173,6 +175,7 @@ async function fetchJson(url) { try { const res = await fetch(url, { cache: 'no-
 let texte = normalizeTexte(null);
 let abendTexte = normalizeAbend(null);
 let tutorialTexte = normalizeTutorial(null);
+let ereignisse = normalizeEreignisse(null); // Tages-Ereignisse (texte.json → ereignisse[])
 let woche = normalizeWoche(null); // Wochenbogen: Tagesziele + Finale (texte.json → woche{}), Ziel kalibriert am Kundenkatalog
 let wocheRoh = woche;
 function applyWoche() {
@@ -227,7 +230,8 @@ function clearKunden() {
 // Kunden für den aktuellen Tag aufstellen: 7 Stück, die Zivis rotieren pro Tag
 function spawnKunden(day = 1) {
   clearKunden();
-  const list = pickKunden(katalog, KUNDEN_PRO_TAG * (tagModifikator(woche, day).kunden_faktor || 1), 2, day); // „Großer Markt“: doppelt so viele
+  // „Großer Markt“: doppelt so viele; Ereignisse (Regen, Kreuzfahrt) skalieren mit, ein Zivi extra bei zivi_extra
+  const list = pickKunden(katalog, Math.max(1, Math.round(KUNDEN_PRO_TAG * (tagModifikator(woche, day).kunden_faktor || 1) * ereignisKundenFaktor(game.ereignis))), 2 + ereignisZiviExtra(game.ereignis), day);
   const outfits = assignOutfits(list, day); // keine Doppel-Outfits pro Tag
   const anchors = assignAnchors(list, ANCHORS, { day }); // feste Plätze über alle Zonen (Markt-Plätze stecken in ANCHORS), Zivis mit Abstand
   const seen = {};
@@ -290,6 +294,7 @@ async function loadTexte() {
   posten7 = normalizePosten7(json);
   abendTexte = normalizeAbend(json);
   tutorialTexte = normalizeTutorial(json);
+  ereignisse = normalizeEreignisse(json);
   wocheRoh = normalizeWoche(json); applyWoche();
   game = { ...game, texte };
   refreshHud();
@@ -686,7 +691,7 @@ function startChoice(i) {
     spawnKunden(game.tag);
     for (const s of streifen) s.patrol = { ...patrolStart(s.route), mode: 'patrol' };
     tagesuhr = initialClock(); applyTageszeit(); placeMentor(false);
-  } else { clearSave(); beginTutorial(); }
+  } else { clearSave(); game = { ...game, seed: neuerSeed() }; beginTutorial(); }
   refreshHud();
   mode = 'free';
 }
@@ -858,14 +863,22 @@ function startNeueWoche() {
   morgen();
 }
 function startNewDay() {
-  game = newDay(game, { nacht: nachtArt, modifikator: tagModifikator(woche, game.tag + 1) });
+  // Ereignis des neuen Tages: deterministisch aus Seed/Woche/Tag, nie Tag 1, nie am Tutorial-Tag
+  const ereignis = ereignisFuerTag(ereignisse, { seed: game.seed, woche: game.woche, tag: game.tag + 1, tutorial: !!tutorial && !tutorial.fertig });
+  game = newDay(game, { nacht: nachtArt, modifikator: tagModifikator(woche, game.tag + 1), ereignis });
   nachtArt = 'bar';
   saveGame(); // Morgenstand des neuen Tages
   morgen();
 }
 // Morgen-Routine: Uhr, Mentor, Streifen, Kundschaft des Tages, Spieler am Start
+let hinweisBis = 0; // Einblendung zum Tagesereignis
 function morgen() {
   zielGemeldet = false;
+  // Tagesereignis: Einblendung, Requisite (world.setEreignis, falls vorhanden), Sound (audio.ereignis, falls vorhanden)
+  const ev = game.ereignis;
+  if (ev) { ui.showPrompt(ev.hinweis); hinweisBis = performance.now() + 8000; } else ui.showPrompt(null);
+  try { world.setEreignis?.(ev?.requisite || null); } catch (e) { /* ohne Requisite */ }
+  try { audio?.ereignis?.(ev?.sound || null); } catch (e) { /* ohne Ton */ }
   tagesuhr = initialClock();
   applyTageszeit();
   placeMentor(false);
@@ -1425,6 +1438,7 @@ if (SNAP) {
       if (Math.floor(prev * 1000) !== Math.floor(tagesuhr.t01 * 1000)) refreshHud();
     }
     if (nearK) tutorialFire('kunde_in_reichweite');
+    if (hinweisBis && now > hinweisBis) { hinweisBis = 0; if (mode === 'free') ui.showPrompt(null); }
     updateTutorial(now);
     updatePatrol(dt, now);
     // Schritt im Sand: jede volle Watschel-Periode (1.6 Einheiten ≈ 0.4 s Gehen)

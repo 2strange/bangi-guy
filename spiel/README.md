@@ -226,6 +226,16 @@ weg, kein Heat). Zivis zahlen jeden Preis – es ist Beweismaterial: Enttarnung 
 (`angenommen[]`, `weg[]`). Logik rein in `js/game.js` (`verhandeln`, `verhandlungsPreis`, getestet; der Würfel kommt
 vom Aufrufer).
 
+## Tages-Ereignisse
+Ab Tag 2 (nie am Tutorial-Tag) gibt es pro Tag mit 60 % Chance ein Ereignis aus `texte.json → ereignisse[]`
+(Code-Defaults: Regenschauer, Kreuzfahrtschiff, Möwe, Markttag, Gerücht). Die Wahl ist deterministisch aus
+Spielstand-Seed, Woche und Tag (`ereignisFuerTag`, gewichtet nach `gewicht`, `ab_tag`), also reproduzierbar, aber je
+Spiel anders. Wirkungen (`wirkung{}`): `kunden_faktor` (weniger/mehr Gäste), `preis_faktor` (alle zahlen mehr/weniger,
+auch beim Verhandeln), `heat` (+/− am Morgen, nie direkt Verhaftung), `ware` (Möwe klaut / Geschenk), `zivi_extra`.
+Der Mentor kündigt das Ereignis morgens an, beim Tagesstart gibt es eine Einblendung, abends an der Bar optional
+einen Satz. Requisiten (`requisite`: wolke | schiff | moewe) und Sounds (`sound`) sind Hooks für `world.setEreignis`
+bzw. `audio.ereignis`, falls vorhanden. Reine Logik mit Tests; der Seed liegt im Spielstand.
+
 ## Ziele: Tagesziel und Wochenbogen
 `texte.json → woche{}` beschreibt die Woche (7 Tage): `ziel.muenzen` bis zum letzten Tag, je Tag `titel`, `ziel`,
 `zielwert` (verkauft · oma · mango · zivi_abgelehnt · ohne_verhaftung · kasse) und optionale `modifikator`
