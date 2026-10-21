@@ -8,7 +8,7 @@ import {
   babble, sfx, setMuted, isMuted, ambience, music, stimmeFor, setStimmen, normalizePan,
   ZONES, normalizeZones, pseudoWords, nextRufDelay, nextFunkDelay, sputterTimes, normalizeSfxOpts,
   MOODS, normalizeMood, nextBpm, setMood, getMood, cricketBurst, nextClinkDelay, frogCall, nextFrogDelay, JINGLES,
-  WETTER, normalizeWetter, nextDropDelay,
+  WETTER, normalizeWetter, nextDropDelay, duoPlan, DUO_TONHOEHE, DUO_VERSATZ,
 } from '../js/audio.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -247,6 +247,16 @@ test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Daue
   assert.equal(babble('zivi_polo', 'Nice shoes.', {}), d0('Nice shoes.'));
   assert.equal(babble('zivi_polo', 'Nice shoes.', null), d0('Nice shoes.'));
   assert.ok(bark('zivi_1', 'gruss', { pan: 1 }).dauer > 0);
+  // Duo: zweite Stimme höher, versetzt, gleiche Silbenzahl; Dauer wächst um den Versatz; Feld oder Option, ungültig → aus
+  const solo = babblePlan({ tonhoehe: 1 }, 'We are two!'), duo = duoPlan({ tonhoehe: 1 }, 'We are two!');
+  assert.equal(duo.notes.length, solo.notes.length);
+  for (let i = 0; i < solo.notes.length; i++) { close(duo.notes[i].freq / solo.notes[i].freq, DUO_TONHOEHE, 1e-9); close(duo.notes[i].t - solo.notes[i].t, DUO_VERSATZ, 1e-9); }
+  close(duo.duration - solo.duration, DUO_VERSATZ, 1e-9);
+  close(babble({ tonhoehe: 1, duo: true }, 'We are two!'), duo.duration, 1e-9);
+  close(babble({ tonhoehe: 1 }, 'We are two!', { duo: true }), duo.duration, 1e-9);
+  close(babble({ tonhoehe: 1 }, 'We are two!'), solo.duration, 1e-9);
+  assert.equal(normalizeStimme({ duo: true }).duo, true); assert.equal(normalizeStimme({ duo: 'ja' }).duo, false); assert.equal(normalizeStimme({}).duo, false);
+  assert.equal(babble({ duo: true }, ''), 0);
   assert.equal(normalizePan(undefined), 0); assert.equal(normalizePan('x'), 0); assert.equal(normalizePan(NaN), 0);
   assert.equal(normalizePan(-3), -1); assert.equal(normalizePan(2), 1); assert.equal(normalizePan(0.25), 0.25); assert.equal(normalizePan('-0.5'), -0.5);
 });

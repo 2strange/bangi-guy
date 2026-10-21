@@ -1,5 +1,5 @@
 {
-  "_schema": "Stimmen und Barks (kurze englische Ausrufe, 1–5 Wörter, Lebowski-/Surfer-Ton) für Sprechblasen und das Gebrabbel (Animal-Crossing-Stil). Eigentümer: Content. LOOKUP: slug = zuordnung[kundeId] ?? kundeId; profil = stimmen[slug]?.charakter ?? stimmen.default.charakter. Feste Slugs: default (Fallback), spieler (der Schluffi), mentor. stimmen{slug} = charakter {tonhoehe 0.5–2.0 (1.0 = mittlere Männerstimme ~220 Hz, 0.6 Bass, 1.6 Oma/Kind), tempo 0.6–1.6 (1.0 = ~8 Silben/s), stil (schluffig|brummig|knarzig|quietschig|zackig|piepsig|cool), vibrato 0–1 (nervös = hoch), laut 0.5–1.2 (relative Lautstärke)} und barks {situation: []}. Situationen bei Kunden: gruss (Spieler kommt in Reichweite), kauf (Verkauf abgeschlossen), ablehnung (Spieler lehnt ab oder Kunde will nicht), zivi_verdaechtig (Spieler schaut genau hin / Kunde merkt Misstrauen; bei Zivis die Tarnung, bei Harmlosen Verwirrung); mentor hat stattdessen gruss, lektion, nachschub, abschied, abend (an der Bar); barkeeper (Nong, Nicht-Kunde) hat gruss, zwischenruf, letzte_runde, gute_nacht; pong (Polizist, Nicht-Kunde) hat pfiff, sichtung, verfolgung, mango_gnaedig, mango_schon, mango_keine, verhaftung; haendler (Markt-Ambience, keine Figur) hat nur ruf; funk (Polizeifunk am Posten, keine Figur) hat nur spruch; default und spieler haben keine barks. zuordnung{kundeId: slug} verbindet kunden.json mit einer Stimme (gleiche Info als Feld stimme in kunden.json; zuordnung gewinnt bei Widerspruch). Barks werden zufällig gewählt, nie zweimal hintereinander dieselbe; Satzzeichen steuern das Gebrabbel (? = Tonhöhe hoch, ! = lauter, … = Pause). Apostrophe sind gerade (').",
+  "_schema": "Stimmen und Barks (kurze englische Ausrufe, 1–5 Wörter, Lebowski-/Surfer-Ton) für Sprechblasen und das Gebrabbel (Animal-Crossing-Stil). Eigentümer: Content. LOOKUP: slug = zuordnung[kundeId] ?? kundeId; profil = stimmen[slug]?.charakter ?? stimmen.default.charakter. Feste Slugs: default (Fallback), spieler (der Schluffi), mentor. stimmen{slug} = charakter {tonhoehe 0.5–2.0 (1.0 = mittlere Männerstimme ~220 Hz, 0.6 Bass, 1.6 Oma/Kind), tempo 0.6–1.6 (1.0 = ~8 Silben/s), stil (schluffig|brummig|knarzig|quietschig|zackig|piepsig|cool), vibrato 0–1 (nervös = hoch), laut 0.5–1.2 (relative Lautstärke), duo (optional, Boolean: true = Duo-Gebrabbel, dieselben Silben zweimal, zweite Stimme ×1.1 Tonhöhe und 40 ms später, für Paare; fehlt = eine Stimme)} und barks {situation: []}. Situationen bei Kunden: gruss (Spieler kommt in Reichweite), kauf (Verkauf abgeschlossen), ablehnung (Spieler lehnt ab oder Kunde will nicht), zivi_verdaechtig (Spieler schaut genau hin / Kunde merkt Misstrauen; bei Zivis die Tarnung, bei Harmlosen Verwirrung); mentor hat stattdessen gruss, lektion, nachschub, abschied, abend (an der Bar); barkeeper (Nong, Nicht-Kunde) hat gruss, zwischenruf, letzte_runde, gute_nacht; pong (Polizist, Nicht-Kunde) hat pfiff, sichtung, verfolgung, mango_gnaedig, mango_schon, mango_keine, verhaftung; haendler (Markt-Ambience, keine Figur) hat nur ruf; funk (Polizeifunk am Posten, keine Figur) hat nur spruch; default und spieler haben keine barks. zuordnung{kundeId: slug} verbindet kunden.json mit einer Stimme (gleiche Info als Feld stimme in kunden.json; zuordnung gewinnt bei Widerspruch). Barks werden zufällig gewählt, nie zweimal hintereinander dieselbe; Satzzeichen steuern das Gebrabbel (? = Tonhöhe hoch, ! = lauter, … = Pause). Apostrophe sind gerade (').",
 
   "zuordnung": {
     "stammkunde_1": "stammkunde",
@@ -15,7 +15,11 @@
     "fischer_1": "fischer",
     "lauter_typ_1": "lauter_typ",
     "touristin_1": "touristin",
-    "zivi_4": "zivi_frager"
+    "zivi_4": "zivi_frager",
+    "bauer_nok": "bauer",
+    "kletterer_1": "kletterer",
+    "zivi_5": "zivi_pfeife",
+    "paar_1": "paar"
   },
 
   "stimmen": {
@@ -189,6 +193,42 @@
           "Negative on the hill. Too steep.",
           "Whistle battery low."
         ]
+      }
+    },
+    "bauer": {
+      "charakter": { "tonhoehe": 0.7, "tempo": 0.6, "stil": "brummig", "vibrato": 0.0, "laut": 0.8 },
+      "barks": {
+        "gruss": ["Rain's coming.", "Boy from the hill.", "Mind the herons.", "Hm. You.", "Water's low."],
+        "kauf": ["Rice is money.", "For the frogs.", "Buffalo saw nothing.", "Good. Rain later.", "Take the sack."],
+        "ablehnung": ["Rice grows anyway.", "After the rain.", "All the same.", "Father never bought.", "Hm."],
+        "zivi_verdaechtig": ["Mud. Look.", "Cops don't plant.", "Ask the buffalo.", "I'm the field."]
+      }
+    },
+    "kletterer": {
+      "charakter": { "tonhoehe": 1.1, "tempo": 1.3, "stil": "quietschig", "vibrato": 0.2, "laut": 1.1 },
+      "barks": {
+        "gruss": ["Heads up!", "See you from up top!", "Nut's down, relax.", "Twenty meters, man!", "Yo, down there!"],
+        "kauf": ["Taking it up!", "Nut's on the house!", "Nobody looks up!", "Sways nice up there.", "Thanks, ground person!"],
+        "ablehnung": ["Climbing sober, then.", "Fewer dents. Fine.", "Palm's waiting.", "Ask you from up top!", "Okay okay!"],
+        "zivi_verdaechtig": ["The dent? Coconut.", "Cops can't climb.", "Check my feet, man.", "I'm a tree guy."]
+      }
+    },
+    "zivi_pfeife": {
+      "charakter": { "tonhoehe": 1.3, "tempo": 1.0, "stil": "cool", "vibrato": 0.0, "laut": 0.9 },
+      "barks": {
+        "gruss": ["Good day. I mean, hey.", "Here privately.", "Something relaxing?", "Nice beach. Officially.", "Hey, dude. Correct?"],
+        "kauf": ["Enjoyed. Privately.", "Stay right there.", "Just need to… whistle.", "Very, very good.", "Noted. Enjoyed!"],
+        "ablehnung": ["Strolling on. Privately!", "Shift at eight. Beach!", "Husband would've liked it.", "Understood.", "Pity. Officially."],
+        "zivi_verdaechtig": ["It's jewelry.", "The stripe? Sun hat.", "I stand like this.", "Flip-flops, see?", "Very private."]
+      }
+    },
+    "paar": {
+      "charakter": { "tonhoehe": 1.2, "tempo": 1.3, "stil": "piepsig", "vibrato": 0.3, "laut": 1.0, "duo": true },
+      "barks": {
+        "gruss": ["Hi! Hi!", "Honeymoon!", "Something local!", "Is this real?", "Experiences!"],
+        "kauf": ["Selfie!", "Smile!", "For the story!", "Thanks thanks!", "Perfect! Perfect!"],
+        "ablehnung": ["Oh. Okay.", "Coconut then!", "Totally get it.", "Pity. Pity.", "We're not like that."],
+        "zivi_verdaechtig": ["Us? Cops?", "We're married!", "Same shirts, duh.", "Just photos!"]
       }
     },
     "mentor": {

@@ -15,7 +15,7 @@ export const MAX_HEAT = 3;
 export const TALK_DIST = 3.2;     // so nah muss man ran für E/F
 export const SHOES = ['sandale', 'flipflop', 'turnschuh', 'barfuss', 'gummistiefel'];
 export const SHIRTS = ['hawaii', 'polo_sauber', 'tanktop', 'ohne', 'uniform_versteckt', 'hawaii_neu', 'kittel', 'trikot'];
-export const ACCESSORIES = [null, 'cap', 'ohrknopf', 'hund', 'rucksack', 'sonnenbrille', 'kamera', 'surfbrett', 'gehstock', 'handy', 'kopfhoerer', 'fischkiste', 'bierdose'];
+export const ACCESSORIES = [null, 'cap', 'ohrknopf', 'hund', 'rucksack', 'sonnenbrille', 'kamera', 'surfbrett', 'gehstock', 'handy', 'kopfhoerer', 'fischkiste', 'bierdose', 'kegelhut', 'helm_delle'];
 // optionale Content-Felder (alles darf fehlen)
 export const PANTS = ['shorts', 'badehose', 'chino', 'jogginghose', 'rock', 'lang'];
 export const SKINTONES = ['hell', 'mittel', 'dunkel', 'sonnenbrand'];
@@ -24,8 +24,10 @@ export const GLASSES = ['keine', 'lesebrille', 'sonnenbrille', 'sportbrille'];
 export const HAIRS = ['kurz', 'lang', 'lockig', 'dutt', 'weiss', 'glatze'];
 export const MOODS = ['neutral', 'misstrauisch', 'erschrocken', 'zufrieden', 'selig'];
 export const EXTRAS = ['socken', 'preisschild', 'stirnband', 'halstuch_hund', 'funkgeraet', 'strohhut', 'cocktail', 'rollator', 'einkaufskorb', 'pulsuhr', 'buegelfalte', 'nass', 'bändchen', 'baendchen', 'schwitzt', 'notizblock',
-  'schuerze', 'fischgeruch', 'bauchtasche', 'sonnenbrand_streifen', 'riesenhut', 'faecher', 'kreuzfahrt_baendchen', 'rucksack_leer', 'faehrenticket', 'handschellen_umriss'];
-export const SPAWNS = ['K1', 'K2', 'K3', 'K4', 'K5', 'K6'];
+  'schuerze', 'fischgeruch', 'bauchtasche', 'sonnenbrand_streifen', 'riesenhut', 'faecher', 'kreuzfahrt_baendchen', 'rucksack_leer', 'faehrenticket', 'handschellen_umriss',
+  // Runde 10: Bauer Nok, Kokos-Kletterer, Spaziergängerin (Zivi mit Mützen-Streifen), Flitterwochen-Paar
+  'schlamm_bis_knie', 'reissack', 'hose_hochgekrempelt', 'kokosnuss', 'seil_um_huefte', 'pflaster_stirn', 'muetzen_streifen', 'pfeife_am_band', 'haltung_gerade', 'partnerlook', 'just_married_cap', 'blumenkranz'];
+export const SPAWNS = ['K1', 'K2', 'K3', 'K4', 'K5', 'K6', 'K7', 'K8']; // K7 Reisfeld, K8 Kokoshain
 
 export function initialState() {
   return { geld: 0, ware: START_WARE, heat: 0, tag: 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, mangos: 0, tageOhneVorfall: 0, verkaeufeHeute: [], zivisAbgelehntHeute: 0, mangosHeute: 0, finale: null, woche: 1, seed: 1, ereignis: null };
@@ -62,6 +64,8 @@ export function normalizeKunde(raw, i = 0) {
     accessoire: ACCESSORIES.includes(k.accessoire) ? k.accessoire : null,
     zivi: k.zivi === true,
     zahlt: Number.isFinite(k.zahlt) ? Math.max(0, Math.round(k.zahlt)) : 20,
+    zahlt_in: typeof k.zahlt_in === 'string' && k.zahlt_in.trim() ? k.zahlt_in.trim() : null, // z. B. 'reis' (gleicher Wert, nur Text/Figur)
+    figuren: k.figuren === 2 ? 2 : 1, // Paar = zwei Figuren an einem Platz
     feilschen: Number.isFinite(k.feilschen) ? Math.max(0, Math.min(1, k.feilschen)) : FEILSCHEN_DEFAULT, // Chance, dass er den Aufschlag zahlt
     heat,
     saetze: {

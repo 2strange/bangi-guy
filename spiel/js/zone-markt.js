@@ -3,7 +3,7 @@
 // Kokos), Gedränge-Kulisse als Versteck, die Katze läuft ihre Runde (Gag 10). Posten 7: das einzige fast
 // gerade Gebäude, Streifenwagen ohne Reifen, Tafel „TAGE OHNE VORFALL: 0“ (Gag 14), Polizist Pong in Sandalen
 // mit Trillerpfeife (Gag 13) und Idle-Loop, Mango-Stand „1 MANGO = 1 GNADE“ daneben (Gag 8).
-// Einbau: buildMarkt(gruppe, colliders, { exits }) → { spots, update(t), posten {x,z,r}, mangoStand {x,z}, setTafel(text), hideouts, anchors, bounds }.
+// Einbau: buildMarkt(gruppe, colliders, { exits }) → { spots, update(t), posten {x,z,r}, mangoStand {x,z}, setTafel(text), pong, party(an), hideouts, anchors, bounds }.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { toonMesh, toon, deform, rng, textTexture, stripeTexture, BLACK } from './toon.js';
@@ -379,8 +379,39 @@ export function buildMarkt(parent, colliders, { exits = { pier: true, stadt: tru
     }
   }
   update(0);
+  // ----- Party am Posten 7 (Pong hat Geburtstag): Partyhut, Wimpelgirlande, Luftballons, Schild — party(an) -----
+  const partyG = new THREE.Group(); partyG.visible = false; add(partyG);
+  {
+    const hat = toonMesh(new THREE.ConeGeometry(0.34, 0.9, 10), toon(0xffffff, { map: stripeTexture(['#e8463a', '#ffd54a', '#3dd6e0', '#ff5fa2', '#e8463a', '#ffd54a'], { vertical: false }) }), { outline: 0.03 });
+    hat.position.set(0, 0.95, 0); hat.rotation.z = 0.2; PP.head.add(hat); hat.visible = false; partyG.userData.hat = hat;
+    const pom = toonMesh(new THREE.SphereGeometry(0.1, 8, 6), 0xffffff, { outline: 0.02 }); pom.position.set(-0.09, 0.46, 0); hat.add(pom);
+    // Wimpelgirlande vom Fahnenmast zum Dach des Postens
+    const a = V(P.fahne.x, 5.2, P.fahne.z), b = V(P.gebaeude.x + 2, 5.9, P.gebaeude.z - 5), mid = V((a.x + b.x) / 2, 4.6, (a.z + b.z) / 2);
+    const curve = new THREE.QuadraticBezierCurve3(a, mid, b);
+    partyG.add(toonMesh(new THREE.TubeGeometry(curve, 16, 0.03, 5, false), 0x222222, { outline: 0.012, shadow: false }));
+    const cols = [0xe8463a, 0xffd54a, 0x3dd6e0, 0xff5fa2, 0x3bb84a];
+    for (let i = 1; i < 14; i++) {
+      const pt = curve.getPointAt(i / 14);
+      const w = toonMesh(new THREE.ConeGeometry(0.3, 0.6, 3), cols[i % cols.length], { outline: 0.02, shadow: false });
+      w.position.copy(pt); w.position.y -= 0.32; w.rotation.y = 0.5; partyG.add(w);
+    }
+    for (const [x, z, c] of [[P.bank.x - 1.6, P.bank.z, 0xe8463a], [P.bank.x - 1.2, P.bank.z + 0.6, 0xffd54a], [P.bank.x - 1.9, P.bank.z + 0.9, 0x3dd6e0]]) {
+      partyG.add(limb(V(x, 0.6, z), V(x + 0.1, 3.2, z), 0.012, 0xffffff, { outline: 0.006 }));
+      const bal = toonMesh(new THREE.SphereGeometry(0.42, 12, 9), c, { outline: 0.035, shadow: false }); bal.geometry.scale(1, 1.2, 1); bal.position.set(x + 0.1, 3.6, z); partyG.add(bal);
+    }
+    const sign = plate('ALLES GUTE, PONG!', 3.6, 0.6, { bg: '#ff5fa2', fg: '#ffffff', font: 'bold 66px sans-serif', tw: 1024, th: 160, thick: 0.06 });
+    sign.position.set(P.gebaeude.x + 5.4, 4.4, P.gebaeude.z + 2.6); sign.rotation.set(0, Math.PI / 2, 0.05); partyG.add(sign);
+    const cake = new THREE.Group(); cake.position.set(P.bank.x, 0.61, P.bank.z + 0.1);
+    cake.add(toonMesh(new THREE.CylinderGeometry(0.35, 0.38, 0.22, 12), 0xffb6c8, { outline: 0.025 }));
+    const cream = toonMesh(new THREE.CylinderGeometry(0.36, 0.36, 0.06, 12), 0xffffff, { outline: 0.015 }); cream.position.y = 0.13; cake.add(cream);
+    cake.add(limb(V(0, 0.16, 0), V(0, 0.42, 0), 0.025, 0xffd54a, { outline: 0.01 }));
+    const flame = toonMesh(new THREE.SphereGeometry(0.05, 6, 5), 0xff9f1c, { outline: 0, basic: true }); flame.position.y = 0.47; cake.add(flame);
+    partyG.add(cake);
+  }
+  function party(an) { partyG.visible = !!an; partyG.userData.hat.visible = !!an; }
   return {
     spots: MARKT_SPOTS, update, hideouts, anchors: MARKT_ANCHORS, bounds: { minZ: WORLD_MIN_Z },
+    pong: pongObj, party,                   // Pong-Figur (userData.parts) und Party-Deko an/aus
     posten: { ...POSTEN_SICHT },            // Vorplatz des Postens (Heat zählt hier doppelt)
     mangoStand: { ...MANGO_STAND },         // Bestechungs-Stand „1 MANGO = 1 GNADE“
     setTafel: st.userData.setTafel,         // Tafel „TAGE OHNE VORFALL“: untere Zeile neu malen

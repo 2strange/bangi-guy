@@ -6,6 +6,7 @@
 // `licht.set(t01)` und `sunLight.position = spieler + licht.sunOffset(t01)`.
 import * as THREE from 'three';
 import { toonMesh } from './toon.js';
+import { flackern } from './ereignisse-logik.js';
 import { face, faceDecal, setFace } from './faces.js';
 import { tageszeitPalette, sunOffset, sonnenPosition, sonnenStimmung, nachtAnteil } from './licht-palette.js';
 
@@ -79,6 +80,24 @@ export function lichterkette(points, { colors = [0xffd54a, 0xe8463a, 0x3dd6e0, 0
   return g;
 }
 
+// Kerzen (für den Stromausfall): Wachsstummel mit Flamme + warmem Halo an den gegebenen Weltpunkten
+export function kerzen(points) {
+  const g = new THREE.Group();
+  const flames = [];
+  points.forEach((p, i) => {
+    const k = new THREE.Group(); k.position.copy(p);
+    const wax = toonMesh(new THREE.CylinderGeometry(0.07, 0.08, 0.28 + (i % 3) * 0.08, 8), 0xfff5e0, { outline: 0.02 }); wax.position.y = 0.14; k.add(wax);
+    const flame = toonMesh(new THREE.SphereGeometry(0.06, 7, 6), 0xffb13b, { outline: 0, basic: true }); flame.geometry.scale(0.8, 1.6, 0.8); flame.position.y = 0.36 + (i % 3) * 0.08; k.add(flame);
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTexture(), color: 0xffb36b, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }));
+    halo.scale.setScalar(1.4); halo.position.copy(flame.position); k.add(halo);
+    const light = new THREE.PointLight(0xffb36b, 0.9, 7, 2); light.position.copy(flame.position); k.add(light);
+    flames.push({ flame, halo, light, i });
+    g.add(k);
+  });
+  g.visible = false; g.userData.flames = flames; g.userData.noFade = true;
+  return g;
+}
+
 // Mond: blasse Scheibe mit schlafendem Gesicht, nachts sichtbar
 export function mond() {
   const g = new THREE.Group();
@@ -101,7 +120,7 @@ export function mond() {
  * opts.sonne = Sonnen-Kulisse aus props.sun() (wandert dann über den Himmel, Gesicht wird müde).
  * Rückgabe { set(t01), sunOffset(t01), register(root), palette(t01) }.
  */
-export function initLicht(scene, { sonne = null, mondObj = null } = {}) {
+export function initLicht(scene, { sonne = null, mondObj = null, kerzen: kerzenG = null } = {}) {
   let sun = null, hemi = null;
   scene.traverse((o) => { if (o.isDirectionalLight && !sun) sun = o; if (o.isHemisphereLight && !hemi) hemi = o; });
   const lights = registriereNachtlichter(scene);
@@ -110,7 +129,8 @@ export function initLicht(scene, { sonne = null, mondObj = null } = {}) {
   const sunFace = sonne ? sonne.getObjectByName('face') : null;
   let lastMood = null;
   const fogBase = scene.fog ? { near: scene.fog.near, far: scene.fog.far } : null;
-  const state = { t: 0.5 };
+  const state = { t: 0.5, ausfall: false };
+  if (kerzenG) scene.add(kerzenG);
 
   function set(t01) {
     const p = tageszeitPalette(t01);
@@ -119,14 +139,15 @@ export function initLicht(scene, { sonne = null, mondObj = null } = {}) {
     if (scene.fog) { scene.fog.color.setHex(p.fog); if (fogBase) { scene.fog.near = fogBase.near * (1 - 0.3 * p.nacht); scene.fog.far = fogBase.far * (1 - 0.25 * p.nacht); } }
     if (sun) { sun.color.setHex(p.sun); sun.intensity = p.sunI; }
     if (hemi) { hemi.color.setHex(p.hemiSky); hemi.groundColor.setHex(p.hemiGround); hemi.intensity = p.hemiI; }
+    const strom = state.ausfall ? 0 : 1; // Stromausfall: alle Nachtlichter aus, Kerzen an
     for (const m of lights) {
       const L = m.userData.nachtlichtMat;
-      L.mat.emissiveIntensity = p.lights * L.staerke;
-      if (L.tag !== undefined) L.mat.color.setHex(p.lights > 0.5 ? L.mat.emissive.getHex() : L.tag);
+      L.mat.emissiveIntensity = p.lights * L.staerke * strom;
+      if (L.tag !== undefined) L.mat.color.setHex(p.lights * strom > 0.5 ? L.mat.emissive.getHex() : L.tag);
       if (m.userData.halo) { // Birnchen: abends doppelt so groß, Halo glüht (Sprite-Skala in Welteinheiten, Elternskala herausgerechnet)
         const k = 1 + p.lights;
         m.scale.setScalar(k);
-        m.userData.halo.material.opacity = 0.55 * p.lights;
+        m.userData.halo.material.opacity = 0.55 * p.lights * strom;
         m.userData.halo.scale.setScalar((0.5 + 0.5 * p.lights) / k);
       }
     }
@@ -136,10 +157,16 @@ export function initLicht(scene, { sonne = null, mondObj = null } = {}) {
       const mood = sonnenStimmung(t01);
       if (sunFace && mood !== lastMood) { setFace(sunFace, face('sun', mood)); lastMood = mood; }
     }
+    if (kerzenG) {
+      kerzenG.visible = state.ausfall;
+      if (state.ausfall) { const now = performance.now() / 1000; for (const f of kerzenG.userData.flames) { const k = flackern(now, f.i); f.flame.scale.set(0.8 * k, 1.6 * k, 0.8 * k); f.halo.material.opacity = 0.6 * k; f.light.intensity = 0.9 * k; } }
+    }
     const na = nachtAnteil(t01);
     moon.visible = na > 0.2;
     moon.position.set(-120 + 60 * na, 40 + 25 * na, -180);
     return p;
   }
-  return { set, sunOffset, palette: tageszeitPalette, register: (root) => { lights.push(...registriereNachtlichter(root)); }, moon, state };
+  // Stromausfall an/aus: Laternen, Fenster, Lichterkette aus, Kerzen an (wirkt beim nächsten set(t01))
+  const stromausfall = (an) => { state.ausfall = !!an; set(state.t); };
+  return { set, sunOffset, palette: tageszeitPalette, register: (root) => { lights.push(...registriereNachtlichter(root)); }, moon, state, stromausfall, kerzen: kerzenG };
 }

@@ -102,7 +102,7 @@
       }
     },
     "fischer_1": {
-      "name": "Nok from the fish stand", "typ": "Fish-stand customer",
+      "name": "Chai from the fish stand", "typ": "Fish-stand customer",
       "tells": ["RUBBER BOOTS in the sun = fish stand, not monsoon", "apron with scales", "the cat follows him, not the police", "you smell him before you see him"],
       "saetze": {
         "gruss": ["Up since four. What've you got?", "The cat stole my fish. Hope it doesn't steal you.", "Not so close. You smell like tourist."],
@@ -139,6 +139,46 @@
         "kauf": ["Great. And where exactly is this from? Just curious.", "Thanks! Your supplier, is he this nice too?", "Perfect, that's enough. I mean: that's enough for me today."],
         "ablehnung": ["Shame. Do you know who else... never mind.", "I see. Then I'll ask up on the hill. Someone lives there, right?", "No problem. I'm here three more days. At least."],
         "reveal": ["The ferry was official channels. Literally.", "Control, target hinted at a supplier. Hill. I repeat: hill.", "The backpack was empty because your bag goes in it now."]
+      }
+    },
+    "bauer_nok": {
+      "name": "Farmer Nok", "typ": "Rice farmer",
+      "tells": ["barefoot with mud up to the knees: stands in water all day, runs nowhere", "conical hat, no shirt", "pays in rice (same value, heavier to carry)", "only talks in weather"],
+      "saetze": {
+        "gruss": ["Rain's coming. Not today. But it's coming.", "You're the boy from the hill. Your mentor steals my water.", "Don't come into the field. The herons don't like sandals."],
+        "kauf": ["I pay in rice. Rice is money you can eat.", "For the evenings. The frogs are loud.", "The buffalo sees nothing. The buffalo never sees anything."],
+        "ablehnung": ["Then not. The rice grows anyway.", "Tomorrow. Or after the rain. Or never. All the same.", "My father never bought either. He grew."],
+        "reveal": []
+      }
+    },
+    "kletterer_1": {
+      "name": "Dao, way up there", "typ": "Coconut climber",
+      "tells": ["helmet with a dent: the coconut was faster", "rope around the hips, calluses on the feet", "doesn't run away, climbs away (patrol looks up, sees only palm tree)", "throws coconuts when in danger, never hits"],
+      "saetze": {
+        "gruss": ["From up there you see everything. You too. Especially you.", "Heads up! No, kidding. The nut's already down.", "I was just twenty meters above Pong. He didn't notice."],
+        "kauf": ["For up there. It's quiet. And it sways.", "I'll take this up the tree. Nobody looks there.", "Can I pay in coconut? No? Okay, coins. Nut's on the house."],
+        "ablehnung": ["Then I'll climb sober. Also fine, fewer dents.", "I'll ask again from up top. You won't hear me there.", "No problem. The palm's waiting. It always waits."],
+        "reveal": []
+      }
+    },
+    "zivi_5": {
+      "name": "Mrs. Whistle", "typ": "The stroller",
+      "tells": ["shoes and shirt are innocent: flip-flops, stained Hawaiian shirt (borrowed), sunburn", "BUT: pale cap stripe on the forehead, sunburn only below it", "whistle on a cord around the neck, disguised as jewelry", "stands bolt upright, no slacker stands like that", "can't run (flip-flops), whistles for backup instead"],
+      "saetze": {
+        "gruss": ["Good day! I mean: hey. Hey, dude.", "Nice beach. I'm here privately. Very privately.", "Do you have... do you maybe have something relaxing? For relaxing?"],
+        "kauf": ["Thank you. This will be... enjoyed. Privately.", "Very good. Very, very good. Please stay right there for a moment.", "Perfect. Excuse me, I just need to... whistle."],
+        "ablehnung": ["I see. Then I'll keep strolling. On duty. Privately!", "No problem. I'm here tomorrow too. From eight. Shift start. Beach start!", "Pity. My boss... my husband would have been pleased."],
+        "reveal": ["The whistle isn't jewelry. The stripe isn't fashion.", "Control, stroll complete, target is standing next to me. Yes, in flip-flops. Yes, me too.", "I can't run. I don't have to. Pong's coming. Eventually."]
+      }
+    },
+    "paar_1": {
+      "name": "The Newlyweds", "typ": "Honeymoon couple",
+      "tells": ["identical Hawaiian shirts, identical 'JUST MARRIED' caps", "sandals, harmless", "BUT: they photograph everything and post it (heat 1: you're on the internet now)", "talk at the same time, finish each other's sentences"],
+      "saetze": {
+        "gruss": ["Hi! We're— / —on our honeymoon! / Since yesterday! / Day before, honey.", "We want something local! / Something real! / Is this real?", "Our tour guide says there are— / —experiences here!"],
+        "kauf": ["Selfie! / Smile! / You too! / Perfect!", "This goes in the blog! / No, honey. / Just in the story!", "Thanks, thanks! / We're Lisa and— / He's also Lisa. Long story."],
+        "ablehnung": ["Oh. / Okay. / Coconut then? / Coconut!", "We get it. / Totally. / We're not like that either. / We are.", "Pity. / Pity. / We photographed it anyway."],
+        "reveal": []
       }
     }
   }

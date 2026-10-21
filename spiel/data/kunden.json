@@ -1,5 +1,5 @@
 {
-  "_schema": "Kundschaft für Bangi Beach. Eigentümer: Content. PFLICHT (aus dem Stub): id, typ, schuhe (sandale|flipflop|turnschuh|barfuss|gummistiefel), hemd (hawaii|polo_sauber|tanktop|ohne|uniform_versteckt|hawaii_neu|kittel|trikot), accessoire (null|cap|ohrknopf|hund|rucksack|sonnenbrille|kamera|surfbrett|gehstock|handy|kopfhoerer|fischkiste|bierdose), zivi (bool), zahlt (Münzen), heat (Heat bei Verkauf, 0–3), saetze {gruss[], kauf[], ablehnung[], reveal[]}. OPTIONAL (Content-Erweiterung, alles darf fehlen): name (Spitzname für die Sprechblase), hose (shorts|badehose|chino|jogginghose|rock|lang), hautton (hell|mittel|dunkel|sonnenbrand), bart (keiner|stoppel|vollbart|schnauzer), brille (keine|sonnenbrille|lesebrille|sportbrille), haare (kurz|lang|glatze|dutt|weiss|lockig), extras (Liste kleiner Zweitmerkmale: socken, hut, preisschild, buegelfalte, stirnband, halstuch_hund, funkgeraet, notizblock, nass, strohhut, rollator, schuerze, fischgeruch, bauchtasche, sonnenbrand_streifen, riesenhut, faecher, kreuzfahrt_baendchen, rucksack_leer, faehrenticket, handschellen_umriss), stimmung_start (neutral|misstrauisch|erschrocken|zufrieden – Mimik-API), mimik (Freitext-Wunsch an die Gesichter: was Augen/Mund im Normalzustand, beim Kauf und bei Ablehnung tun), tells (Liste der sichtbaren Hinweise, für Hilfe-Modus und Designer-Doku), tempo (Laufgeschwindigkeit relativ zum Spieler bei der Flucht: 1.0 = gleich schnell), spawn (Spawn-Punkt K1–K6 der Welt-Skizze), stimme (Slug einer Stimme in stimmen.json für Barks und Gebrabbel), feilschen (0–1: Chance, dass der Kunde bei „Mehr verlangen“ den Aufschlag zahlt; Oma zahlt alles (0.95), der Backpacker nie (0.0), Zivis 1.0 (zahlen alles, es ist Beweismaterial); Default 0.5). Regel fürs Lesen: Schuhe zuerst, dann Hemd, dann Accessoire/Extras. Kein einzelnes Merkmal reicht – die Kombination zählt.",
+  "_schema": "Kundschaft für Bangi Beach. Eigentümer: Content. PFLICHT (aus dem Stub): id, typ, schuhe (sandale|flipflop|turnschuh|barfuss|gummistiefel), hemd (hawaii|polo_sauber|tanktop|ohne|uniform_versteckt|hawaii_neu|kittel|trikot), accessoire (null|cap|ohrknopf|hund|rucksack|sonnenbrille|kamera|surfbrett|gehstock|handy|kopfhoerer|fischkiste|bierdose|kegelhut|helm_delle), zivi (bool), zahlt (Münzen), heat (Heat bei Verkauf, 0–3), saetze {gruss[], kauf[], ablehnung[], reveal[]}. OPTIONAL (Content-Erweiterung, alles darf fehlen): name (Spitzname für die Sprechblase), hose (shorts|badehose|chino|jogginghose|rock|lang), hautton (hell|mittel|dunkel|sonnenbrand), bart (keiner|stoppel|vollbart|schnauzer), brille (keine|sonnenbrille|lesebrille|sportbrille), haare (kurz|lang|glatze|dutt|weiss|lockig), extras (Liste kleiner Zweitmerkmale: socken, hut, preisschild, buegelfalte, stirnband, halstuch_hund, funkgeraet, notizblock, nass, strohhut, rollator, schuerze, fischgeruch, bauchtasche, sonnenbrand_streifen, riesenhut, faecher, kreuzfahrt_baendchen, rucksack_leer, faehrenticket, handschellen_umriss, schlamm_bis_knie, reissack, hose_hochgekrempelt, kokosnuss, seil_um_huefte, pflaster_stirn, muetzen_streifen, pfeife_am_band, haltung_gerade, partnerlook, just_married_cap, blumenkranz), stimmung_start (neutral|misstrauisch|erschrocken|zufrieden – Mimik-API), mimik (Freitext-Wunsch an die Gesichter: was Augen/Mund im Normalzustand, beim Kauf und bei Ablehnung tun), tells (Liste der sichtbaren Hinweise, für Hilfe-Modus und Designer-Doku), tempo (Laufgeschwindigkeit relativ zum Spieler bei der Flucht: 1.0 = gleich schnell), spawn (Spawn-Punkt K1–K8: K1 Fähre, K2 Verleih, K3 Bar, K4 Markt, K5 Krummgassen, K6 Hotel-Liegen, K7 Reisfeld, K8 Kokoshain), stimme (Slug einer Stimme in stimmen.json für Barks und Gebrabbel), feilschen (0–1: Chance, dass der Kunde bei „Mehr verlangen“ den Aufschlag zahlt; Oma zahlt alles (0.95), der Backpacker nie (0.0), Zivis 1.0 (zahlen alles, es ist Beweismaterial); Default 0.5), zahlt_in (optional, nur Darstellung: reis = zahlt mit Reissack statt Münzen, gleicher Wert), figuren (optional, Default 1: Anzahl Figuren, z. B. 2 für das Paar; Dialog und Verkauf laufen als ein Kunde). Regel fürs Lesen: Schuhe zuerst, dann Hemd, dann Accessoire/Extras. Kein einzelnes Merkmal reicht – die Kombination zählt.",
   "kunden": [
     {
       "id": "stammkunde_1", "typ": "Stammkunden-Schluffi", "name": "Der Walross-Typ",
@@ -162,7 +162,7 @@
       }
     },
     {
-      "id": "fischer_1", "typ": "Fischhändler-Kunde", "name": "Nok vom Fischstand",
+      "id": "fischer_1", "typ": "Fischhändler-Kunde", "name": "Chai vom Fischstand",
       "schuhe": "gummistiefel", "hemd": "tanktop", "hose": "lang", "accessoire": "fischkiste",
       "hautton": "dunkel", "bart": "stoppel", "brille": "keine", "haare": "kurz",
       "extras": ["schuerze", "fischgeruch"],
@@ -223,6 +223,71 @@
         "kauf": ["Super. Und woher genau kommt das? Nur aus Interesse.", "Danke! Dein Lieferant, ist der auch so nett?", "Perfekt, das reicht. Ich meine: das reicht mir für heute."],
         "ablehnung": ["Schade. Weißt du, wer sonst… na gut.", "Verstehe. Dann frag ich auf dem Hügel. Da wohnt doch jemand, oder?", "Kein Problem. Ich bin noch drei Tage hier. Mindestens."],
         "reveal": ["Die Fähre war der Dienstweg. Wörtlich.", "Zentrale, Zielperson hat Lieferant angedeutet. Hügel. Ich wiederhole: Hügel.", "Der Rucksack war leer, weil da jetzt dein Beutel reinkommt."]
+      }
+    },
+    {
+      "id": "bauer_nok", "typ": "Reisbauer", "name": "Bauer Nok",
+      "schuhe": "barfuss", "hemd": "ohne", "hose": "lang", "accessoire": "kegelhut",
+      "hautton": "dunkel", "bart": "keiner", "brille": "keine", "haare": "kurz",
+      "extras": ["schlamm_bis_knie", "reissack", "hose_hochgekrempelt"],
+      "zivi": false, "zahlt": 25, "zahlt_in": "reis", "feilschen": 0.1, "heat": 0, "tempo": 0.5, "spawn": "K7", "stimme": "bauer",
+      "stimmung_start": "neutral",
+      "mimik": "Wettergegerbt, Augen zu Schlitzen gegen die Sonne, Mund entspannt. Beim Kauf: ein langsames Nicken, dann ein Blick zum Himmel, als käme das Geld von dort. Bei Ablehnung: zuckt nicht mal, pflanzt weiter.",
+      "tells": ["barfuß mit Schlamm bis zum Knie: steht den ganzen Tag im Wasser, rennt nirgendwohin", "Kegelhut, kein Hemd", "zahlt in Reis (gleicher Wert, schwerer zu tragen)", "spricht nur in Wetter"],
+      "saetze": {
+        "gruss": ["Regen kommt. Nicht heute. Aber er kommt.", "Du bist der Junge vom Hügel. Dein Mentor klaut mein Wasser.", "Komm nicht ins Feld. Die Reiher mögen keine Sandalen."],
+        "kauf": ["Ich zahl in Reis. Reis ist Geld, das man essen kann.", "Für die Abende. Die Frösche sind laut.", "Der Büffel sieht nichts. Der Büffel sieht nie was."],
+        "ablehnung": ["Dann nicht. Der Reis wächst trotzdem.", "Morgen. Oder nach dem Regen. Oder nie. Alles gleich.", "Mein Vater hat auch nie gekauft. Er hat angebaut."],
+        "reveal": []
+      }
+    },
+    {
+      "id": "kletterer_1", "typ": "Kokos-Kletterer", "name": "Dao, ganz oben",
+      "schuhe": "barfuss", "hemd": "tanktop", "hose": "shorts", "accessoire": "helm_delle",
+      "hautton": "dunkel", "bart": "stoppel", "brille": "keine", "haare": "kurz",
+      "extras": ["kokosnuss", "seil_um_huefte", "pflaster_stirn"],
+      "zivi": false, "zahlt": 20, "feilschen": 0.4, "heat": 0, "tempo": 1.1, "spawn": "K8", "stimme": "kletterer",
+      "stimmung_start": "zufrieden",
+      "mimik": "Breites Grinsen mit Zahnlücke, ein Auge zugekniffen (Kokosnuss von gestern). Beim Kauf: schaut erst nach oben, ob was fällt, dann lacht er. Bei Ablehnung: zuckt die Schultern, klettert hoch, ruft von oben runter.",
+      "tells": ["Helm mit Delle: Kokosnuss war schneller", "Seil um die Hüfte, Hornhaut an den Füßen", "rennt nicht weg, er klettert weg (Streife schaut nach oben, sieht nur Palme)", "wirft bei Gefahr Kokosnüsse, trifft nie"],
+      "saetze": {
+        "gruss": ["Von oben sieht man alles. Auch dich. Besonders dich.", "Achtung, Kopf! Nein, Spaß. Die Nuss ist schon unten.", "Ich war grad zwanzig Meter über Pong. Er hat's nicht gemerkt."],
+        "kauf": ["Für oben. Da ist es ruhig. Und schwankt.", "Das nehm ich mit auf den Baum. Da sucht keiner.", "Zahl ich in Kokosnuss? Nein? Okay, Münzen. Nuss gibt's gratis."],
+        "ablehnung": ["Dann klettere ich halt nüchtern. Auch gut, weniger Dellen.", "Von oben frag ich nochmal. Da hörst du mich nicht.", "Kein Ding. Die Palme wartet. Die wartet immer."],
+        "reveal": []
+      }
+    },
+    {
+      "id": "zivi_5", "typ": "Die Spaziergängerin", "name": "Frau Trillerpfeife",
+      "schuhe": "flipflop", "hemd": "hawaii", "hose": "shorts", "accessoire": "sonnenbrille",
+      "hautton": "sonnenbrand", "bart": "keiner", "brille": "sonnenbrille", "haare": "dutt",
+      "extras": ["muetzen_streifen", "pfeife_am_band", "haltung_gerade"],
+      "zivi": true, "zahlt": 45, "feilschen": 1.0, "heat": 2, "tempo": 0.7, "spawn": "K6", "stimme": "zivi_pfeife",
+      "stimmung_start": "zufrieden",
+      "mimik": "Freundliches Urlaubslächeln, aber die Stirn hat einen blassen Streifen genau dort, wo sonst die Dienstmütze sitzt. Beim Kauf: schiebt die Sonnenbrille hoch, der Streifen leuchtet, Lächeln bleibt. Beim Reveal: Pfeife in den Mund, Augen zu, pfeift.",
+      "tells": ["Schuhe und Hemd sind unverdächtig: Flip-Flops, fleckiges Hawaiihemd (geliehen), Sonnenbrand", "ABER: blasser Mützen-Streifen auf der Stirn, Sonnenbrand nur darunter", "Trillerpfeife am Band um den Hals, als Schmuck getarnt", "steht kerzengerade, kein Schluffi steht so", "kann nicht rennen (Flip-Flops), pfeift stattdessen Verstärkung"],
+      "saetze": {
+        "gruss": ["Guten Tag! Ich meine: Hey. Hey, Dude.", "Schöner Strand. Ich bin hier privat. Ganz privat.", "Haben Sie… hast du vielleicht etwas Entspannendes? Zum Entspannen?"],
+        "kauf": ["Vielen Dank. Das wird… genossen. Privat.", "Sehr gut. Sehr, sehr gut. Bleiben Sie bitte kurz stehen.", "Perfekt. Entschuldigung, ich muss nur kurz… pfeifen."],
+        "ablehnung": ["Verstehe. Dann spaziere ich weiter. Dienstlich. Privat!", "Kein Problem. Ich bin morgen auch hier. Ab acht. Schichtbeginn. Strandbeginn!", "Schade. Mein Chef… mein Mann hätte sich gefreut."],
+        "reveal": ["Die Pfeife ist kein Schmuck. Der Streifen ist keine Mode.", "Zentrale, Spaziergang beendet, Zielperson steht neben mir. Ja, in Flip-Flops. Ja, ich auch.", "Ich kann nicht rennen. Muss ich auch nicht. Pong kommt. Irgendwann."]
+      }
+    },
+    {
+      "id": "paar_1", "typ": "Flitterwochen-Paar", "name": "Die Frischvermählten",
+      "schuhe": "sandale", "hemd": "hawaii", "hose": "shorts", "accessoire": "handy",
+      "hautton": "hell", "bart": "keiner", "brille": "sonnenbrille", "haare": "lang",
+      "extras": ["partnerlook", "just_married_cap", "blumenkranz"],
+      "figuren": 2,
+      "zivi": false, "zahlt": 40, "feilschen": 0.6, "heat": 1, "tempo": 0.8, "spawn": "K6", "stimme": "paar",
+      "stimmung_start": "zufrieden",
+      "mimik": "Beide strahlen synchron, gleiche Sonnenbrille, gleiches Hemd. Beim Kauf: gleichzeitiges Selfie mit dir im Hintergrund. Bei Ablehnung: beide ziehen gleichzeitig die Mundwinkel runter und trösten sich.",
+      "tells": ["identische Hawaiihemden, identische Caps 'JUST MARRIED'", "Sandalen, harmlos", "ABER: fotografieren alles und posten es (Heat 1: du bist jetzt im Internet)", "reden gleichzeitig, beenden die Sätze des anderen"],
+      "saetze": {
+        "gruss": ["Hi! Wir sind— / —in den Flitterwochen! / Seit gestern! / Seit vorgestern, Schatz.", "Wir wollen was Lokales! / Was Echtes! / Ist das echt?", "Unser Reiseleiter sagt, hier gibt's— / —Erlebnisse!"],
+        "kauf": ["Selfie! / Lächeln! / Du auch! / Perfekt!", "Das kommt in den Blog! / Nein, Schatz. / Nur in die Story!", "Danke, danke! / Wir heißen Lisa und— / Er heißt auch Lisa. Lange Geschichte."],
+        "ablehnung": ["Oh. / Okay. / Dann Kokosnuss? / Kokosnuss!", "Verstehen wir. / Total. / Wir sind auch nicht so. / Doch.", "Schade. / Schade. / Wir haben es trotzdem fotografiert."],
+        "reveal": []
       }
     }
   ]

@@ -910,3 +910,16 @@ test('Ereignis-Wirkung: Heat/Ware am Morgen, Preisfaktor beim Verkauf, Mentor k�
   assert.equal(fromSave(toSave({ ...s, seed: 4242 })).seed, 4242); assert.equal(fromSave(toSave({ ...s, seed: 'x' })).seed, 1);
   assert.equal(fromSave(toSave(r)).ereignis, null, 'Ereignis ist tagesintern, wird morgens neu gewürfelt');
 });
+
+import { ACCESSORIES as ACC, EXTRAS as EXT, SPAWNS as SPW } from '../js/game.js';
+test('Runde-10-Kunden: neue Accessoires/Extras/Spawns und Felder figuren/zahlt_in überleben die Normalisierung', () => {
+  const nok = nK({ id: 'bauer_nok', accessoire: 'kegelhut', extras: ['schlamm_bis_knie', 'reissack', 'hose_hochgekrempelt', 'quatsch'], spawn: 'K7', zahlt_in: 'reis', zahlt: 25 });
+  assert.equal(nok.accessoire, 'kegelhut'); assert.deepEqual(nok.extras, ['schlamm_bis_knie', 'reissack', 'hose_hochgekrempelt']); assert.equal(nok.spawn, 'K7'); assert.equal(nok.zahlt_in, 'reis'); assert.equal(nok.figuren, 1);
+  const paar = nK({ id: 'paar_1', figuren: 2, extras: ['partnerlook', 'just_married_cap', 'blumenkranz'], spawn: 'K6' });
+  assert.equal(paar.figuren, 2); assert.equal(paar.extras.length, 3); assert.equal(nK({ id: 'x', figuren: 7 }).figuren, 1);
+  const z5 = nK({ id: 'zivi_5', zivi: true, accessoire: 'sonnenbrille', extras: ['muetzen_streifen', 'pfeife_am_band', 'haltung_gerade'], spawn: 'K6' });
+  assert.deepEqual(z5.extras, ['muetzen_streifen', 'pfeife_am_band', 'haltung_gerade']);
+  assert.equal(nK({ id: 'k', accessoire: 'helm_delle', extras: ['kokosnuss', 'seil_um_huefte', 'pflaster_stirn'], spawn: 'K8' }).spawn, 'K8');
+  assert.ok(ACC.includes('kegelhut') && EXT.includes('blumenkranz') && SPW.includes('K8'));
+  assert.equal(nK({ id: 'y', zahlt_in: 3 }).zahlt_in, null);
+});

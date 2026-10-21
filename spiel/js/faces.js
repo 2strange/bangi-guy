@@ -442,9 +442,17 @@ export function face(kind, mood = 'neutral', opts = {}) {
   return texCache.get(k);
 }
 
+// Gesichts-Feinheiten je Kunden-id (aus den mimik-Texten): werden in kundeFace() automatisch eingemischt
+export const FACE_EXTRAS = {
+  fischer_1: { lids: [0.55, 0.2] },                  // ein Auge halb zu, 4-Uhr-früh-Gesicht
+  touristin_1: { lids: [0.72, 0.72], wrinkles: true }, // Augen nur als Lachfalten
+  lauter_typ_1: { look: [0, -8] },                     // Augen weit, alles ein Ausrufezeichen
+  zivi_4: { look: [-34, 0] },                          // scannt den Markt statt dich anzuschauen
+};
+
 /** Kundengesicht direkt aus einem Datensatz von data/kunden.json; mood fehlt → stimmung_start. */
 export function kundeFace(k, mood = k.stimmung_start ?? 'neutral', extra = {}) {
-  return face('kunde', mood, { hautton: k.hautton, bart: k.bart, brille: k.brille, haare: k.haare, seed: hashSeed(k.id ?? k.name ?? 'x'), ...extra });
+  return face('kunde', mood, { hautton: k.hautton, bart: k.bart, brille: k.brille, haare: k.haare, seed: hashSeed(k.id ?? k.name ?? 'x'), ...(FACE_EXTRAS[k.id] ?? {}), ...extra });
 }
 
 // Bisherige Exporte: die drei Ursprungs-Looks

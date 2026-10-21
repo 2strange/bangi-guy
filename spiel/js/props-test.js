@@ -6,9 +6,10 @@
 // ?what=posen → Tätigkeits-Posen (figures.pose) an drei Kunden
 // ?what=nong  → Barkeeper Nong hinter der Theke (links neutral/tagsüber, rechts müde/abends), t über ?t=
 // ?what=huette → Finale-Hütte in allen Zuständen + Wegweiser normal/„Jetzt stimmt es.“
+// ?what=neue  → die neuen Kunden (Fischhändler, lauter Typ, Kreuzfahrt-Tante, Fragesteller) mit kundenExtras()
 import * as THREE from 'three';
 import { toonMesh, textTexture } from './toon.js';
-import { schluffi, runner, sandal, sneaker, pose, POSES, buildNong, updateNong, setNongMood } from './figures.js';
+import { schluffi, runner, sandal, sneaker, pose, POSES, buildNong, updateNong, setNongMood, kundenExtras, updateKundenExtras } from './figures.js';
 import { hotel, beachBar, finaleHuette, setHuette, HUETTE_ZUSTAENDE, signpost, setWegweiserText } from './props.js';
 import { buildingScale } from './logic.js';
 import { buildKunde } from './kunden.js';
@@ -51,6 +52,19 @@ if (WHAT === 'feet') {
   for (const [shoe, x] of items) { shoe.position.set(x, 0, 0); shoe.scale.setScalar(1.6); scene.add(shoe); }
   camera.position.set(0, 4.2, 4.5);
   camera.lookAt(0, 0.3, 0);
+} else if (WHAT === 'neue') {
+  const kat = await fetch('./data/kunden.json').then((r) => r.json());
+  const kunden = normalizeKatalog(kat);
+  const ids = ['fischer_1', 'lauter_typ_1', 'touristin_1', 'zivi_4'];
+  ids.forEach((id, i) => {
+    const k = kunden.find((x) => x.id === id); if (!k) return;
+    const fig = buildKunde(k, 7 + i); kundenExtras(fig, k); updateKundenExtras(fig, 1.3);
+    fig.position.set((i - 1.5) * 3.6, 0, 0); fig.rotation.y = 0.15; scene.add(fig);
+    const tex = textTexture(k.name, { bg: '#fff1c2', fg: '#2b1b0b', font: 'bold 44px sans-serif', w: 640, h: 96 });
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.48), new THREE.MeshBasicMaterial({ map: tex })); label.position.set((i - 1.5) * 3.6, 4.4, 0); scene.add(label);
+  });
+  camera.position.set(0, 3.8, 12.5);
+  camera.lookAt(0, 2.0, 0);
 } else if (WHAT === 'huette') {
   HUETTE_ZUSTAENDE.forEach((z, i) => {
     const h = finaleHuette(); setHuette(h, z); h.scale.setScalar(1.5); h.position.set((i - 1.5) * 9, 0, 0); h.rotation.y = 0.2; scene.add(h);

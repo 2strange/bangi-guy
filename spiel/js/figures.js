@@ -2,7 +2,7 @@
 // userData.parts = { body, legs: [L, R], arms: [L, R], head }. Beine/Arme drehen um Hüfte/Schulter (x-Achse).
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { toonMesh, toon, deform, BLACK } from './toon.js';
+import { toonMesh, toon, deform, BLACK, textTexture } from './toon.js';
 import { limb } from './props.js';
 import { faceDecal, schluffiFace, runnerFace, face, setFace } from './faces.js';
 
@@ -539,4 +539,60 @@ export function setNongMood(g, mood) {
   const opts = mood === 'gruss' ? { ...NONG_FACE, brows: ['normal', 'hoch'] } : NONG_FACE;
   setFace(P.decal, face('kunde', mood === 'gruss' ? 'neutral' : mood, opts));
   g.userData.mood = mood;
+}
+
+// ---------- Extras für neue Kunden, die buildKunde() nicht kennt: einmal anhängen (idempotent) ----------
+// fischgeruch (Stinklinien + Fliege), bauchtasche, sonnenbrand_streifen (helle Trägerränder auf den Armen),
+// kreuzfahrt_baendchen (Armband „DECK 7“), rucksack_leer (baumelnder Riemen + Anhänger „0 kg“),
+// faehrenticket (Ticket in der Gesäßtasche), handschellen_umriss (Umriss unterm Hemd an der Hüfte).
+export function kundenExtras(figur, k) {
+  if (!figur || figur.userData.extrasDran) return figur;
+  const P = figur.userData.parts; if (!P) return figur;
+  const extras = new Set(k?.extras ?? []);
+  const hipY = P.legs?.[0]?.position.y ?? 1.1, shoulderY = P.arms?.[0]?.position.y ?? hipY + 0.85;
+  const E = figur.userData.extrasObj = {};
+  const plateTex = (text, w = 384, h = 128) => textTexture(text, { bg: '#fff1c2', fg: '#2b1b0b', font: 'bold 70px sans-serif', w, h });
+  const tag = (text, w, h) => { const t = toonMesh(new THREE.BoxGeometry(w, h, 0.02), [toon(0xfff1c2), toon(0xfff1c2), toon(0xfff1c2), toon(0xfff1c2), toon(0xffffff, { map: plateTex(text) }), toon(0xffffff, { map: plateTex(text) })], { outline: 0.015 }); return t; };
+  if (extras.has('fischgeruch')) {
+    const g = new THREE.Group(); g.position.set(0, shoulderY + 1.5, 0);
+    for (let i = 0; i < 3; i++) {
+      const pts = []; for (let j = 0; j <= 6; j++) pts.push(V((i - 1) * 0.22 + 0.08 * Math.sin(j * 1.4 + i), j * 0.14, 0));
+      g.add(toonMesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 12, 0.022, 5, false), 0x9fbf7a, { outline: 0.012, shadow: false }));
+    }
+    const fly = toonMesh(new THREE.SphereGeometry(0.045, 5, 4), BLACK, { outline: 0, basic: true }); fly.position.set(0.4, 0.5, 0.2); g.add(fly);
+    E.fly = fly; figur.add(g);
+  }
+  if (extras.has('bauchtasche')) {
+    const bag = toonMesh(new RoundedBoxGeometry(0.5, 0.26, 0.2, 3, 0.06), 0xe8463a, { outline: 0.03 }); bag.position.set(0.05, hipY + 0.08, 0.5); bag.rotation.z = 0.1; figur.add(bag);
+    const zip = toonMesh(new THREE.BoxGeometry(0.4, 0.03, 0.03), 0x222222, { outline: 0, basic: true }); zip.position.set(0, 0.08, 0.1); bag.add(zip);
+    const strap = toonMesh(new THREE.TorusGeometry(0.46, 0.03, 6, 20), 0x222222, { outline: 0.012 }); strap.position.set(0, hipY + 0.1, 0.05); strap.rotation.x = Math.PI / 2 + 0.15; figur.add(strap);
+  }
+  if (extras.has('sonnenbrand_streifen')) {
+    for (const [i, s] of [[0, -1], [1, 1]]) { const arm = P.arms[i]; if (!arm) continue; const ring = toonMesh(new THREE.CylinderGeometry(0.115, 0.12, 0.1, 10), 0xffe0c8, { outline: 0.015 }); ring.position.set(s * 0.04, -0.3, 0.04); ring.rotation.z = -s * 0.25; arm.add(ring); }
+    const neck = toonMesh(new THREE.TorusGeometry(0.17, 0.035, 6, 14), 0xffe0c8, { outline: 0.012 }); neck.position.set(0, shoulderY + 0.22, 0); neck.rotation.x = Math.PI / 2; figur.add(neck);
+  }
+  if (extras.has('kreuzfahrt_baendchen')) {
+    const arm = P.arms[0];
+    if (arm) { const band = toonMesh(new THREE.TorusGeometry(0.13, 0.035, 6, 12), 0x3a7bd5, { outline: 0.015 }); band.position.set(-0.18, -0.65, 0.08); band.rotation.x = Math.PI / 2; arm.add(band); const t = tag('DECK 7', 0.22, 0.09); t.position.set(-0.3, -0.62, 0.12); t.rotation.z = 0.3; arm.add(t); }
+  }
+  if (extras.has('rucksack_leer')) {
+    figur.add(limb(V(0.3, hipY + 0.9, -0.55), V(0.42, hipY + 0.15, -0.6), 0.025, 0x2f7a3a, { outline: 0.012 }));
+    const t = tag('0 kg', 0.3, 0.14); t.position.set(0.42, hipY + 0.05, -0.62); t.rotation.set(0.2, Math.PI, 0.15); figur.add(t);
+  }
+  if (extras.has('faehrenticket')) {
+    const t = toonMesh(new THREE.BoxGeometry(0.26, 0.15, 0.02), [toon(0xffd54a), toon(0xffd54a), toon(0xffd54a), toon(0xffd54a), toon(0xffffff, { map: textTexture('FÄHRE 14:00', { bg: '#ffd54a', fg: '#1a1a1a', font: 'bold 44px sans-serif', w: 384, h: 128 }) }), toon(0xffd54a)], { outline: 0.012 });
+    t.position.set(0.22, hipY - 0.12, -0.32); t.rotation.set(0.1, Math.PI, 0.35); figur.add(t);
+  }
+  if (extras.has('handschellen_umriss')) {
+    const g = new THREE.Group(); g.position.set(0.44, hipY + 0.12, -0.18); g.rotation.set(0, -0.8, 0.2);
+    for (const dz of [-0.07, 0.07]) { const c = toonMesh(new THREE.TorusGeometry(0.075, 0.022, 5, 10), 0x6a6a7a, { outline: 0.012 }); c.position.z = dz; c.rotation.y = Math.PI / 2; g.add(c); }
+    figur.add(g);
+  }
+  figur.userData.extrasDran = true;
+  return figur;
+}
+// Animation der Extras (Fliege kreist um den Fischhändler)
+export function updateKundenExtras(figur, t) {
+  const E = figur?.userData.extrasObj; if (!E) return;
+  if (E.fly) E.fly.position.set(0.4 * Math.cos(t * 6), 0.5 + 0.2 * Math.sin(t * 9), 0.3 * Math.sin(t * 6));
 }

@@ -31,6 +31,34 @@
     ]
   },
 
+  "ereignisse": [
+    { "id": "moewe_klaut", "titel": "Seagull Day",
+      "ankuendigung": "Chef was at your hammock this morning. One bag less. She flies it to the bar. Of course the bar.",
+      "hinweis": "The seagull stole a bag. One bag less today.",
+      "kommentar": { "text": "'Chef brought something today. I didn't touch it. Neither did Chef. Chef only collects.'" } },
+    { "id": "regenschauer", "titel": "Rain Shower",
+      "ankuendigung": "Rain today. Around noon. Everyone runs for cover and pulls rubber boots or plastic bags over their feet. The shoe rule wobbles: then you read shirts.",
+      "hinweis": "Rain shower at noon: shoes unreadable then, customers under roofs.",
+      "ende": "Rain's over. The boots vanish as fast as they came. Two people kept theirs on. Remember those.",
+      "kommentar": { "text": "'Rain is the test. When the shoes are gone, the shirt remains. And the shirt lies less often than you think.'" } },
+    { "id": "kreuzfahrtschiff", "titel": "Ship Day",
+      "ankuendigung": "Hear the horn? Cruise ship, big as the island. In an hour the beach is full of hats. Hats pay little, but there are many.",
+      "hinweis": "Cruise ship off the coast: more tourists, more hats.",
+      "kommentar": { "text": "'Ship day. Forty hats, forty photos, zero tips. Chef took a nap on one of the hats.'" } },
+    { "id": "pong_geburtstag", "titel": "Pong's Birthday",
+      "ankuendigung": "It's Pong's birthday. The board says: 'No incidents today. Please.' He sits outside the station with cake and whistles only out of politeness.",
+      "hinweis": "Pong's birthday: heat starts one notch lower today.",
+      "kommentar": { "text": "'I gave him a mango. He cried. He cries every year. It's always the same kind of mango.'" } },
+    { "id": "stromausfall", "titel": "Power Cut",
+      "ankuendigung": "No power since last night. The bar can't chill anything, the music's silent, Nong has a candle. Chef is afraid of candles. People buy from you because nothing else works.",
+      "hinweis": "Power cut: bar without cooling, customers pay more today.",
+      "kommentar": { "text": "'Candles. I did the count by candle. Result's right. I always count by candle, the lights are just decoration.'" } },
+    { "id": "faehre_faellt_aus", "titel": "No Ferry",
+      "ankuendigung": "The ferry's cancelled. Engine, says the captain. No backpackers today, no fresh shirts, no questions. Quiet day. Quiet days are dangerous, you unlearn.",
+      "hinweis": "Ferry cancelled: fewer customers, no undercovers off the ferry.",
+      "kommentar": { "text": "'No ferry, no questions. Tomorrow it's back, with everything you didn't practise today.'" } }
+  ],
+
   "ui": {
     "ausverkauft_kunde": ["All out, man. Tomorrow.", "Nothing left. Ask the seagull.", "Empty. The hill is calling."],
     "bilanz": ["Day {tag}: {weg} bags gone{polizei}, {geldHeute} coins in.", "Cash: {geld} · Heat: {heatLabel}"],

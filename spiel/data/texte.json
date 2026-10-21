@@ -1,5 +1,5 @@
 {
-  "_schema": "Spieltexte für Bangi Beach (Sprechblasen, HUD, Tagesende). Eigentümer: Content. Alles kurz, Deutsch, Lebowski-Ton. Struktur: ausverkauft[] = Sprüche, wenn die Ware alle ist (zufällig wählen; zeigen auf Mentor/Kuppe tagsüber oder Bar abends). tagesende{lage: []} = Bilanz-Sprüche nach Lage, Schlüssel: gut (viel verkauft, Heat ≤ 1), heat (Heat 2+, Tag überstanden), nichts (kein Verkauf), verhaftet (Heat 3, Tag verloren, Geld bleibt); je Lage zufällig einen wählen. reveal_gags[] = pro Zivi bzw. Falle ein Eintrag: id (Kunde aus kunden.json), wann (kauf = beim Verkauf, ablehnung = bei Ablehnung, immer = Idle-Tick), gag (was man sieht, 1 Satz), mood (Grundgesicht der Mimik-API: neutral|misstrauisch|erschrocken|zufrieden|selig), extra (Requisit, das erscheint, als Kennwort für die Figuren-Bauer: dienstmarke|polizistenaugen|handschellen|funkgeraet|notizblock|pfeife|halstuch_marke|taschenlampe|pulsuhr|null), dauer_s (ungefähre Länge der Kleinanimation). posten7{} = Polizeiposten: mango{gnaedig[], schon_gehabt[], keine_mango[], kein_heat[]}, tafel{zeile1 mit {tage}, zeile2 je Heat 0–3, nachts[]}, pong{heat_0..heat_3[]} (Details in posten7._ablauf). ui{} = Oberflächen-Texte (ausverkauft_kunde[], bilanz[], polizei, titel{}, optionen{}, dialog{}, heat_label{}, menue{}, hud{}, verhandeln{angenommen[], weg[]}, start{}, finale{weiterspielen, neue_woche}), ersetzen die Code-Defaults. tutorial{} = Tag-1-Schritte (schritte[] mit id, trigger, ziel, text, optional; ueberspringen, fertig). woche{} = Wochenbogen über 7 Tage (titel, ziel{muenzen, mittel_ab}, intro[], zwischenstand[], tage[7], finale{gut, mittel, fail}); Details in woche._ablauf. ÜBERSETZUNG: texte.en.json spiegelt diese Datei mit denselben Pfaden, nur String-Felder; fehlende Zweige fallen auf DE zurück. abend_bar{} = Abend-Phase: sonnenuntergang[] (Hinweis-Gags), barkeeper{name, beschreibung, aussehen (Figuren-Felder wie in kunden.json, für den Bau der Figur), gruss[], zwischenruf[], letzte_runde[], gute_nacht[]}, mentor{gut[], heat[], nichts[], verhaftet[]} (Rückblick nach Lage), einschlafen{text[], folge} (Details in abend_bar._ablauf). mentor_szene{} = Ablauf der Kuppe-Szene (siehe _ablauf darin; schritte[] mit id, wer, text[] oder @-Verweis, quelle, blasen[], aktion ware_auffuellen|heat_minus, menge/wert, weiter). mentor[] = Weisheiten für die Kuppe: id, titel, mechanik (welche Regel sie freischaltet), einleitung (Mentor-Gerede, 1–2 Sätze), regel (der eigentliche Merksatz, so steht er später im Hilfe-Menü), pointe (Schluss-Gag), kunden_beispiel (ids aus kunden.json, an denen man die Regel übt).",
+  "_schema": "Spieltexte für Bangi Beach (Sprechblasen, HUD, Tagesende). Eigentümer: Content. Alles kurz, Deutsch, Lebowski-Ton. Struktur: ausverkauft[] = Sprüche, wenn die Ware alle ist (zufällig wählen; zeigen auf Mentor/Kuppe tagsüber oder Bar abends). tagesende{lage: []} = Bilanz-Sprüche nach Lage, Schlüssel: gut (viel verkauft, Heat ≤ 1), heat (Heat 2+, Tag überstanden), nichts (kein Verkauf), verhaftet (Heat 3, Tag verloren, Geld bleibt); je Lage zufällig einen wählen. reveal_gags[] = pro Zivi bzw. Falle ein Eintrag: id (Kunde aus kunden.json), wann (kauf = beim Verkauf, ablehnung = bei Ablehnung, immer = Idle-Tick), gag (was man sieht, 1 Satz), mood (Grundgesicht der Mimik-API: neutral|misstrauisch|erschrocken|zufrieden|selig), extra (Requisit, das erscheint, als Kennwort für die Figuren-Bauer: dienstmarke|polizistenaugen|handschellen|funkgeraet|notizblock|pfeife|halstuch_marke|taschenlampe|pulsuhr|null), dauer_s (ungefähre Länge der Kleinanimation). posten7{} = Polizeiposten: mango{gnaedig[], schon_gehabt[], keine_mango[], kein_heat[]}, tafel{zeile1 mit {tage}, zeile2 je Heat 0–3, nachts[]}, pong{heat_0..heat_3[]} (Details in posten7._ablauf). ereignisse[] = Tages-Ereignisse, je Eintrag: id, titel (kurz, HUD), gewicht (relative Häufigkeit), ab_tag (Default 2, nie Tutorial-Tag), zeitpunkt (morgen|mittag|abend) + dauer_s (Sekunden Spielzeit, Tag = 420; 0 = ganzer Tag; nur Regen ist zeitlich), requisite (Kulisse: moewe|wolke|schiff|kuchen|kerze|leerer_pier|null), sound (moewen|regen|horn|troete|klick|stille|null), ankuendigung (Mentor morgens), hinweis (Einblendung Tagesstart), ende (optional, wenn vorbei), wirkung{kunden_faktor, preis_faktor, heat, ware, zivi_extra, tells_verdeckt[], kunden_typen_plus[], unter_dach}, kommentar{wer: mentor|barkeeper, text} (abends an der Bar). Auswahl im Code: pro Tag höchstens eines, 60 % Chance, gewichtet, deterministisch aus Seed. ui{} = Oberflächen-Texte (ausverkauft_kunde[], bilanz[], polizei, titel{}, optionen{}, dialog{}, heat_label{}, menue{}, hud{}, verhandeln{angenommen[], weg[]}, start{}, finale{weiterspielen, neue_woche}), ersetzen die Code-Defaults. tutorial{} = Tag-1-Schritte (schritte[] mit id, trigger, ziel, text, optional; ueberspringen, fertig). woche{} = Wochenbogen über 7 Tage (titel, ziel{muenzen, mittel_ab}, intro[], zwischenstand[], tage[7], finale{gut, mittel, fail}); Details in woche._ablauf. ÜBERSETZUNG: texte.en.json spiegelt diese Datei mit denselben Pfaden, nur String-Felder; fehlende Zweige fallen auf DE zurück. abend_bar{} = Abend-Phase: sonnenuntergang[] (Hinweis-Gags), barkeeper{name, beschreibung, aussehen (Figuren-Felder wie in kunden.json, für den Bau der Figur), gruss[], zwischenruf[], letzte_runde[], gute_nacht[]}, mentor{gut[], heat[], nichts[], verhaftet[]} (Rückblick nach Lage), einschlafen{text[], folge} (Details in abend_bar._ablauf). mentor_szene{} = Ablauf der Kuppe-Szene (siehe _ablauf darin; schritte[] mit id, wer, text[] oder @-Verweis, quelle, blasen[], aktion ware_auffuellen|heat_minus, menge/wert, weiter). mentor[] = Weisheiten für die Kuppe: id, titel, mechanik (welche Regel sie freischaltet), einleitung (Mentor-Gerede, 1–2 Sätze), regel (der eigentliche Merksatz, so steht er später im Hilfe-Menü), pointe (Schluss-Gag), kunden_beispiel (ids aus kunden.json, an denen man die Regel übt).",
 
   "ausverkauft": [
     "Alles weg. Der Mentor hockt auf der Kuppe und gießt. Hoch mit dir.",
@@ -93,6 +93,46 @@
       "mood": "erschrocken", "extra": null, "dauer_s": 2.0
     },
     {
+      "id": "zivi_5", "wann": "kauf",
+      "gag": "Sie schiebt die Sonnenbrille hoch, der blasse Mützen-Streifen leuchtet auf der roten Stirn, dann zieht sie die Trillerpfeife am Band hervor und pfeift mit geschlossenen Augen; das Lächeln bleibt die ganze Zeit.",
+      "mood": "zufrieden", "extra": "pfeife", "dauer_s": 2.0
+    },
+    {
+      "id": "zivi_5", "wann": "ablehnung",
+      "gag": "Sie nickt anerkennend, richtet sich noch gerader auf als vorher (geht nicht, tut es trotzdem) und tippt sich an die Stirn, genau auf den Streifen.",
+      "mood": "misstrauisch", "extra": null, "dauer_s": 1.2
+    },
+    {
+      "id": "zivi_5", "wann": "immer",
+      "gag": "Alle paar Sekunden greift sie an das Band um den Hals, als wollte sie prüfen, ob die Pfeife noch da ist; dabei steht sie stramm wie beim Appell.",
+      "mood": "zufrieden", "extra": null, "dauer_s": 0.8
+    },
+    {
+      "id": "bauer_nok", "wann": "kauf",
+      "gag": "Nok stellt wortlos einen Reissack ab, der Kuhreiher vom Büffel landet darauf und schaut den Spieler an, als wäre er das Wechselgeld.",
+      "mood": "neutral", "extra": "reissack", "dauer_s": 1.8
+    },
+    {
+      "id": "kletterer_1", "wann": "kauf",
+      "gag": "Dao schaut nach oben, eine Kokosnuss fällt genau auf den Helm, zweite Delle, er grinst und hebt sie auf: 'Gratis.'",
+      "mood": "zufrieden", "extra": "kokosnuss", "dauer_s": 1.8
+    },
+    {
+      "id": "kletterer_1", "wann": "ablehnung",
+      "gag": "Er dreht sich um, umarmt die nächste Palme und ist in drei Zügen oben; von dort winkt er, die Streife darunter schaut nur auf die Nuss am Boden.",
+      "mood": "zufrieden", "extra": null, "dauer_s": 2.0
+    },
+    {
+      "id": "paar_1", "wann": "kauf",
+      "gag": "Beide heben gleichzeitig das Handy, Selfie mit dem Spieler im Hintergrund, Blitz tagsüber, dann schauen beide auf den Bildschirm und sagen synchron 'perfekt' (Heat +1, du bist jetzt online).",
+      "mood": "zufrieden", "extra": "handy", "dauer_s": 1.8
+    },
+    {
+      "id": "paar_1", "wann": "ablehnung",
+      "gag": "Beide ziehen synchron die Mundwinkel runter, trösten sich gegenseitig mit einem Schulterklopfen und machen dann trotzdem ein Foto.",
+      "mood": "erschrocken", "extra": "handy", "dauer_s": 1.5
+    },
+    {
       "id": "rentner_1", "wann": "kauf",
       "gag": "Er fotografiert versehentlich sich selbst mit Blitz, zieht die Socken in den Sandalen hoch und strahlt wie am Eiswagen (zur Beruhigung: harmlos, nur peinlich).",
       "mood": "zufrieden", "extra": null, "dauer_s": 1.5
@@ -151,6 +191,52 @@
       ]
     }
   },
+
+  "ereignisse": [
+    {
+      "id": "moewe_klaut", "titel": "Möwen-Tag", "gewicht": 3, "ab_tag": 2, "zeitpunkt": "morgen", "dauer_s": 0, "requisite": "moewe", "sound": "moewen",
+      "ankuendigung": "Chef war heute früh an deiner Hängematte. Ein Beutel weniger. Sie fliegt damit zur Bar. Natürlich zur Bar.",
+      "hinweis": "Die Möwe hat einen Beutel geklaut. Ein Beutel weniger heute.",
+      "wirkung": { "ware": -1 },
+      "kommentar": { "wer": "barkeeper", "text": "„Chef hat heute was gebracht. Ich hab's nicht angerührt. Chef auch nicht. Chef sammelt nur.“" }
+    },
+    {
+      "id": "regenschauer", "titel": "Regenschauer", "gewicht": 3, "ab_tag": 2, "zeitpunkt": "mittag", "dauer_s": 120, "requisite": "wolke", "sound": "regen",
+      "ankuendigung": "Heute kommt Regen. Mittags. Dann rennen alle unters Dach und ziehen Gummistiefel oder Tüten über die Füße. Die Schuhregel wackelt: dann liest du Hemden.",
+      "hinweis": "Regenschauer mittags: Schuhe sind dann nicht lesbar, Kunden stehen unterm Dach.",
+      "ende": "Regen vorbei. Die Stiefel verschwinden so schnell, wie sie gekommen sind. Zwei Leute haben sie an behalten. Merk dir die.",
+      "wirkung": { "unter_dach": true, "tells_verdeckt": ["schuhe"] },
+      "kommentar": { "wer": "mentor", "text": "„Regen ist die Prüfung. Wenn die Schuhe weg sind, bleibt das Hemd. Und das Hemd lügt seltener, als du denkst.“" }
+    },
+    {
+      "id": "kreuzfahrtschiff", "titel": "Schiffstag", "gewicht": 2, "ab_tag": 2, "zeitpunkt": "morgen", "dauer_s": 0, "requisite": "schiff", "sound": "horn",
+      "ankuendigung": "Hörst du das Horn? Kreuzfahrtschiff, groß wie die Insel. In einer Stunde ist der Strand voller Hüte. Hüte zahlen wenig, aber viele.",
+      "hinweis": "Kreuzfahrtschiff vor der Küste: mehr Touristen, mehr Hüte.",
+      "wirkung": { "kunden_faktor": 1.5, "kunden_typen_plus": ["touristin_1", "rentner_1", "paar_1"] },
+      "kommentar": { "wer": "barkeeper", "text": "„Schiffstag. Vierzig Hüte, vierzig Fotos, null Trinkgeld. Chef hat sich auf einem Hut ausgeruht.“" }
+    },
+    {
+      "id": "pong_geburtstag", "titel": "Pongs Geburtstag", "gewicht": 1, "ab_tag": 3, "zeitpunkt": "morgen", "dauer_s": 0, "requisite": "kuchen", "sound": "troete",
+      "ankuendigung": "Pong hat Geburtstag. Die Tafel sagt: „Heute keine Vorfälle. Bitte.“ Er sitzt mit Kuchen vor der Wache und pfeift nur aus Höflichkeit.",
+      "hinweis": "Pong hat Geburtstag: Heat startet heute eine Stufe tiefer.",
+      "wirkung": { "heat": -1 },
+      "kommentar": { "wer": "mentor", "text": "„Ich hab ihm eine Mango geschenkt. Er hat geweint. Er weint jedes Jahr. Es ist immer dieselbe Mango-Sorte.“" }
+    },
+    {
+      "id": "stromausfall", "titel": "Stromausfall", "gewicht": 2, "ab_tag": 2, "zeitpunkt": "morgen", "dauer_s": 0, "requisite": "kerze", "sound": "klick",
+      "ankuendigung": "Seit heute Nacht kein Strom. Die Bar kühlt nichts, die Musik schweigt, Nong hat eine Kerze. Chef hat Angst vor Kerzen. Die Leute kaufen bei dir, weil sonst nichts geht.",
+      "hinweis": "Stromausfall: Bar ohne Kühlung, Kunden zahlen heute mehr.",
+      "wirkung": { "preis_faktor": 1.2 },
+      "kommentar": { "wer": "barkeeper", "text": "„Kerzen. Ich hab bei Kerzen gerechnet. Ergebnis stimmt. Ich rechne immer bei Kerzen, das Licht ist nur Deko.“" }
+    },
+    {
+      "id": "faehre_faellt_aus", "titel": "Keine Fähre", "gewicht": 2, "ab_tag": 2, "zeitpunkt": "morgen", "dauer_s": 0, "requisite": "leerer_pier", "sound": "stille",
+      "ankuendigung": "Die Fähre fällt aus. Motor, sagt der Kapitän. Keine Backpacker heute, keine frischen Hemden, keine Fragen. Ruhiger Tag. Ruhige Tage sind gefährlich, man verlernt.",
+      "hinweis": "Fähre fällt aus: weniger Kundschaft, keine Zivis von der Fähre.",
+      "wirkung": { "kunden_faktor": 0.8, "zivi_extra": -1 },
+      "kommentar": { "wer": "mentor", "text": "„Keine Fähre, keine Fragen. Morgen kommt sie wieder, mit allem, was du heute nicht geübt hast.“" }
+    }
+  ],
 
   "ui": {
     "_hinweis": "Oberflächen-Texte, die bisher nur als Defaults im Code standen; hier, damit die Sprachumschaltung sie mitnimmt.",

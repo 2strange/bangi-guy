@@ -82,6 +82,7 @@ export function normalizeStimme(s) {
     stil,
     vibrato: clamp(o.vibrato === undefined ? STIL[stil].vib : Number(o.vibrato) || 0, 0, 1),
     laut: clamp(Number(o.laut) || DEFAULT_STIMME.laut, 0.5, 1.2),
+    duo: o.duo === true || o.duo === 'true' || o.duo === 1,
   };
 }
 /**
@@ -250,6 +251,13 @@ export function musicPattern(bar, mood = 'tag') {
   return { bar: b, chord: PROGRESSION[b], events: ev };
 }
 export const stepSeconds = (bpm = BPM) => 60 / bpm / 4;
+/** Zweite Stimme fürs Duo: gleicher Satz, gleiche Silben, +DUO_TONHOEHE, DUO_VERSATZ später (rein) */
+export const DUO_TONHOEHE = 1.1, DUO_VERSATZ = 0.04;
+export function duoPlan(stimmeIn, text) {
+  const stimme = normalizeStimme(stimmeIn);
+  const p = babblePlan({ ...stimme, tonhoehe: stimme.tonhoehe * DUO_TONHOEHE }, text);
+  return { ...p, notes: p.notes.map((n) => ({ ...n, t: n.t + DUO_VERSATZ })), duration: p.duration + DUO_VERSATZ };
+}
 
 /** Möwen-Abstand in Sekunden (8–22 s), rng = Funktion 0..1 */
 export const nextGullDelay = (r) => 8 + r() * 14;
@@ -1280,14 +1288,15 @@ export function setVoiceMode(mode) {
 export const getVoiceMode = () => voiceMode;
 export const ttsAvailable = () => typeof speechSynthesis !== 'undefined' && typeof SpeechSynthesisUtterance !== 'undefined';
 
-function playPlan(plan, panPos = 0) {
+function playPlan(plan, panPos = 0, duo = null) {
   const t0 = now() + 0.02;
-  const g = ctx.createGain(); g.gain.value = plan.stimme.laut;
-  // Position links/rechts (nur wenn gewünscht; Mitte spart den Panner)
-  if (panPos) { const p = pan(panPos); g.connect(p); p.connect(bus.voice); } else g.connect(bus.voice);
-  const nodes = renderPlan(plan, g, t0);
-  speaking = { gain: g, nodes, until: t0 + plan.duration };
-  setTimeout(() => { if (speaking && speaking.gain === g) { speaking = null; g.disconnect(); } }, (plan.duration + 0.3) * 1000);
+  const g = ctx.createGain(); g.gain.value = plan.stimme.laut; g.connect(bus.voice);
+  // Position links/rechts (nur wenn gewünscht; Mitte spart den Panner); beim Duo beide Stimmen leicht auseinander
+  const voice = (pl, pp) => { if (pp) { const p = pan(pp); p.connect(g); return renderPlan(pl, p, t0); } return renderPlan(pl, g, t0); };
+  const nodes = duo ? [...voice(plan, clamp(panPos - 0.2, -1, 1)), ...voice(duo, clamp(panPos + 0.2, -1, 1))] : voice(plan, panPos);
+  const dur = duo ? Math.max(plan.duration, duo.duration) : plan.duration;
+  speaking = { gain: g, nodes, until: t0 + dur };
+  setTimeout(() => { if (speaking && speaking.gain === g) { speaking = null; g.disconnect(); } }, (dur + 0.3) * 1000);
 }
 /** Brabbel-Plan ab t0 in dest rendern (auch für Stimmengewirr/Händler/Funk); gibt die gestarteten Quellen zurück */
 function renderPlan(plan, dest, t0) {
@@ -1330,15 +1339,18 @@ function speakTts(stimme, text) {
  * Lässt eine Figur „reden“. stimme = Profil-Objekt oder id aus stimmen.json. Gibt die Dauer in Sekunden zurück
  * (auch ohne laufendes Audio, damit Aufrufer Timing planen können). Ein neuer Aufruf unterbricht den vorigen.
  * opts.pan: -1 (links) .. 1 (rechts), Standard Mitte; bei Browser-Sprachausgabe ohne Wirkung.
+ * Duo (zwei Leute reden gleichzeitig): Feld duo: true im Stimmprofil (stimmen.json) oder opts.duo — zweite Stimme etwas höher, versetzt, auseinander gepannt.
  */
 export function babble(stimme, text, opts = {}) {
   const profil = typeof stimme === 'string' ? stimmeFor(stimme) : normalizeStimme(stimme);
   const plan = babblePlan(profil, text);
+  const duo = (profil.duo || (opts && opts.duo === true)) && plan.notes.length ? duoPlan(profil, text) : null;
+  const dauer = duo ? duo.duration : plan.duration;
   stopBabble();
   if (voiceMode === 'tts' && ttsAvailable()) return speakTts(profil, text);
-  if (!ready() || !plan.notes.length) return plan.duration;
-  playPlan(plan, normalizePan(opts && opts.pan));
-  return plan.duration;
+  if (!ready() || !plan.notes.length) return dauer;
+  playPlan(plan, normalizePan(opts && opts.pan), duo);
+  return dauer;
 }
 
 // ---------- Stimmung (Musik + Ambience in einem) ----------
