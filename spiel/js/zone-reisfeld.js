@@ -9,7 +9,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { toonMesh, toon, deform, rng, stripeTexture, BLACK } from './toon.js';
 import { limb, palm, hut, coconut, hammock } from './props.js';
-import { bareFoot } from './figures.js';
+import { bareFoot, kopfOhneSchattenwurf } from './figures.js';
 import { face, faceDecal } from './faces.js';
 import { shirtTexture } from './kunden.js';
 import { plate, chicken, cobbleTexture, paving } from './zone-dorf.js';
@@ -92,6 +92,7 @@ export function nok() {
   const hat = toonMesh(new THREE.ConeGeometry(0.95, 0.55, 14), 0xe3b04b, { outline: 0.04 }); hat.position.set(0, 0.45, 0); hat.rotation.z = 0.06; head.add(hat);
   const band = toonMesh(new THREE.TorusGeometry(0.1, 0.02, 6, 10, Math.PI), 0x222222, { outline: 0.01 }); band.position.set(0, -0.25, 0.1); band.rotation.x = 0.3; head.add(band); // Kinnband
   root.userData.parts = { body, arms, head };
+  kopfOhneSchattenwurf(head);
   return root;
 }
 
@@ -231,6 +232,7 @@ export function climber(skin = 0x8d5a3a) {
   const sack = toonMesh(new THREE.SphereGeometry(0.35, 10, 8), 0xd8a85a, { outline: 0.035 }); sack.geometry.scale(1, 1.3, 0.8); sack.position.set(0.45, 0.6, 0.25); g.add(sack);
   const nut = toonMesh(new THREE.SphereGeometry(0.2, 10, 8), 0x6b4423, { outline: 0.03 }); nut.position.set(0.6, 0.3, 0.3); g.add(nut);
   g.userData.parts = { head, nut };
+  kopfOhneSchattenwurf(head);
   return g;
 }
 

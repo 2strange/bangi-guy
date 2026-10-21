@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { toonMesh, toon, deform, rng, textTexture, stripeTexture, BLACK } from './toon.js';
 import { limb, barrier, lamp, boat, palm } from './props.js';
-import { sandal } from './figures.js';
+import { sandal, kopfOhneSchattenwurf } from './figures.js';
 import { face, faceDecal } from './faces.js';
 import { plate, cobbleTexture, paving } from './zone-dorf.js';
 import { WATER_Y } from './world.js';
@@ -108,6 +108,7 @@ function tuktuk() {
   const puffs = [];
   for (let i = 0; i < 3; i++) { const p = toonMesh(new THREE.SphereGeometry(0.22, 8, 6), 0x9a9aa6, { outline: 0.045, shadow: false, basic: true }); p.userData.phase = i / 3; p.position.set(-1.6, 0.5, -0.5); g.add(p); puffs.push(p); }
   g.userData.puffs = puffs; g.userData.body = body;
+  kopfOhneSchattenwurf(head);
   return g;
 }
 
@@ -165,6 +166,7 @@ export function fisherman() {
   const bob = toonMesh(new THREE.SphereGeometry(0.1, 8, 6), 0xe8463a, { outline: 0.02 }); bob.position.set(1.5, 0.05, 4.2); root.add(bob);
   const bucket = toonMesh(new THREE.CylinderGeometry(0.28, 0.24, 0.4, 10), 0xe8463a, { outline: 0.03 }); bucket.position.set(-0.9, 0.2, 0.2); root.add(bucket);
   root.userData.bob = bob;
+  kopfOhneSchattenwurf(head);
   return root;
 }
 
@@ -217,6 +219,7 @@ export function sleepingWorker() {
   const shovel = limb(V(1.2, 0, -0.5), V(1.0, 2.2, -0.3), 0.04, 0xd8a85a, { outline: 0.02 }); g.add(shovel);
   const spade = toonMesh(new THREE.BoxGeometry(0.4, 0.5, 0.05), 0x8d8fa0, { outline: 0.025 }); spade.position.set(1.2, 0.3, -0.5); g.add(spade);
   g.userData.zzz = zzz;
+  kopfOhneSchattenwurf(head);
   return g;
 }
 

@@ -410,11 +410,11 @@ export function buildKunde(k, seed = 1, outfit = null) {
   if (hairKind === 'lockig') {
     for (let i = 0; i < 8; i++) {
       const a = i * 0.8;
-      const h = toonMesh(new THREE.SphereGeometry(0.17, 10, 7), hairColor, { outline: 0.035 });
+      const h = toonMesh(new THREE.SphereGeometry(0.17, 10, 7), hairColor, { outline: 0.035, shadow: false });
       h.position.set(Math.cos(a) * 0.36, 0.42 + (i % 2) * 0.1, Math.sin(a) * 0.3 - 0.05); head.add(h);
     }
   } else if (hairKind !== 'glatze') {
-    const cap = toonMesh(new THREE.SphereGeometry(0.55, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), hairColor, { outline: 0.045 });
+    const cap = toonMesh(new THREE.SphereGeometry(0.55, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), hairColor, { outline: 0.045, shadow: false });
     cap.position.set(0, k.haare === 'weiss' ? 0.17 : 0.12, -0.05); cap.rotation.x = k.haare === 'weiss' ? -0.22 : -0.15; head.add(cap); // weißes Haar sitzt höher: der Kappenrand darf nicht über Stirn/Brille hängen
     if (hairKind === 'lang') {
       for (const s of [-1, 1]) {
@@ -423,7 +423,7 @@ export function buildKunde(k, seed = 1, outfit = null) {
       }
     }
     if (hairKind === 'dutt') {
-      const bun = toonMesh(new THREE.SphereGeometry(0.2, 10, 8), hairColor, { outline: 0.035 });
+      const bun = toonMesh(new THREE.SphereGeometry(0.2, 10, 8), hairColor, { outline: 0.035, shadow: false });
       bun.position.set(0, 0.62, -0.1); head.add(bun);
     }
   } else {
@@ -433,35 +433,35 @@ export function buildKunde(k, seed = 1, outfit = null) {
 
   // Kopf-Accessoires + Extras
   if (k.accessoire === 'cap') {
-    const capTop = toonMesh(new THREE.SphereGeometry(0.56, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), 0xe8463a, { outline: 0.045 });
+    const capTop = toonMesh(new THREE.SphereGeometry(0.56, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), 0xe8463a, { outline: 0.045, shadow: false });
     capTop.position.set(0, 0.2, 0); head.add(capTop);
     const brimGeo = new THREE.BoxGeometry(0.6, 0.07, 0.55);
     deform(brimGeo, (v) => { if (v.z > 0) v.x *= 1 - 0.5 * (v.z / 0.275); });
-    const brim = toonMesh(brimGeo, 0xe8463a, { outline: 0.035 });
+    const brim = toonMesh(brimGeo, 0xe8463a, { outline: 0.035, shadow: false });
     brim.position.set(0, 0.36, 0.62); brim.rotation.x = -0.2; head.add(brim);
   }
   if (extras.has('riesenhut')) {
-    const top = toonMesh(new THREE.CylinderGeometry(0.46, 0.5, 0.28, 14), 0xfff1c2, { outline: 0.04 });
+    const top = toonMesh(new THREE.CylinderGeometry(0.46, 0.5, 0.28, 14), 0xfff1c2, { outline: 0.04, shadow: false });
     top.position.set(0, 0.6, 0); head.add(top);
-    const brim = toonMesh(new THREE.CylinderGeometry(1.25, 1.25, 0.05, 20), 0xfff1c2, { outline: 0.045 });
+    const brim = toonMesh(new THREE.CylinderGeometry(1.25, 1.25, 0.05, 20), 0xfff1c2, { outline: 0.045, shadow: false });
     brim.position.set(0, 0.47, 0); brim.rotation.set(0.08, 0, 0.1); head.add(brim);
-    const ribbon = toonMesh(new THREE.CylinderGeometry(0.51, 0.51, 0.09, 14), 0xff5fa2, { outline: 0.02 });
+    const ribbon = toonMesh(new THREE.CylinderGeometry(0.51, 0.51, 0.09, 14), 0xff5fa2, { outline: 0.02, shadow: false });
     ribbon.position.set(0, 0.5, 0); head.add(ribbon);
   } else if (extras.has('strohhut')) {
-    const top = toonMesh(new THREE.CylinderGeometry(0.42, 0.46, 0.3, 14), 0xe3b04b, { outline: 0.04 });
+    const top = toonMesh(new THREE.CylinderGeometry(0.42, 0.46, 0.3, 14), 0xe3b04b, { outline: 0.04, shadow: false });
     top.position.set(0, 0.6, 0); head.add(top);
-    const brim = toonMesh(new THREE.CylinderGeometry(0.85, 0.85, 0.05, 18), 0xe3b04b, { outline: 0.04 });
+    const brim = toonMesh(new THREE.CylinderGeometry(0.85, 0.85, 0.05, 18), 0xe3b04b, { outline: 0.04, shadow: false });
     brim.position.set(0, 0.47, 0); brim.rotation.z = 0.06; head.add(brim);
-    const ribbon = toonMesh(new THREE.CylinderGeometry(0.47, 0.47, 0.08, 14), 0xe8463a, { outline: 0.02 });
+    const ribbon = toonMesh(new THREE.CylinderGeometry(0.47, 0.47, 0.08, 14), 0xe8463a, { outline: 0.02, shadow: false });
     ribbon.position.set(0, 0.5, 0); head.add(ribbon);
   }
   if (extras.has('stirnband')) {
     // Stirnband nie rot: das rote gehört dem Spieler
-    const band = toonMesh(new THREE.TorusGeometry(0.47, 0.06, 8, 24), [0xffd54a, 0x3a7bd5, 0x3bb84a][Math.floor(rand() * 3)], { outline: 0.03 });
+    const band = toonMesh(new THREE.TorusGeometry(0.47, 0.06, 8, 24), [0xffd54a, 0x3a7bd5, 0x3bb84a][Math.floor(rand() * 3)], { outline: 0.03, shadow: false });
     band.position.set(0, 0.3, 0); band.rotation.x = Math.PI / 2 + 0.1; head.add(band);
   }
   if (k.accessoire === 'kopfhoerer') {
-    const band = toonMesh(new THREE.TorusGeometry(0.56, 0.05, 8, 24, Math.PI), 0x222233, { outline: 0.03 });
+    const band = toonMesh(new THREE.TorusGeometry(0.56, 0.05, 8, 24, Math.PI), 0x222233, { outline: 0.03, shadow: false });
     band.position.set(0, 0.15, 0); band.rotation.y = Math.PI / 2; head.add(band);
     for (const s of [-1, 1]) {
       const cup = toonMesh(new THREE.CylinderGeometry(0.18, 0.18, 0.12, 12), 0xe8463a, { outline: 0.03 });
@@ -499,13 +499,13 @@ export function buildKunde(k, seed = 1, outfit = null) {
   }
   // Polizeimütze für den Reveal (zunächst unsichtbar)
   const capPolice = new THREE.Group();
-  const pc = toonMesh(new THREE.CylinderGeometry(0.5, 0.54, 0.3, 14), 0x2a3f8f, { outline: 0.04 });
+  const pc = toonMesh(new THREE.CylinderGeometry(0.5, 0.54, 0.3, 14), 0x2a3f8f, { outline: 0.04, shadow: false });
   pc.position.y = 0.5; capPolice.add(pc);
-  const pcTop = toonMesh(new THREE.CylinderGeometry(0.56, 0.5, 0.12, 14), 0x2a3f8f, { outline: 0.04 });
+  const pcTop = toonMesh(new THREE.CylinderGeometry(0.56, 0.5, 0.12, 14), 0x2a3f8f, { outline: 0.04, shadow: false });
   pcTop.position.y = 0.7; capPolice.add(pcTop);
-  const pcBrim = toonMesh(new THREE.BoxGeometry(0.5, 0.05, 0.3), 0x111111, { outline: 0.03 });
+  const pcBrim = toonMesh(new THREE.BoxGeometry(0.5, 0.05, 0.3), 0x111111, { outline: 0.03, shadow: false });
   pcBrim.position.set(0, 0.36, 0.55); capPolice.add(pcBrim);
-  const pcBadge = toonMesh(new THREE.SphereGeometry(0.08, 8, 6), 0xffd54a, { outline: 0.02 });
+  const pcBadge = toonMesh(new THREE.SphereGeometry(0.08, 8, 6), 0xffd54a, { outline: 0.02, shadow: false });
   pcBadge.position.set(0, 0.55, 0.5); capPolice.add(pcBadge);
   capPolice.visible = false;
   head.add(capPolice);

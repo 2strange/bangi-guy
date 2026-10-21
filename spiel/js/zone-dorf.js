@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { toonMesh, toon, deform, rng, textTexture, stripeTexture, BLACK } from './toon.js';
 import { limb, mailbox, barrier, lamp } from './props.js';
-import { sneaker } from './figures.js';
+import { sneaker, kopfOhneSchattenwurf } from './figures.js';
 import { face, faceDecal } from './faces.js';
 import { BUILDING_BASE, buildingScale } from './logic.js';
 import { HOUSES, LANES, EXITS, PROPS, EDGES, DORF_SPOTS, footprintAABB } from './zone-dorf-layout.js';
@@ -340,6 +340,7 @@ export function oma() {
   bun.position.set(0, 0.42, -0.2); head.add(bun);
   g.add(limb(V(-0.12, 2.95, -0.2), V(0.22, 3.12, -0.3), 0.02, 0x7a4b22, { outline: 0.01 })); // Haarnadel
   g.userData.parts = { head };
+  kopfOhneSchattenwurf(head);
   return g;
 }
 

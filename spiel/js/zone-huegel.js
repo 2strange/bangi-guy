@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { toonMesh, toon, deform, rng, BLACK } from './toon.js';
 import { limb, hut } from './props.js';
-import { sandal, pose, hemdMitBauch } from './figures.js';
+import { sandal, pose, hemdMitBauch, kopfOhneSchattenwurf } from './figures.js';
 import { coconut } from './props.js';
 import { BUILDING_POS, buildingScale } from './logic.js';
 import { face, faceDecal } from './faces.js';
@@ -242,6 +242,7 @@ export function mentor() {
     lens.position.set(s * 0.2, 0.05, 0.5); head.add(lens);
   }
   root.userData.parts = { legs, arms, head, can, hoe: h };
+  kopfOhneSchattenwurf(head);
   return root;
 }
 

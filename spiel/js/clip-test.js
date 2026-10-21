@@ -31,6 +31,12 @@ scene.background = new THREE.Color(0x8fe0ff);
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
 
 const sunLight = new THREE.DirectionalLight(0xfff4d6, 1.9);
+sunLight.castShadow = true; // Schatten wie im Spiel (Hutkrempe auf Gesicht), sonst prüft das Raster nur die Toon-Stufen
+sunLight.shadow.mapSize.set(2048, 2048);
+const sc = sunLight.shadow.camera;
+sc.left = -40; sc.right = 40; sc.top = 40; sc.bottom = -40; sc.near = 1; sc.far = 120;
+sunLight.shadow.bias = -0.0006;
+sunLight.shadow.normalBias = 0.03;
 sunLight.position.set(8, 20, 14);
 scene.add(sunLight, sunLight.target);
 scene.add(new THREE.HemisphereLight(0xcfeeff, 0xd9b27a, 0.75));

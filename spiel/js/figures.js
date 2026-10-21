@@ -162,6 +162,18 @@ export function hemdMitBauch(parent, hemdMat, skin, { hipY = 1.0, bellyR = 0.34,
   return { torso, belly };
 }
 
+// ---------- Schattenwurf am Kopf ----------
+// Kopfbedeckungen, Haare, Brillen werfen keinen Schatten: Gesichter müssen lesbar bleiben (Kernmechanik), und ein
+// Hutschatten übers ganze Gesicht sieht wie ein grauer Schleier aus. Der Schädel (erstes Kind der Kopfgruppe) wirft
+// weiter, damit der Bodenschatten einen Kopf hat. Konturhüllen werfen ohnehin nicht.
+export function kopfOhneSchattenwurf(head, schaedel = head.children[0]) {
+  head.traverse((m) => { if (m.isMesh && m !== schaedel && m.parent !== schaedel) m.castShadow = false; });
+  return head;
+}
+export function keinSchattenwurf(...objs) {
+  for (const o of objs) o.traverse((m) => { if (m.isMesh) m.castShadow = false; });
+}
+
 export function schluffi() {
   const root = new THREE.Group();
   const skin = 0xf0b98a;
@@ -265,6 +277,7 @@ export function schluffi() {
   }
 
   root.userData.parts = { body, legs, arms, head, baseBodyRot: body.rotation.clone(), baseHeadRot: head.rotation.clone() };
+  kopfOhneSchattenwurf(head);
   return root;
 }
 
@@ -363,6 +376,7 @@ export function runner() {
   bud.position.set(0.58, -0.02, 0.06); head.add(bud);
 
   root.userData.parts = { head };
+  kopfOhneSchattenwurf(head);
   return root;
 }
 
@@ -529,6 +543,7 @@ export function buildNong() {
   root.userData.parts = { arms, head, decal, glass, glint, cloth, gull };
   root.userData.mood = 'neutral';
   root.userData.update = (t) => updateNong(root, t);
+  kopfOhneSchattenwurf(head);
   return root;
 }
 
@@ -615,7 +630,7 @@ export function kundenExtras(figur, k, { index = 0 } = {}) {
   // --- Accessoires, die buildKunde() nicht kennt ---
   if (k?.accessoire === 'kegelhut' && P.head) {
     const hat = toonMesh(new THREE.ConeGeometry(0.95, 0.55, 14), 0xe3b04b, { outline: 0.04 }); hat.position.set(0, 0.5, 0); hat.rotation.z = 0.06; P.head.add(hat);
-    const band = toonMesh(new THREE.TorusGeometry(0.12, 0.02, 6, 10, Math.PI), 0x222222, { outline: 0.01 }); band.position.set(0, -0.3, 0.2); band.rotation.x = 0.4; P.head.add(band);
+    const band = toonMesh(new THREE.TorusGeometry(0.12, 0.02, 6, 10, Math.PI), 0x222222, { outline: 0.01 }); band.position.set(0, -0.3, 0.2); band.rotation.x = 0.4; P.head.add(band); keinSchattenwurf(hat, band);
   }
   if (k?.accessoire === 'helm_delle' && P.head) {
     // Helm groß genug, dass die Haarkappe (r 0.55 um y 0.12) samt Konturhülle ganz drunter bleibt — sonst sticht
@@ -623,7 +638,7 @@ export function kundenExtras(figur, k, { index = 0 } = {}) {
     const helm = toonMesh(new THREE.SphereGeometry(0.63, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.52), 0xffd54a, { outline: 0.045 }); helm.position.set(0, 0.14, 0); helm.rotation.z = 0.08; P.head.add(helm);
     const brim = toonMesh(new THREE.BoxGeometry(0.5, 0.05, 0.3), 0xffd54a, { outline: 0.03 }); brim.position.set(0, 0.2, 0.64); P.head.add(brim);
     const dent = toonMesh(new THREE.SphereGeometry(0.16, 8, 6), 0xe8a034, { outline: 0.02 }); dent.geometry.scale(1, 0.5, 1); dent.position.set(0.29, 0.66, 0.2); dent.rotation.z = -0.6; P.head.add(dent);
-    E.helm = helm;
+    E.helm = helm; keinSchattenwurf(helm, brim, dent);
   }
   if (extras.has('schlamm_bis_knie')) {
     for (const [i, s] of [[0, -1], [1, 1]]) { const leg = P.legs?.[i]; if (!leg) continue; const mud = toonMesh(new THREE.CylinderGeometry(0.16, 0.19, 0.5, 10), 0x6b4a2a, { outline: 0.03 }); mud.position.set(s * 0.18, -hipY + 0.42, -0.03); leg.add(mud); }
@@ -661,12 +676,12 @@ export function kundenExtras(figur, k, { index = 0 } = {}) {
   if (extras.has('just_married_cap') && P.head) {
     const capTop = toonMesh(new THREE.SphereGeometry(0.56, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), 0xffffff, { outline: 0.045 }); capTop.position.set(0, 0.2, 0); P.head.add(capTop);
     const brim = toonMesh(new THREE.BoxGeometry(0.6, 0.07, 0.55), 0xffffff, { outline: 0.035 }); brim.position.set(0, 0.36, 0.62); brim.rotation.x = -0.2; P.head.add(brim);
-    const t = tag('JUST MARRIED', 0.56, 0.16); t.position.set(0, 0.48, 0.5); t.rotation.x = -0.3; P.head.add(t);
+    const t = tag('JUST MARRIED', 0.56, 0.16); t.position.set(0, 0.48, 0.5); t.rotation.x = -0.3; P.head.add(t); keinSchattenwurf(capTop, brim, t);
   }
   if (extras.has('blumenkranz') && P.head) {
     // Kranz außerhalb der Haarkappe (r 0.55 + Hülle): Radius 0.62, sonst steckt der Ring im Haar
     const ring = toonMesh(new THREE.TorusGeometry(0.62, 0.05, 6, 20), 0x3bb84a, { outline: 0.02 }); ring.position.set(0, 0.32, 0); ring.rotation.x = Math.PI / 2 + 0.12; P.head.add(ring);
-    [0xe8463a, 0xffd54a, 0xff5fa2, 0xffffff, 0xff7f3f, 0xc9a0ff].forEach((c, i) => { const a = i / 6 * Math.PI * 2; const f = toonMesh(new THREE.SphereGeometry(0.09, 8, 6), c, { outline: 0.02 }); f.position.set(Math.cos(a) * 0.62, 0.34 + Math.sin(a) * 0.07, Math.sin(a) * 0.62); P.head.add(f); });
+    [0xe8463a, 0xffd54a, 0xff5fa2, 0xffffff, 0xff7f3f, 0xc9a0ff].forEach((c, i) => { const a = i / 6 * Math.PI * 2; const f = toonMesh(new THREE.SphereGeometry(0.09, 8, 6), c, { outline: 0.02 }); f.position.set(Math.cos(a) * 0.62, 0.34 + Math.sin(a) * 0.07, Math.sin(a) * 0.62); P.head.add(f); keinSchattenwurf(f); }); keinSchattenwurf(ring);
   }
   figur.userData.extrasDran = true;
   return figur;

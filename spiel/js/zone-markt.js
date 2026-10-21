@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { toonMesh, toon, deform, rng, textTexture, stripeTexture, BLACK } from './toon.js';
 import { limb, barrier, lamp, palm, coconut } from './props.js';
-import { sandal } from './figures.js';
+import { sandal, kopfOhneSchattenwurf } from './figures.js';
 import { face, faceDecal } from './faces.js';
 import { shirtTexture } from './kunden.js';
 import { plate, cat, cobbleTexture, paving } from './zone-dorf.js';
@@ -146,6 +146,7 @@ export function bystander(seed) {
   if (seed % 3 === 0) { // Sonnenbrille
     for (const sd of [-1, 1]) { const lens = toonMesh(new THREE.CylinderGeometry(0.13, 0.13, 0.04, 10), 0x111111, { outline: 0.015 }); lens.position.set(sd * 0.16, 0.07, 0.4); lens.rotation.x = Math.PI / 2; head.add(lens); }
   }
+  kopfOhneSchattenwurf(head);
   return g;
 }
 
@@ -282,6 +283,7 @@ export function pong() {
     notes.push(n);
   }
   root.userData.parts = { arms, head, whistle, whistleIdle, notes };
+  kopfOhneSchattenwurf(head);
   return root;
 }
 
