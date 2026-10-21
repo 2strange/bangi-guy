@@ -10,7 +10,6 @@ import { buildMarkt } from './zone-markt.js';
 import { buildPier } from './zone-pier.js';
 import { lichterkette } from './licht.js';
 import { buildReisfeld, buildKokoshain } from './zone-reisfeld.js';
-import { moeweMitBeutel, regenwolke, kreuzfahrtschiff } from './ereignisse.js';
 import { buildNong } from './figures.js';
 
 export const WATER_Y = 0.06;
@@ -75,9 +74,6 @@ export function buildWorld() {
   const hafen = buildPier(g, colliders); // nicht `pier` nennen: so heißt der Steg-Baustein aus props.js
   const reis = buildReisfeld(g, colliders);   // Reisfeld mit Bauer Nok (zwischen Kuppe und Posten)
   const hain = buildKokoshain(g, colliders);  // Kokoshain-Ecke im Osten (Versteck)
-  // Ereignis-Requisiten (ereignisse.js): aus, bis ein Tagesereignis sie startet
-  const ereignisProps = { moewe: moeweMitBeutel(), wolke: regenwolke(), schiff: kreuzfahrtschiff() };
-  for (const p of Object.values(ereignisProps)) { p.userData.stop(); g.add(p); }
 
   // Promenade: gepflasterter Weg am Nordrand des Strands, mit Laternen
   g.add(stripMesh((x) => -12.2 + 0.4 * Math.sin(x / 5), (x) => -9.4 + 0.4 * Math.sin(x / 5 + 1), 0xd9c4a3, 0.03, { x0: -64, x1: 66, step: 2 }));
@@ -266,5 +262,5 @@ export function buildWorld() {
     ost: { x: 58, z: -2, yaw: Math.PI / 2 },
     hecke: { x: 8, z: -17, yaw: 0.3 }, // Strandseite vor der Heckenlücke („nord“ gehört dem Dorf)
   };
-  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots, ...markt.spots, ...hafen.spots, ...reis.spots, ...hain.spots }, hideouts: [...dorf.hideouts, ...(markt.hideouts || []), ...(hafen.hideouts || []), ...(hain.hideouts || [])], dorf, huegel, markt, pier: hafen, reis, hain, sonne, nong, huette, wegweiser: sp, ereignisProps };
+  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots, ...markt.spots, ...hafen.spots, ...reis.spots, ...hain.spots }, hideouts: [...dorf.hideouts, ...(markt.hideouts || []), ...(hafen.hideouts || []), ...(hain.hideouts || [])], dorf, huegel, markt, pier: hafen, reis, hain, sonne, nong, huette, wegweiser: sp };
 }

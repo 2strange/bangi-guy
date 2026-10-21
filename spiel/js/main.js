@@ -8,6 +8,7 @@ import { kundenExtras, updateKundenExtras } from './figures.js';
 import { pose as figurePose, updateNong, setNongMood } from './figures.js';
 import { initLicht } from './licht.js';
 import { zielMarker, updateMarker } from './marker.js';
+import { ereignisSteuerung } from './ereignisse.js';
 import { setHuetteZiel, setHuette, setWegweiserText } from './props.js';
 import { mentorBarSpot } from './zone-huegel.js';
 import { createUI, isTouchDevice, hintSeen, markHint } from './ui.js';
@@ -188,6 +189,9 @@ let tagesuhr = initialClock();
 let phase = phaseFor(0);
 // Licht über den Tag (licht.js: Himmel, Nebel, Sonnen-/Hemisphärenlicht, Nachtlichter, Sonne/Mond) + Musik-/Ambience-Stimmung
 const licht = initLicht(scene, { sonne: world.sonne });
+// Ereignis-Requisiten (ereignisse.js): Möwe mit Beutel, Regenwolke mit Regentüten, Schiff, Party, Stromausfall, Fähre fällt aus
+const ereignisSteuer = ereignisSteuerung({ scene, markt: world.markt, pier: world.pier, licht, figuren: () => [player, ...kunden.flatMap((k) => (k.group.userData.partner ? [k.group, k.group.userData.partner] : [k.group]))] });
+world.setEreignis = (id, an = true, opts) => ereignisSteuer.setEreignis(id, an, opts);
 function applyTageszeit() {
   try { licht.set(lichtT(tagesuhr.t01)); } catch (e) { /* ignorieren */ } // Uhr-t (06–24 h) → 24-h-Palette
   const ph = phaseFor(tagesuhr.t01);
@@ -229,10 +233,11 @@ function clearKunden() {
   kunden.length = 0;
 }
 // Kunden für den aktuellen Tag aufstellen: 7 Stück, die Zivis rotieren pro Tag
-function spawnKunden(day = 1) {
+function spawnKunden(day = 1, { erzwinge = null } = {}) {
   clearKunden();
   // „Großer Markt“: doppelt so viele; Ereignisse (Regen, Kreuzfahrt) skalieren mit, ein Zivi extra bei zivi_extra
   const list = kundenFuerTag(katalog, Math.max(1, Math.round(KUNDEN_PRO_TAG * (tagModifikator(woche, day).kunden_faktor || 1) * ereignisKundenFaktor(game.ereignis))), 2 + ereignisZiviExtra(game.ereignis), day, game.ereignis);
+  if (erzwinge && !list.some((k) => k.id === erzwinge)) { const def = katalog.find((k) => k.id === erzwinge); if (def) list.push(def); } // Snap/Szene: bestimmten Kunden erzwingen
   const outfits = assignOutfits(list, day); // keine Doppel-Outfits pro Tag
   const anchors = assignAnchors(list, ANCHORS, { day }); // feste Plätze über alle Zonen (Markt-Plätze stecken in ANCHORS), Zivis mit Abstand
   const seen = {};
@@ -241,11 +246,11 @@ function spawnKunden(day = 1) {
     const n = seen[a.id] = (seen[a.id] || 0) + 1; // Notnagel: geteilter Platz versetzt
     const pos = { x: a.x + (n - 1) * 2.2, z: a.z + (n - 1) * 1.3 };
     const group = buildKunde(def, idSeed(def.id), outfits[def.id]);
-    kundenExtras(group, def); // Kleinkram je Kunde (figures.js)
+    kundenExtras(group, def, { index: 0 }); // Kleinkram je Kunde (figures.js): Kegelhut, Helm, Pfeife, Blumenkranz …
     kundenGroup.add(group);
     if (def.figuren === 2) { // Paar: zweite Figur im Partnerlook daneben, ein Dialog, ein Verkauf
-      const partner = buildKunde(def, idSeed(def.id) + 1, outfits[def.id]);
-      kundenExtras(partner, def);
+      const partner = buildKunde(def, idSeed(def.id), outfits[def.id]); // Partnerlook: gleicher Seed
+      kundenExtras(partner, def, { index: 1 }); // Cap statt Kranz
       partner.position.set(1.1, 0, 0.15); partner.rotation.y = -0.2; group.add(partner);
       setMood(partner, def.stimmung_start || 'neutral');
       group.userData.partner = partner;
@@ -841,6 +846,7 @@ function showSoldOut() {
 // Tagesbilanz-Karte, danach neuer Tag
 function endDay(vorspann = null, { fuss = null } = {}) {
   if (game.ereignis && game.ereignisAktiv) ereignisEnde(game.ereignis, { leise: true }); // Tag rum: Requisite aus, Wetter klar
+  try { ereignisSteuer.alleAus(); } catch (e) { /* ohne Requisiten */ }
   dialog = null;
   ui.hideBubble();
   ui.showPrompt(null);
@@ -905,15 +911,8 @@ function setAlleRegen(an) {
   for (const k of kunden) { setRegen(k.group, an); if (k.group.userData.partner) setRegen(k.group.userData.partner, an); }
 }
 function setEreignisRequisite(ev, an) {
-  const P = world.ereignisProps || {};
-  try {
-    if (ev.requisite === 'moewe') { if (an) P.moewe?.userData.start({ x: state.x, z: state.z }, 1); else P.moewe?.userData.stop(); }
-    else if (ev.requisite === 'wolke') { if (an) P.wolke?.userData.start(); else P.wolke?.userData.stop(); }
-    else if (ev.requisite === 'schiff') { if (an) P.schiff?.userData.start(); else P.schiff?.userData.stop(); }
-    else if (ev.requisite === 'kuchen') world.markt?.party?.(an);
-    else if (ev.requisite === 'kerze') licht.stromausfall?.(an);
-    world.setEreignis?.(an ? ev.id : null);
-  } catch (e) { /* ohne Requisite */ }
+  // Requisite per Content-Slug (moewe | wolke | schiff | kuchen | kerze | leerer_pier) oder Ereignis-id, Dauer aus den Daten
+  try { ereignisSteuer.setEreignis(ev.requisite || ev.id, an, { dauer: ev.dauer_s || 120, from: { x: state.x, z: state.z }, dir: { x: 0.3, z: 1 } }); } catch (e) { /* ohne Requisite */ }
 }
 function morgen() {
   zielGemeldet = false;
@@ -1209,7 +1208,8 @@ function updateKunden(dt) {
 // Kunde per id, notfalls aus einem späteren Tag (Zivis rotieren)
 function kundeById(id) {
   let k = kunden.find((x) => x.id === id);
-  for (let day = 2; !k && day <= 3; day++) { spawnKunden(day); k = kunden.find((x) => x.id === id); }
+  for (let day = 2; !k && day <= 7; day++) { spawnKunden(day); k = kunden.find((x) => x.id === id); }
+  if (!k) { spawnKunden(1, { erzwinge: id }); k = kunden.find((x) => x.id === id); } // nicht in der Rotation: zusätzlich spawnen
   return k;
 }
 function setupScene() {
@@ -1338,7 +1338,7 @@ function setupScene() {
     const ev = ereignisse.find((e) => e.id === SCENE_ID) || ereignisse[0];
     game = { ...game, tag: 2, ereignis: ev, ereignisAktiv: false }; refreshHud();
     ereignisStart(ev);
-    for (const p of Object.values(world.ereignisProps || {})) if (p.userData.an) { p.userData.update(1); p.userData.update(31); }
+    try { ereignisSteuer.update(1); ereignisSteuer.update(31); } catch (e) { /* ohne Requisiten */ }
     const k = kunden[0]; const pk = k.npc.points[0]; // neben dem ersten Kunden stehen (Gummistiefel im Bild)
     k.npc = { ...k.npc, x: pk.x, z: pk.z, yaw: 0, moving: false, pause: 99 };
     state = { ...state, x: pk.x + 1.7, z: pk.z - 1.8, yaw: Math.atan2(-1.7, 1.8), speed: 0 };
@@ -1495,7 +1495,7 @@ if (SNAP) {
     }
     if (nearK) tutorialFire('kunde_in_reichweite');
     if (hinweisBis && now > hinweisBis) { hinweisBis = 0; if (mode === 'free') ui.showPrompt(null); }
-    for (const p of Object.values(world.ereignisProps || {})) if (p.userData.an) p.userData.update(now / 1000);
+    try { ereignisSteuer.update(now / 1000); } catch (e) { /* ohne Requisiten */ }
     for (const k of kunden) updateKundenExtras(k.group, now / 1000);
     updateTutorial(now);
     updatePatrol(dt, now);

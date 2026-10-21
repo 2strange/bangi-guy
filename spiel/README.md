@@ -242,8 +242,8 @@ Morgen; `kommentar{wer,text}` ist der Satz abends an der Bar (Mentor oder Nong).
 (`figuren: 2`) steht als zwei Figuren an einem Platz, ein Dialog, ein Verkauf; Bauer Nok (K7) steht im Reisfeld, der
 Kokos-Kletterer (K8) im Hain.
 Der Mentor kündigt das Ereignis morgens an, beim Tagesstart gibt es eine Einblendung, abends an der Bar optional
-einen Satz. Klang über `audio.ereignis(sound, 'start'|'ende')`; Requisiten aus `ereignisse.js` (Möwe mit Beutel, Regenwolke,
-Kreuzfahrtschiff am Horizont), Party am Posten (`markt.party`) und dunkle Bar mit Kerzen (`licht.stromausfall`).
+einen Satz. Klang über `audio.ereignis(sound, 'start'|'ende')`; Requisiten über `ereignisSteuerung` aus `ereignisse.js` (Möwe mit Beutel, Regenwolke mit
+Regentüten auf allen Figuren, Kreuzfahrtschiff am Horizont, Party am Posten, dunkle Bar mit Kerzen, Fähre fällt aus).
 `?snap=1&scene=ereignis&id=regenschauer` startet ein Ereignis sofort. Reine Logik mit Tests; der Seed liegt im Spielstand.
 
 ## Ziele: Tagesziel und Wochenbogen
