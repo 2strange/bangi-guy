@@ -12,7 +12,7 @@ export const PLATZ = { x: 51, z: -51, w: 22, d: 22 };     // gepflasterter Markt
 // Stände: Tischfläche 3.4 × 1.6, mit Sonnensegel-Pfosten ≈ 3.8 × 2.4 Grundfläche; rot: Gierung, Kundenseite = +z lokal
 export const STAENDE = [
   { id: 'mango', x: 44, z: -44, rot: 3 * Math.PI / 4, kind: 'mango', sign: 'MANGOS · 3 = 1', cloth: ['#ffd54a', '#ffffff'] },
-  { id: 'fisch', x: 58, z: -44, rot: -3 * Math.PI / 4, kind: 'fisch', sign: 'FISCH · FAST FRISCH', cloth: ['#3a7bd5', '#ffffff'] },
+  { id: 'fisch', x: 58, z: -42, rot: -3 * Math.PI / 4, kind: 'fisch', sign: 'FISCH · FAST FRISCH', cloth: ['#3a7bd5', '#ffffff'] },
   { id: 'ramsch', x: 60, z: -56, rot: -1.06, kind: 'ramsch', sign: 'ECHTE ROLEX · 5 MANGOS', cloth: ['#e8463a', '#fff5e0'] },
   { id: 'hemden', x: 42, z: -57, rot: 0.98, kind: 'hemden', sign: 'HAWAIIHEMDEN · NEU!', cloth: ['#3bb84a', '#ffffff'] },
   { id: 'kokos', x: 52, z: -61.5, rot: -0.1, kind: 'kokos', sign: 'KOKOS · MIT STROHHALM', cloth: ['#ff7f3f', '#fff1c2'] },

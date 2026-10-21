@@ -402,3 +402,44 @@ test('seesTarget: vorne im Kegel ja, hinter dem Rücken nein, außerhalb der Rei
   assert.equal(seesTarget(g, { x: 0, z: 13 }), false, 'zu weit');
   assert.equal(seesTarget({ ...g, yaw: Math.PI }, { x: 0, z: -8 }), true, 'umgedreht');
 });
+
+// ---------- Verfolgung ----------
+import { chaseStep, inHideout, CHASE_SPEED, CHASE_LOSE_AFTER, WALK_SPEED as WALK } from '../js/logic.js';
+const ROUTE = [{ x: 0, z: 0 }, { x: 20, z: 0 }];
+const sim = (st, player, seconds, opts) => {
+  let events = [];
+  for (let t = 0; t < seconds - 1e-9; t += 1 / 60) { const r = chaseStep(st, ROUTE, player, 1 / 60, opts); st = r.st; if (r.event) events.push(r.event); }
+  return { st, events };
+};
+test('Verfolgung beginnt nur bei Sicht UND Heat ≥ 2; die Streife ist langsamer als der Spieler zu Fuß', () => {
+  const start = patrolStart(ROUTE);
+  assert.equal(chaseStep(start, ROUTE, { x: 5, z: 5 }, 1 / 60, { sees: true, heat: 1 }).st.mode, 'patrol');
+  assert.equal(chaseStep(start, ROUTE, { x: 5, z: 5 }, 1 / 60, { sees: false, heat: 3 }).st.mode, 'patrol');
+  const r = chaseStep(start, ROUTE, { x: 5, z: 5 }, 1 / 60, { sees: true, heat: 2 });
+  assert.equal(r.event, 'chase_start'); assert.equal(r.st.mode, 'chase');
+  assert.ok(CHASE_SPEED < WALK, 'Sandalen');
+});
+test('Verfolgung: folgt dem Spieler, fängt ihn in Reichweite (caught), verliert ihn nach 6 s ohne Sicht und kehrt zur Route zurück', () => {
+  let st = { ...patrolStart(ROUTE), mode: 'chase', lastSeen: { x: 10, z: 0 }, lost: 0 };
+  const far = sim(st, { x: 10, z: 0 }, 2, { sees: true, heat: 2 });
+  assert.ok(far.st.x > 5 && far.st.x < 10, `läuft hin (${far.st.x.toFixed(1)})`);
+  const c = sim(far.st, { x: 10, z: 0 }, 3, { sees: true, heat: 2 });
+  assert.ok(c.events.includes('caught'), 'gefangen');
+  // ohne Sicht: nach CHASE_LOSE_AFTER Sekunden verloren, dann zurück zur Route und wieder Streife
+  let l = sim({ ...st, x: 0, z: 0 }, { x: 10, z: 0 }, CHASE_LOSE_AFTER + 0.5, { sees: false, heat: 2 });
+  assert.ok(l.events.includes('lost'), 'verloren'); assert.equal(l.st.mode, 'return');
+  l = sim(l.st, { x: 50, z: 50 }, 8, { sees: false, heat: 2 });
+  assert.equal(l.st.mode, 'patrol', 'wieder Streife');
+  assert.ok(!l.events.includes('caught'));
+});
+test('Verstecke: im Gedränge/Bettlaken ist der Spieler unsichtbar, die Verfolgung läuft aus', () => {
+  const hideouts = [{ x: 10, z: 0, r: 2 }];
+  assert.equal(inHideout({ x: 11, z: 0.5 }, hideouts), true);
+  assert.equal(inHideout({ x: 13, z: 0 }, hideouts), false);
+  const st = { ...patrolStart(ROUTE), mode: 'chase', lastSeen: { x: 10, z: 0 }, lost: 0 };
+  const r = sim(st, { x: 10, z: 0 }, CHASE_LOSE_AFTER + 0.5, { sees: true, heat: 3, hideouts });
+  assert.ok(r.events.includes('lost') && !r.events.includes('caught'), 'im Versteck nicht gefangen');
+  // ohne Versteck wird derselbe Spieler gefangen
+  const r2 = sim(st, { x: 10, z: 0 }, CHASE_LOSE_AFTER + 0.5, { sees: true, heat: 3 });
+  assert.ok(r2.events.includes('caught'));
+});

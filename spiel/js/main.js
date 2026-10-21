@@ -9,7 +9,7 @@ import { createUI, isTouchDevice, hintSeen, markHint } from './ui.js';
 import { prepareGags, playGag, stopGag } from './gags.js';
 import {
   inputToDir, dirToTarget, stepPlayer, followCamera, waddlePose, CAM_OFFSET, DEFAULT_CAM_YAW, isOccluder, joystickInput, rotateDir,
-  ANCHORS, assignAnchors, zoneMix, patrolStart, patrolStep, seesTarget,
+  ANCHORS, assignAnchors, zoneMix, patrolStart, seesTarget, chaseStep, inHideout, CHASE_SPEED, PATROL_SPEED,
 } from './logic.js';
 import {
   initialState, normalizeKatalog, pickKunden, startDialog, advanceDialog, chooseOption, isArrested, newDay, moodFor,
@@ -17,7 +17,7 @@ import {
   normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE, gagFor, nextIdleGagDelay,
   normalizeStimmen, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
-  normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde,
+  normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde, arrestNow,
 } from './game.js';
 import { POSTEN as POSTEN_LAYOUT, MARKT as MARKT_AREA, STAENDE, LANES as MARKT_LANES } from './zone-markt-layout.js';
 
@@ -345,7 +345,7 @@ const PATROL_ROUTE = [[8, -82], ...MARKT_LANES.ring.slice().reverse()].map(([x, 
 const cop = buildKunde(normalizeKunde({ id: 'streife_p1', typ: 'Streife', name: 'Streife', schuhe: 'sandale', hemd: 'polo_sauber', hose: 'chino', accessoire: 'ohrknopf', extras: ['funkgeraet'], hautton: 'mittel', haare: 'kurz', zivi: true, stimmung_start: 'misstrauisch' }), 7);
 setRevealed(cop, true); // Polizeimütze: die Streife ist offen Polizei (Pong in Sandalen — kann nicht rennen)
 scene.add(cop);
-let patrol = patrolStart(PATROL_ROUTE);
+let patrol = { ...patrolStart(PATROL_ROUTE), mode: 'patrol' };
 const copCollider = { x: patrol.x, z: patrol.z, r: 0.7 };
 colliders.push(copCollider);
 let copSeesPlayer = false;
@@ -354,15 +354,28 @@ function applyCop() {
   cop.position.set(patrol.x, 0, patrol.z);
   cop.rotation.y = patrol.yaw;
   copCollider.x = patrol.x; copCollider.z = patrol.z;
-  const pose = waddlePose(patrol.phase || 0, patrol.moving ? 2.2 : 0);
+  const pose = waddlePose(patrol.phase || 0, patrol.moving ? (patrol.mode === 'chase' ? CHASE_SPEED : PATROL_SPEED) : 0, patrol.mode === 'chase');
   const P = cop.userData.parts;
   P.legs[0].rotation.x = pose.legL; P.legs[1].rotation.x = pose.legR;
   P.arms[0].rotation.x = pose.armL; P.arms[1].rotation.x = pose.armR;
   P.head.rotation.y = copSeesPlayer ? Math.max(-1, Math.min(1, Math.atan2(Math.sin(Math.atan2(state.x - patrol.x, state.z - patrol.z) - patrol.yaw), Math.cos(Math.atan2(state.x - patrol.x, state.z - patrol.z) - patrol.yaw)))) : 0;
 }
 function updatePatrol(dt, now) {
-  patrol = patrolStep(patrol, PATROL_ROUTE, dt);
-  copSeesPlayer = seesTarget(patrol, state);
+  const busy = mode === 'dialog' || mode === 'mentor' || mode === 'info' || mode === 'card' || mode === 'arrest';
+  copSeesPlayer = seesTarget(patrol, state) && !inHideout(state, world.hideouts);
+  // Verfolgung ab Heat 2: langsam (Sandalen), verliert den Spieler nach 6 s ohne Sicht oder im Versteck
+  const r = chaseStep(patrol, PATROL_ROUTE, state, dt, { sees: seesTarget(patrol, state), heat: game.heat, hideouts: world.hideouts });
+  patrol = r.st;
+  if (r.event === 'chase_start') { sfx('pfeife'); try { audio?.bark?.('pong', 'verfolgung', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ } ui.showPrompt('Die Streife hat dich gesehen — lauf! (oder ab ins Gedränge)'); }
+  if (r.event === 'lost') { try { audio?.bark?.('pong', 'sichtung', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ } if (mode === 'free') ui.showPrompt(null); }
+  if (r.event === 'caught' && !busy && !isArrested(game)) {
+    game = arrestNow(game); ui.setHud(game);
+    sfx('verhaftet'); try { audio?.bark?.('pong', 'verhaftung', { pan: panFor(cop) }); } catch (e) { /* ohne Ton */ }
+    dialog = null; ui.hideBubble(); mode = 'arrest';
+    const c = dayEndCard(game, texte, lineIdx++);
+    ui.showCard({ titel: c.titel, zeilen: [c.spruch, ...c.zeilen], button: c.button, rot: true });
+    patrol = { ...patrol, mode: 'return', lost: 0 };
+  }
   // Sichtung (ohne Verkauf): Pfiff + Funkspruch, alle 8 s höchstens einmal, nur ab Heat 1
   if (copSeesPlayer && game.heat >= 1 && now > sightCooldown) {
     sightCooldown = now + 8000;
@@ -541,6 +554,7 @@ function endDay() {
 }
 function startNewDay() {
   game = newDay(game);
+  patrol = { ...patrolStart(PATROL_ROUTE), mode: 'patrol' };
   soldOutShown = false;
   ui.setHud(game);
   ui.hideCard();
@@ -805,6 +819,18 @@ function setupScene() {
     mode = 'inspect'; // Hinschau-Kamera + Spieler ausgeblendet, damit der Gag frei steht
     return;
   }
+  if (SCENE === 'verfolgung') {
+    // Streife hinter dem Spieler her, Heat 2
+    state = { ...state, x: 24, z: -78, yaw: Math.PI / 2, speed: 0 };
+    patrol = { ...patrol, x: 18, z: -78.5, yaw: Math.PI / 2, mode: 'chase', lastSeen: { x: 24, z: -78 }, lost: 0, moving: true, phase: 1.1 };
+    game = { ...game, heat: 2 };
+    ui.setHud(game);
+    copSeesPlayer = true;
+    applyCop();
+    ui.showPrompt('Die Streife hat dich gesehen — lauf! (oder ab ins Gedränge)');
+    mode = 'free';
+    return;
+  }
   if (SCENE === 'streife') {
     // Streife auf der Straße am Posten, Spieler davor im Sichtkegel
     patrol = { ...patrol, x: 12, z: -78, yaw: Math.PI / 2, idx: 2, moving: true, phase: 2.2 };
@@ -911,7 +937,7 @@ if (SNAP) {
     camera.updateMatrixWorld();
     world.huegel.update(3.2);
     world.markt?.update?.(3.2);
-    if (SCENE !== 'streife') applyCop();
+    if (SCENE !== 'streife' && SCENE !== 'verfolgung') applyCop();
     try { world.markt?.setTafel?.(0); } catch (e) { /* ignorieren */ }
     world.group.updateMatrixWorld(true);
     kundenGroup.updateMatrixWorld(true);

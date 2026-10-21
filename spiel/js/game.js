@@ -546,3 +546,8 @@ export function patrolSpotted(state, { selling = false } = {}) {
   const heat = Math.min(MAX_HEAT, state.heat + 1);
   return { state: { ...state, heat, verhaftet: heat >= MAX_HEAT }, result: 'erwischt', heatPlus: heat - state.heat };
 }
+
+// Von der Streife gefangen: Verhaftung (Heat voll), Tag verloren — mild wie bisher (Geld bleibt, newDay regelt den Rest)
+export function arrestNow(state) {
+  return { ...state, heat: MAX_HEAT, verhaftet: true };
+}

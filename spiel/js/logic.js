@@ -401,3 +401,43 @@ export function seesTarget(guard, target, { range = 12, fov = 2.1 } = {}) {
   const rel = Math.atan2(Math.sin(ang), Math.cos(ang));
   return Math.abs(rel) <= fov / 2;
 }
+
+// ---------- Verfolgung: ab Heat ≥ 2 folgt die Streife dem Spieler (langsam: Sandalen), verliert ihn ohne Sicht ----------
+export const CHASE_SPEED = 3.0;      // < WALK_SPEED 4.0: zu Fuß entkommt man, aber nicht beim Trödeln
+export const CHASE_HEAT = 2;
+export const CHASE_LOSE_AFTER = 6;   // Sekunden ohne Sicht
+export const CATCH_DIST = 1.3;
+export const inHideout = (pos, hideouts = []) => hideouts.some((h) => Math.hypot(pos.x - h.x, pos.z - h.z) <= (h.r || 1.4));
+/**
+ * Ein Schritt der Streife inkl. Verfolgung. st: patrol-State + { mode: 'patrol'|'chase'|'return', lastSeen, lost }.
+ * sees = Sichtkegel-Ergebnis (ohne Versteck), hideouts = Verstecke (Spieler darin = unsichtbar).
+ * Rückgabe { st, event }: event = null | 'chase_start' | 'lost' | 'caught'.
+ */
+export function chaseStep(st, route, player, dt, { sees = false, heat = 0, hideouts = [], speed = CHASE_SPEED, loseAfter = CHASE_LOSE_AFTER, catchDist = CATCH_DIST, chaseHeat = CHASE_HEAT } = {}) {
+  const hidden = inHideout(player, hideouts);
+  const visible = sees && !hidden;
+  const mode = st.mode || 'patrol';
+  if (mode === 'patrol') {
+    if (visible && heat >= chaseHeat) return { st: { ...st, mode: 'chase', lastSeen: { x: player.x, z: player.z }, lost: 0, wait: 0 }, event: 'chase_start' };
+    return { st: { ...patrolStep(st, route, dt), mode: 'patrol' }, event: null };
+  }
+  if (mode === 'chase') {
+    const lastSeen = visible ? { x: player.x, z: player.z } : (st.lastSeen || { x: player.x, z: player.z });
+    const lost = visible ? 0 : (st.lost || 0) + dt;
+    const d = Math.hypot(player.x - st.x, player.z - st.z);
+    if (visible && d <= catchDist) return { st: { ...st, lastSeen, lost, moving: false }, event: 'caught' };
+    if (lost >= loseAfter) return { st: { ...st, mode: 'return', lastSeen, lost: 0, moving: false }, event: 'lost' };
+    // zum zuletzt gesehenen Punkt laufen (nicht ganz hinein, sonst überrennt sie ihn beim Stehenbleiben)
+    const dx = lastSeen.x - st.x, dz = lastSeen.z - st.z, dl = Math.hypot(dx, dz);
+    if (dl < 0.3) return { st: { ...st, mode: 'chase', lastSeen, lost, moving: false }, event: null };
+    const step = Math.min(dl, speed * dt);
+    return { st: { ...st, mode: 'chase', lastSeen, lost, x: st.x + (dx / dl) * step, z: st.z + (dz / dl) * step, yaw: Math.atan2(dx, dz), phase: (st.phase || 0) + step * (Math.PI * 2 / 1.6), moving: true }, event: null };
+  }
+  // return: zurück zum nächsten Routenpunkt, dann wieder Streife
+  const idx = Math.max(0, Math.min(route.length - 1, st.idx ?? 0));
+  const t = route[idx];
+  const dx = t.x - st.x, dz = t.z - st.z, dl = Math.hypot(dx, dz);
+  if (dl <= 0.3) return { st: { ...st, mode: 'patrol', x: t.x, z: t.z, moving: false }, event: null };
+  const step = Math.min(dl, speed * dt);
+  return { st: { ...st, mode: 'return', x: st.x + (dx / dl) * step, z: st.z + (dz / dl) * step, yaw: Math.atan2(dx, dz), phase: (st.phase || 0) + step * (Math.PI * 2 / 1.6), moving: true }, event: null };
+}

@@ -9,7 +9,7 @@ import {
   normalizeStimmen, stimmeSlug, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, applyMentorAktion, mentorBesucht,
   POSTEN_DEFAULT, inPostenSicht, buyMango, giveMango, mangoAbgegeben, tafelText, MANGO_PREIS,
-  normalizePosten7, mangoText, pongText, tafelLines, DEFAULT_POSTEN7, patrolSpotted,
+  normalizePosten7, mangoText, pongText, tafelLines, DEFAULT_POSTEN7, patrolSpotted, arrestNow,
 } from '../js/game.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -561,4 +561,12 @@ test('patrolSpotted: nur beim Verkauf in Sicht Heat +1, gedeckelt bis zur Verhaf
   assert.equal(e.result, 'erwischt'); assert.equal(e.state.heat, 2); assert.equal(e.heatPlus, 1);
   const v = patrolSpotted({ ...s, heat: 2 }, { selling: true });
   assert.equal(v.state.heat, MAX_HEAT); assert.ok(isArrested(v.state));
+});
+
+test('arrestNow: Verhaftung durch die Streife — Heat voll, Tag verloren, Geld bleibt, Tafel springt auf 0', () => {
+  const s = { ...initialState(), geld: 40, heat: 2, tageOhneVorfall: 3 };
+  const a = arrestNow(s);
+  assert.ok(isArrested(a)); assert.equal(a.geld, 40);
+  assert.equal(tafelText(a), 'TAGE OHNE VORFALL: 0');
+  assert.equal(newDay(a).tageOhneVorfall, 0); assert.equal(newDay(a).geld, 40);
 });
