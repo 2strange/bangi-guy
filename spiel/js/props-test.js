@@ -3,9 +3,10 @@
 // ?what=shoes → die vier Schuhe einzeln von schräg oben
 // ?what=pool  → der Hotel-Pool mit Leiter, Plattform und Rutsche
 // ?what=gags  → Raster aller Reveal-Gags aus data/texte.json im Endzustand (t = dauer_s)
+// ?what=posen → Tätigkeits-Posen (figures.pose) an drei Kunden
 import * as THREE from 'three';
 import { toonMesh, textTexture } from './toon.js';
-import { schluffi, runner, sandal, sneaker } from './figures.js';
+import { schluffi, runner, sandal, sneaker, pose, POSES } from './figures.js';
 import { hotel } from './props.js';
 import { buildKunde } from './kunden.js';
 import { normalizeKatalog } from './game.js';
@@ -47,6 +48,24 @@ if (WHAT === 'feet') {
   for (const [shoe, x] of items) { shoe.position.set(x, 0, 0); shoe.scale.setScalar(1.6); scene.add(shoe); }
   camera.position.set(0, 4.2, 4.5);
   camera.lookAt(0, 0.3, 0);
+} else if (WHAT === 'posen') {
+  const kat = await fetch('./data/kunden.json').then((r) => r.json());
+  const kunden = normalizeKatalog(kat);
+  const ids = ['rentner_1', 'backpacker_1', 'jogger_1'];
+  POSES.forEach((name, i) => {
+    ids.forEach((id, row) => {
+      const k = kunden.find((x) => x.id === id);
+      const fig = buildKunde(k, 5 + row);
+      const { offsetY } = pose(fig, name);
+      fig.position.set((i - (POSES.length - 1) / 2) * 3.4, offsetY, (row - 1) * 5.5);
+      scene.add(fig);
+    });
+    const tex = textTexture(name, { bg: '#fff1c2', fg: '#2b1b0b', font: 'bold 56px sans-serif', w: 384, h: 96 });
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshBasicMaterial({ map: tex }));
+    label.position.set((i - (POSES.length - 1) / 2) * 3.4, 4.2, -5.5); label.rotation.x = -0.5; scene.add(label);
+  });
+  camera.position.set(0, 12, 19);
+  camera.lookAt(0, 0.8, 0);
 } else if (WHAT === 'gags') {
   const [kat, texte] = await Promise.all([fetch('./data/kunden.json').then((r) => r.json()), fetch('./data/texte.json').then((r) => r.json())]);
   const kunden = normalizeKatalog(kat);

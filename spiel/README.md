@@ -28,9 +28,10 @@ Dann `http://localhost:8000/` öffnen.
 - **Hinweise:** Der ausführliche Hinweis (ansprechen, hinschauen, beenden) erscheint nur beim ersten Mal; danach
   blinkt ein kleines E/F-Badge über der Figur (mobil pulsieren die Buttons). In der Hinschau-Ansicht steht nur eine
   kleine Pille am Rand, die Figur bleibt frei. Gemerkt wird das in `localStorage` (robust, mit Fallback).
-- **Ton:** 🔊/🔇 oben rechts (erscheint, sobald `js/audio.js` vorhanden ist). Audio startet erst nach der ersten
+- **Ton:** 🔊/🔇 (alles) und 🎵 (nur Musik) oben rechts (erscheinen, sobald `js/audio.js` vorhanden ist). Audio startet erst nach der ersten
   Geste; die Spiellogik ruft nur Hooks (`sfx('kasse')`, `babble(kundeId, text)`, …); Brandung und Musik-Loop starten mit
-  der ersten Geste.
+  der ersten Geste; Schritte im Sand alle ~0,4 s Laufweg, Kasse/Heat/Verhaftet/Ausverkauft/Hinschauen/Klick als SFX.
+  Barks kommen aus `audio.bark(kundeId, situation)` (Text + Gebrabbel), ohne Audio aus dem eigenen Picker.
 - **E** – ansprechen (nur mit Kunde in Reichweite). In der Sprechblase: **1 / 2** oder Pfeile + **Enter**
   wählen (Verkaufen / Lieber nicht), **Esc** bricht ab.
 - **F** in Kundennähe – genau hinschauen: die Kamera fährt vor die Figur, Füße bis Kopf, der Spieler wird dabei

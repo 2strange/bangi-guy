@@ -343,3 +343,88 @@ export function runner() {
   root.userData.parts = { head };
   return root;
 }
+
+// ---------- Tätigkeits-Posen für stehende Figuren mit userData.parts { legs, arms, head } ----------
+// pose(figur, name) setzt Beine/Arme/Kopf (und Requisiten) für eine feste Tätigkeit und gibt den
+// Höhenversatz der Figur zurück ({ offsetY }), z. B. fürs Sitzen auf dem Boden. Die Figur merkt sich die
+// Pose in userData.pose; wer pro Frame Geh-Posen setzt, lässt Figuren mit gesetzter Pose aus.
+export const POSES = ['stehen', 'sitzen', 'liegen', 'handy', 'foto', 'meer', 'winken'];
+
+function poseProp(figur, name, build, parent, pos, rot) {
+  const props = figur.userData.poseProps ?? (figur.userData.poseProps = {});
+  if (!props[name]) {
+    const m = build(); m.position.copy(pos); if (rot) m.rotation.copy(rot); parent.add(m); props[name] = m;
+  }
+  props[name].visible = true;
+  return props[name];
+}
+
+export function pose(figur, name = 'stehen') {
+  const P = figur.userData.parts;
+  if (!P) return { offsetY: 0 };
+  const legs = P.legs ?? [], arms = P.arms ?? [];
+  for (const l of legs) l.rotation.set(0, 0, 0);
+  for (const a of arms) a.rotation.set(0, 0, 0);
+  if (P.head) P.head.rotation.set(0, 0, 0);
+  figur.rotation.x = 0; figur.rotation.z = 0;
+  for (const m of Object.values(figur.userData.poseProps ?? {})) m.visible = false;
+  const hipY = legs[0]?.position.y ?? 1.1;
+  const sc = figur.scale.y;
+  const armR = arms[1], armL = arms[0];
+  const hand = V(0.22, -0.92, 0.1); // hängende Hand im Arm-Pivot (kunden.js/figures.js)
+  let offsetY = 0;
+  switch (name) {
+    case 'sitzen': // auf dem Boden, Beine nach vorn, Hände auf den Knien
+      for (const l of legs) l.rotation.x = -Math.PI / 2;
+      for (const a of arms) a.rotation.x = -0.55;
+      if (P.head) P.head.rotation.x = 0.1;
+      offsetY = -(hipY - 0.32) * sc;
+      break;
+    case 'liegen': // auf dem Rücken, Arme hinter dem Kopf
+      figur.rotation.x = -Math.PI / 2;
+      for (const a of arms) a.rotation.x = -3.0;
+      if (armL) armL.rotation.z = 0.5;
+      if (armR) armR.rotation.z = -0.5;
+      offsetY = 0.5 * sc;
+      break;
+    case 'handy': // tippt, Kopf gesenkt
+      if (armR) { armR.rotation.x = -1.9; armR.rotation.z = -0.4; }
+      if (armL) { armL.rotation.x = -1.6; armL.rotation.z = 0.35; }
+      if (P.head) P.head.rotation.x = 0.5;
+      if (armR && !figur.userData.kunde?.accessoire?.includes?.('handy')) {
+        poseProp(figur, 'phone', () => {
+          const phone = toonMesh(new THREE.BoxGeometry(0.16, 0.3, 0.04), 0x222233, { outline: 0.02 });
+          const screen = toonMesh(new THREE.BoxGeometry(0.12, 0.24, 0.02), 0x6ee7ff, { outline: 0, basic: true });
+          screen.position.z = 0.02; phone.add(screen); return phone;
+        }, armR, hand.clone().add(V(-0.1, 0.1, 0.22)), new THREE.Euler(-1.2, 0.2, 0));
+      }
+      break;
+    case 'foto': // Kamera vor dem Gesicht, beide Hände dran
+      for (const a of arms) a.rotation.x = -2.0;
+      if (armL) armL.rotation.z = 0.55;
+      if (armR) armR.rotation.z = -0.55;
+      if (P.head) P.head.rotation.x = -0.05;
+      if (armR) poseProp(figur, 'camera', () => {
+        const cam = toonMesh(new THREE.BoxGeometry(0.34, 0.22, 0.2), 0x222233, { outline: 0.03 });
+        const lens = toonMesh(new THREE.CylinderGeometry(0.08, 0.08, 0.12, 10), 0x555566, { outline: 0.02 });
+        lens.position.set(0, 0, 0.14); lens.rotation.x = Math.PI / 2; cam.add(lens);
+        const fl = toonMesh(new THREE.BoxGeometry(0.1, 0.06, 0.04), 0xffffff, { outline: 0.012 });
+        fl.position.set(0.1, 0.14, 0.04); cam.add(fl); return cam;
+      }, armR, hand.clone().add(V(-0.3, 0.05, 0.15)), new THREE.Euler(-1.6, 0, 0));
+      break;
+    case 'meer': // Hand über den Augen, andere in die Hüfte, Kinn hoch
+      if (armR) { armR.rotation.x = -2.7; armR.rotation.z = -0.45; }
+      if (armL) { armL.rotation.x = 0.35; armL.rotation.z = 0.85; }
+      if (P.head) P.head.rotation.x = -0.18;
+      break;
+    case 'winken':
+      if (armR) { armR.rotation.x = -2.9; armR.rotation.z = -0.35; }
+      if (P.head) P.head.rotation.z = -0.1;
+      break;
+    default:
+      break;
+  }
+  figur.userData.pose = name === 'stehen' ? null : name;
+  figur.userData.poseOffsetY = offsetY;
+  return { offsetY };
+}

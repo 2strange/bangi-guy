@@ -60,7 +60,8 @@ export const PROPS = [
 
 // Unbegehbare Ränder: Hecke (mit Lücke), Hang der Kuppe im Westen, Hügelfuß im Osten
 export const EDGES = [
-  { x: -35, z: -25.5, w: 62, d: 3 },
+  { x: -60, z: -25.5, w: 12, d: 3 },   // Hecke West bis zur Serpentinen-Lücke (x -54 … -46, siehe zone-huegel-layout)
+  { x: -25, z: -25.5, w: 42, d: 3 },
   { x: 35, z: -25.5, w: 62, d: 3 },
   { x: -12, z: -53, w: 20, d: 36 },
   { x: 43, z: -55, w: 14, d: 34 },

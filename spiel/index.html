@@ -58,8 +58,9 @@
   .bark::after { content: ""; position: absolute; left: 50%; bottom: -14px; border: 7px solid transparent; border-top: 9px solid var(--ink); transform: translateX(-50%); }
   body.touch .bark { font-size: 13px; padding: 2px 8px; }
   /* Mute im HUD */
-  #mute { pointer-events: auto; cursor: pointer; font-size: 18px; line-height: 1; }
-  #mute.muted { opacity: .6; }
+  #mute, #music { pointer-events: auto; cursor: pointer; font-size: 18px; line-height: 1; }
+  #mute.muted, #music.muted { opacity: .6; }
+  @media (max-width: 720px) { #music { right: 52px; } }
   /* schmale Bildschirme: alles kompakter */
   @media (max-width: 720px) {
     .hud-item { font-size: 13px; padding: 2px 8px; border-width: 2px; box-shadow: 2px 2px 0 var(--ink); }
@@ -82,6 +83,7 @@
 <div id="hint">WASD / Pfeile = gehen · Shift = „rennen“ · Q/R = Kamera drehen · Klick = hinlaufen · E = ansprechen · F = genau hinschauen</div>
 <div id="hud" class="comic"></div>
 <button id="mute" class="hud-item comic" aria-label="Ton an/aus" style="position:fixed;right:12px;top:10px;display:none">🔊</button>
+<button id="music" class="hud-item comic" aria-label="Musik an/aus" style="position:fixed;right:64px;top:10px;display:none">🎵</button>
 <div id="badge" class="comic"></div>
 <div id="prompt" class="comic"></div>
 <div id="bubble" class="comic"></div>

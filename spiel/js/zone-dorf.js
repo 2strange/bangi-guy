@@ -26,7 +26,7 @@ function placeCrooked(obj, x, z, rot, scale, kx, kz) {
 }
 
 // Krumme Fernsehantenne fürs Dach
-function antenna() {
+export function antenna() {
   const g = new THREE.Group();
   g.add(limb(V(0, 0, 0), V(0.15, 1.6, 0.08), 0.04, 0x555566, { outline: 0.02 }));
   for (let i = 0; i < 3; i++) {
@@ -100,7 +100,7 @@ function heartTexture() {
 }
 
 // Schild mit Text auf Vorder- und Rückseite
-function plate(text, w, h, { bg = '#fff1c2', fg = '#2b1b0b', font = 'bold 56px sans-serif', tw = 768, th = 128, thick = 0.06 } = {}) {
+export function plate(text, w, h, { bg = '#fff1c2', fg = '#2b1b0b', font = 'bold 56px sans-serif', tw = 768, th = 128, thick = 0.06 } = {}) {
   const tex = textTexture(text, { bg, fg, font, w: tw, h: th });
   const plain = toon(new THREE.Color(bg).getHex());
   const lit = toon(0xffffff, { map: tex });
@@ -108,7 +108,7 @@ function plate(text, w, h, { bg = '#fff1c2', fg = '#2b1b0b', font = 'bold 56px s
 }
 
 // ---------- Kleinkram ----------
-function flowerBox(width = 1.0, seed = 1) {
+export function flowerBox(width = 1.0, seed = 1) {
   const g = new THREE.Group();
   const rand = rng(seed);
   const box = toonMesh(new THREE.BoxGeometry(width, 0.28, 0.34), 0x8b5a2b, { outline: 0.035 });
@@ -125,7 +125,7 @@ function flowerBox(width = 1.0, seed = 1) {
 }
 
 // Omas Kräuter: Topf mit spitzen Blättern (plus Schildchen)
-function herbPot() {
+export function herbPot() {
   const g = new THREE.Group();
   const pot = toonMesh(new THREE.CylinderGeometry(0.2, 0.15, 0.3, 10), 0xc47a3a, { outline: 0.03 });
   pot.position.y = 0.15; g.add(pot);
@@ -263,7 +263,7 @@ function cat(color = 0x333344) {
 }
 
 // Huhn, Blick nach +x
-function chicken(color = 0xfff5e0, seed = 1) {
+export function chicken(color = 0xfff5e0, seed = 1) {
   const g = new THREE.Group();
   const body = toonMesh(new THREE.SphereGeometry(0.26, 12, 9), color, { outline: 0.03 });
   body.geometry.scale(1.25, 1, 0.9); body.position.y = 0.42; g.add(body);

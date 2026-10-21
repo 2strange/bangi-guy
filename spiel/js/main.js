@@ -96,24 +96,34 @@ ui.setHud(game);
 // Audio (audio.js, eigenes Modul): optional geladen; initAudio() wartet selbst auf die erste Geste (Mobil!).
 // Die Spiellogik ruft nur Einzeiler-Hooks; ohne Modul bleibt alles stumm.
 let audio = null;
-const SFX = { talk: 'ui_klick', kasse: 'kasse', alarm: 'heat', ablehnung: 'ablehnen', look: 'hinschauen', feierabend: 'ui_klick', verhaftet: 'verhaftet', ausverkauft: 'ausverkauft' };
+const SFX = { talk: 'ui_klick', kasse: 'kasse', alarm: 'heat', ablehnung: 'ablehnen', look: 'hinschauen', feierabend: 'ui_klick', verhaftet: 'verhaftet', ausverkauft: 'ausverkauft', schritt: 'schritt_sand' };
 const sfx = (name) => { try { audio?.sfx?.(SFX[name] || name); } catch (e) { /* ohne Ton weiter */ } };
 const muteBtn = ui.createMuteButton((m) => { try { audio?.setMuted?.(m); } catch (e) { /* ignorieren */ } });
 let audioStarted = false;
 function startAudio() {
-  if (!audio || audioStarted) return;
-  audioStarted = true;
-  try { audio.ambience?.start?.(); audio.music?.start?.(); } catch (e) { /* ignorieren */ }
+  if (!audio) return;
+  try {
+    if (!audio.ambience?.isPlaying?.()) { audio.ambience?.start?.(); audio.music?.start?.(); }
+    audioStarted = !!audio.ambience?.isPlaying?.();
+  } catch (e) { /* ignorieren */ }
 }
+let audioRetryAt = 0;
 import('./audio.js').then((m) => {
   audio = m;
   try { audio.initAudio?.(); audio.loadStimmen?.(); muteBtn.set(!!audio.isMuted?.()); } catch (e) { /* ignorieren */ }
   const el = document.getElementById('mute');
   if (el) el.style.display = 'block';
+  const mb = document.getElementById('music');
+  if (mb && audio.music?.setEnabled) {
+    mb.style.display = 'block';
+    const paint = () => { const on = audio.music.isEnabled ? audio.music.isEnabled() : true; mb.textContent = on ? '🎵' : '🎵̸'; mb.classList.toggle('muted', !on); };
+    paint();
+    mb.addEventListener('click', () => { try { const on = audio.music.isEnabled ? !audio.music.isEnabled() : false; audio.music.setEnabled(on); paint(); sfx('talk'); } catch (e) { /* ignorieren */ } });
+  }
   if (gestureSeen) startAudio();
 }).catch(() => { /* kein Audio-Modul → stumm */ });
 let gestureSeen = false;
-const firstGesture = () => { gestureSeen = true; startAudio(); };
+const firstGesture = () => { gestureSeen = true; startAudio(); setTimeout(startAudio, 300); };
 window.addEventListener('pointerdown', firstGesture, { once: true });
 window.addEventListener('keydown', firstGesture, { once: true });
 let texte = normalizeTexte(null);
@@ -205,14 +215,18 @@ async function loadStimmen() {
 }
 // Bark: kurze englische Zeile als kleine Blase über dem Kopf (+ Gebrabbel-Hook fürs Audio)
 function bark(k, kind, ttl) {
+  // audio.bark() liefert Text + Dauer und brabbelt gleich mit; ohne Audio-Modul der eigene Picker
+  let r = null;
+  try { r = audio?.bark?.(k.def.id, kind) || null; } catch (e) { r = null; }
+  if (r && r.text) { ui.showBark(k.id, r.text, ttl ?? Math.max(2.6, (r.dauer || 0) + 0.6)); return; }
   const list = barksFor(stimmen, k.def, kind);
   const key = `${k.id}/${kind}`;
-  const r = pickBark(list, barkPrev[key] ?? -1, barkSeed++);
-  if (!r) return;
-  barkPrev[key] = r.idx;
-  ui.showBark(k.id, r.text, ttl);
-  try { audio?.babble?.(k.def.id, r.text); } catch (e) { /* ohne Ton weiter */ }
+  const p = pickBark(list, barkPrev[key] ?? -1, barkSeed++);
+  if (!p) return;
+  barkPrev[key] = p.idx;
+  ui.showBark(k.id, p.text, ttl);
 }
+const stopBabble = () => { try { audio?.stopBabble?.(); } catch (e) { /* ignorieren */ } };
 const barkHead = new THREE.Vector3();
 function placeBarks() {
   const now = performance.now() / 1000;
@@ -250,8 +264,8 @@ let nearK = null; // nächster Kunde in Reichweite (jeden Frame neu)
 let joy = null;
 const touch = ui.createTouchControls({
   onJoystick: (dx, dy) => { joy = dx === null ? null : joystickInput(dx, dy, { radius: touch.radius }); if (joy) clickTarget = null; },
-  onTalk: () => { if (mode === 'dialog') confirmDialog(); else if (nearK && mode === 'free') startTalk(nearK); },
-  onLook: () => { if (nearK || mode === 'inspect') toggleInspect(); },
+  onTalk: () => { sfx('talk'); if (mode === 'dialog') confirmDialog(); else if (nearK && mode === 'free') startTalk(nearK); },
+  onLook: () => { sfx('talk'); if (nearK || mode === 'inspect') toggleInspect(); },
   onCamLeft: (down) => { keys.rotL = down; },
   onCamRight: (down) => { keys.rotR = down; },
 });
@@ -280,6 +294,7 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
   if (ray.ray.intersectPlane(groundPlane, hit)) clickTarget = { x: hit.x, z: hit.z };
 });
 ui.onOptionClick((i, where) => {
+  sfx('talk');
   if (where === 'card') startNewDay();
   else if (mode === 'dialog') { selected = i; confirmDialog(); }
 });
@@ -321,11 +336,13 @@ function confirmDialog() {
     return;
   }
   if (dialog.phase === 'wahl') {
+    const heatBefore = game.heat;
     const r = chooseOption(game, dialog, talking.def, dialog.options[selected], lineIdx++);
     game = r.state; dialog = r.dialog;
+    if (game.heat > heatBefore) sfx('alarm');
     ui.setHud(game);
     setMood(talking.group, moodFor(kundeStatus(game, talking.id)));
-    if (dialog.result === 'kauf') sfx('kasse'); else if (dialog.result === 'reveal') sfx('alarm'); else sfx('ablehnung');
+    if (dialog.result === 'kauf' || dialog.result === 'reveal') sfx('kasse'); else sfx('ablehnung');
     if (dialog.result === 'reveal') setRevealed(talking.group, true);
     const wann = dialog.result === 'ablehnung' ? 'ablehnung' : (dialog.result === 'kauf' || dialog.result === 'reveal') ? 'kauf' : null;
     if (wann) startGag(talking, gagFor(texte, talking.id, wann));
@@ -342,6 +359,7 @@ function endDialog() {
   else if (dialog && talking && dialog.result === 'ablehnung') bark(talking, 'ablehnung');
   dialog = null;
   ui.hideBubble();
+  stopBabble();
   mode = 'free';
   if (isArrested(game)) { mode = 'arrest'; sfx('verhaftet'); const c = dayEndCard(game, texte, lineIdx++); ui.showCard({ titel: c.titel, zeilen: [c.spruch, ...c.zeilen], button: c.button, rot: true }); return; }
   if (isSoldOut(game) && !soldOutShown) showSoldOut();
@@ -385,7 +403,7 @@ function toggleInspect() {
   if (mode === 'inspect') endInspect();
   else if (nearK) { talking = nearK; mode = 'inspect'; markHint('look'); sfx('look'); showInspectHint(); if (nearK.def.zivi) bark(nearK, 'zivi_verdaechtig', 3.5); }
 }
-function endInspect() { mode = 'free'; markHint('end'); ui.showPrompt(null); }
+function endInspect() { mode = 'free'; markHint('end'); ui.showPrompt(null); stopBabble(); }
 // Inspect-Ansicht bleibt frei: Beenden-Hinweis als kleine Pille am Rand, groß nur beim ersten Mal
 function showInspectHint() {
   if (!hintSeen('end')) ui.showPrompt(TOUCH ? 'Nochmal Schauen oder weggehen: fertig' : 'F oder Esc: fertig geschaut — weggehen geht auch', { small: true });
@@ -517,6 +535,7 @@ function stats() {
   el.textContent = `calls ${r.calls} · tris ${r.triangles}` + (SNAP ? '' : ` · ${Math.round(1000 / Math.max(1, frameMs))} fps`);
 }
 let frameMs = 16;
+let lastStepPhase = 0;
 
 // ---------- Reveal-Gags (gags.js, Daten aus texte.json) ----------
 const clock = () => performance.now() / 1000;
@@ -733,6 +752,10 @@ if (SNAP) {
       state = stepPlayer(state, { dir: null, run: false }, dt, colliders);
     }
     applyPose(state);
+    // Schritt im Sand: jede volle Watschel-Periode (1.6 Einheiten ≈ 0.4 s Gehen)
+    if (state.moving && Math.floor(state.phase / (Math.PI * 2)) !== Math.floor(lastStepPhase / (Math.PI * 2))) sfx('schritt');
+    lastStepPhase = state.phase;
+    if (audio && gestureSeen && !audioStarted && now > audioRetryAt) { audioRetryAt = now + 2000; startAudio(); }
     updateKunden(dt);
 
     // Nähe + Prompt
