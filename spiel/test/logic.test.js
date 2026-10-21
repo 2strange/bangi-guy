@@ -335,6 +335,11 @@ test('Anker tragen eine Zone; zoneSequence mischt nach Gewichten und rotiert pro
   assert.ok(count('dorf') >= 1 && count('dorf') <= 2, `dorf ${count('dorf')}`);
   assert.ok(count('markt') >= 1 && count('markt') <= 2, `markt ${count('markt')}`);
   assert.ok(count('pier') <= 1, `pier ${count('pier')}`);
+  assert.ok(count('reisfeld') <= 1, `reisfeld ${count('reisfeld')}`);
+  // Reisfeld und Hain tragen Plätze; über die Woche (7 Tage × 7 Kunden) wird das Reisfeld mindestens einmal gezogen
+  assert.ok(ANCHORS.some((a) => a.zone === 'reisfeld') && ANCHORS.some((a) => a.id.startsWith('hain_')));
+  assert.ok([1, 2, 3, 4, 5, 6, 7].some((d) => zoneSequence(7, ANCHORS, { day: d }).includes('reisfeld')), 'Reisfeld kommt in der Woche dran');
+  assert.ok(zoneSequence(10, ANCHORS, { day: 1 }).includes('reisfeld'));
   // über 9 Kunden kommt der Pier sicher dran
   assert.ok(zoneSequence(9, ANCHORS, { day: 1 }).includes('pier'));
   assert.notDeepEqual(zoneSequence(7, ANCHORS, { day: 2 }), seq, 'anderer Tag, andere Reihenfolge');
@@ -456,6 +461,7 @@ test('Verstecke: im Gedränge/Bettlaken ist der Spieler unsichtbar, die Verfolgu
 
 // ---------- Hafen: Steg und Furt ----------
 import { STEG, FURT, PIER_ANCHORS } from '../js/zone-pier-layout.js';
+import { HAIN_ANCHORS } from '../js/zone-reisfeld-layout.js';
 test('Steg: auf dem Steg darf man weit hinaus, daneben nur knöcheltief; Furt nur mit Sandalen/barfuß', () => {
   // Steg (x = STEG.x): bis zum Anleger
   const onSteg = run({ ...idle, x: STEG.x, z: 0 }, { dir: { x: 0, z: 1 }, run: true }, 12);
@@ -470,7 +476,7 @@ test('Steg: auf dem Steg darf man weit hinaus, daneben nur knöcheltief; Furt nu
   let t2 = { ...idle, x: fx, z: 0 };
   for (let t = 0; t < 12; t += 1 / 60) t2 = stepPlayer(t2, { dir: { x: 0, z: 1 }, run: true }, 1 / 60, [], WORLD, { sandalen: false });
   close(t2.z, shoreZ(fx) + WADE_DEPTH, 1e-6, 'Turnschuhe bleiben an der Kante');
-  assert.ok(ANCHORS.filter((a) => a.zone === 'pier').length === PIER_ANCHORS.length && PIER_ANCHORS.length >= 3);
+  assert.ok(ANCHORS.filter((a) => a.zone === 'pier').length === PIER_ANCHORS.length + HAIN_ANCHORS.length && PIER_ANCHORS.length >= 3, 'Pier-Plätze + Kokoshain (Zone pier)');
 });
 
 // ---------- Streife in der Furt ----------

@@ -10,6 +10,7 @@ export const ZIVI_BESCHLAGNAHMT = true;
 // Verhandeln („Mehr verlangen“): Aufschlag auf den Kundenpreis; Risiko, dass er geht (1 − feilschen)
 export const VERHANDLUNG_AUFSCHLAG = 0.5;
 export const FEILSCHEN_DEFAULT = 0.5;
+export const GIER_HEAT = 1; // „Mehr verlangen“ bei einem Zivi: zusätzlicher Heat (Gier-Falle)
 export const MAX_HEAT = 3;
 export const TALK_DIST = 3.2;     // so nah muss man ran für E/F
 export const SHOES = ['sandale', 'flipflop', 'turnschuh', 'barfuss', 'gummistiefel'];
@@ -184,7 +185,12 @@ export const verhandlungsPreis = (kunde, aufschlag = VERHANDLUNG_AUFSCHLAG) => M
 export function verhandeln(state, kunde, lineIdx = 0, sellOpts = {}, texte = null) {
   const T = texte || DEFAULT_TEXTE;
   if (kundeStatus(state, kunde.id) !== 'neutral' || state.verhaftet || state.ware <= 0) return sell(state, kunde, lineIdx, sellOpts);
-  if (kunde.zivi) return sell(state, kunde, lineIdx, sellOpts);
+  if (kunde.zivi) { // Gier-Falle: der Zivi zahlt jeden Preis — es ist Beweismaterial. Enttarnung wie beim Verkauf, plus GIER_HEAT obendrauf
+    const r = sell(state, kunde, lineIdx, sellOpts);
+    if (r.result !== 'reveal') return r;
+    const heat = Math.min(MAX_HEAT, r.state.heat + GIER_HEAT);
+    return { ...r, gier: true, heatPlus: heat - state.heat, state: { ...r.state, heat, verhaftet: heat >= MAX_HEAT } };
+  }
   const wuerfel = Number.isFinite(sellOpts.wuerfel) ? sellOpts.wuerfel : 0.5;
   if (wuerfel < (Number.isFinite(kunde.feilschen) ? kunde.feilschen : FEILSCHEN_DEFAULT)) {
     const r = sell(state, kunde, lineIdx, { ...sellOpts, preis: verhandlungsPreis(kunde) });

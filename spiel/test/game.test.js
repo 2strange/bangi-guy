@@ -812,7 +812,11 @@ test('Preise je Kundschaft: zahlt aus kunden.json; „Mehr verlangen“ = +50 % 
   assert.equal(nein.result, 'weg'); assert.equal(nein.state.geld, 0); assert.equal(nein.state.ware, START_WARE, 'keine Ware weg');
   assert.equal(kundeStatus(nein.state, 'oma_1'), 'abgelehnt', 'er ist weg, heute kein zweiter Versuch');
   assert.equal(sell(nein.state, k).result, 'schon_erledigt');
-  assert.equal(verhandeln(s, zivi, 0, { wuerfel: 0.1 }).result, 'reveal', 'Zivi: Preis egal');
+  const g = verhandeln(s, zivi, 0, { wuerfel: 0.1 });
+  assert.equal(g.result, 'reveal', 'Zivi: Preis egal'); assert.equal(g.gier, true);
+  assert.equal(g.state.heat, sell(s, zivi).state.heat + 1, 'Gier-Falle: ein Heat mehr als beim normalen Verkauf'); assert.equal(g.heatPlus, g.state.heat);
+  assert.equal(verhandeln({ ...s, heat: 2 }, zivi, 0, { wuerfel: 0.9 }).state.heat, MAX_HEAT, 'gedeckelt, Verhaftung');
+  assert.equal(verhandeln({ ...s, heat: 2 }, zivi, 0, { wuerfel: 0.9 }).state.verhaftet, true);
   assert.equal(verhandeln({ ...s, ware: 0 }, k, 0, { wuerfel: 0.1 }).result, 'keine_ware');
   // über den Dialog: Option 1 = mehr verlangen, Option 2 = lieber nicht
   const d = advanceDialog(startDialog(k, s, 0));

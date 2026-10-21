@@ -27,7 +27,7 @@ export const VOL = {
   kasse: 0.8, ablehnen: 0.6, heat: 0.55, verhaftet: 0.5, ausverkauft: 0.6, schritt_sand: 0.18, ui_klick: 0.35, hinschauen: 0.4,
   pfeife: 0.45, mango: 0.6, funk: 0.4, tuten: 0.55, tuktuk_abwuergen: 0.5, gaehnen: 0.5,
   ui_oeffnen: 0.35, ui_schliessen: 0.3, ui_umschalten: 0.3, ui_schritt: 0.45,
-  ziel: 0.55, morgen: 0.5, woche_gut: 0.6, woche_fail: 0.5,
+  ziel: 0.55, morgen: 0.5, woche_gut: 0.6, woche_fail: 0.5, woche_mittel: 0.5,
   // Ambience-Details (relativ zum Ambience-Bus)
   moewe: 0.35, walla: 0.16, ruf: 0.3, funkspruch: 0.45, tuktuk: 0.22, klirren: 0.2, grillen: 0.1,
   frosch: 0.28, wasser: 0.2,
@@ -264,6 +264,7 @@ export const JINGLES = {
   morgen: [79, 83, 86, 91, 86],                             // kurzes Steel-Drum-Motiv nach dem Hahn
   woche_gut: [[67, 71, 74], [72, 76, 79], [74, 78, 81], [79, 83, 86]], // G C D G, Akkorde
   woche_fail: [66, 65, 64, 62],                             // „Wah-wah-wah-waaah“ chromatisch runter
+  woche_mittel: [[67, 71, 76], [66, 69, 74]],               // Em → D: zwei Akkorde, endet offen („ging so“)
 };
 /** Grillen-Zirpen: ein Schwall aus n Pulsen bei rate Hz, Pause danach (rein, testbar) */
 export function cricketBurst(r) {
@@ -619,6 +620,17 @@ const SFX = {
       if (last) { shaker(tt + 0.21, 0.6, out); shaker(tt + 0.42, 0.6, out); }
     });
     return 3.2;
+  },
+  // Woche so lala: zwei Steel-Drum-Akkorde (Em → D), der zweite bleibt in der Luft hängen, kein Abschluss
+  woche_mittel(t, out) {
+    const bassNotes = [40, 50];
+    JINGLES.woche_mittel.forEach((chord, i) => {
+      const tt = t + i * 0.55, last = i === 1;
+      chord.forEach((m, k) => steelDrum(tt + k * 0.03, m, 0.7, last ? 1.1 : 0.45, out));
+      bassNote(tt, bassNotes[i], 0.8, last ? 0.9 : 0.4, out);
+    });
+    rimshot(t + 0.28, 0.4, out);
+    return 1.9;
   },
   // Woche verpatzt: „Wah-wah-wah-waaah“ — Sägezahn mit Wah-Filter, chromatisch runter, letzter Ton sackt ab
   woche_fail(t, out) {

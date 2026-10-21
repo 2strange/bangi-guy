@@ -222,7 +222,7 @@ gelegt – fehlende Zweige, andere Listenlängen oder leere Strings fallen auf D
 Jede Kundschaft zahlt ihren eigenen Preis (`zahlt` in `kunden.json`, Default 20). Im Gespräch gibt es neben
 „Verkaufen“ und „Lieber nicht“ die Option **„Mehr verlangen“** (Taste 3): +50 % Aufschlag, aber der Kunde zahlt nur mit
 Wahrscheinlichkeit `feilschen` (0…1 in `kunden.json`, Default 0,5) – sonst geht er und ist für heute weg (keine Ware
-weg, kein Heat). Zivis reagieren auf den Preis gar nicht (Enttarnung wie beim Verkauf). Sätze aus `ui.verhandeln`
+weg, kein Heat). Zivis zahlen jeden Preis – es ist Beweismaterial: Enttarnung wie beim Verkauf plus ein Heat extra (Gier-Falle). Sätze aus `ui.verhandeln`
 (`angenommen[]`, `weg[]`). Logik rein in `js/game.js` (`verhandeln`, `verhandlungsPreis`, getestet; der Würfel kommt
 vom Aufrufer).
 

@@ -291,9 +291,10 @@ export function rotateDir(dir, camYaw = 0) {
 // Tätigkeiten: sitzt | telefoniert | fotografiert | schaut | steht. `blick` = Blickrichtung (yaw), sonst zum Meer (+z).
 import { MARKT_ANCHORS } from './zone-markt-layout.js';
 import { PIER_ANCHORS, SHORE_Z, FURT, stegDepthLimit, furtDepthLimit } from './zone-pier-layout.js';
+import { REISFELD_ANCHORS, HAIN_ANCHORS } from './zone-reisfeld-layout.js';
 // Zonen der Ankerplätze; Mischung pro Tag über ZONE_MIX (Anteile, nur Zonen mit vorhandenen Plätzen zählen)
-export const ZONES = ['strand', 'dorf', 'markt', 'pier'];
-export const ZONE_MIX = { strand: 4, dorf: 2, markt: 2, pier: 1 };
+export const ZONES = ['strand', 'dorf', 'markt', 'pier', 'reisfeld'];
+export const ZONE_MIX = { strand: 4, dorf: 2, markt: 2, pier: 1, reisfeld: 1 }; // Reisfeld: selten, aber über die Woche kommt jemand
 export const ANCHORS = [
   { zone: 'strand', id: 'liege_1', x: 28, z: -3.2, r: 0.4, activity: 'sitzt', blick: 0 },
   { zone: 'strand', id: 'liege_2', x: 31.8, z: -1.8, r: 0.4, activity: 'sitzt', blick: 0 },
@@ -317,6 +318,8 @@ export const ANCHORS = [
   ...MARKT_ANCHORS,
   // Hafen: Plätze aus dem Pier-Layout
   ...PIER_ANCHORS,
+  ...REISFELD_ANCHORS, // Reisfeld (Zone reisfeld)
+  ...HAIN_ANCHORS,     // Kokoshain (Zone pier, liegt im Osten)
 ];
 export const ZIVI_MIN_DIST = 8;
 const dist2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);

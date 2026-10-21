@@ -142,6 +142,10 @@ test('Zonen: normalizeZones clampt, ignoriert Unbekanntes, null = Strand; Pseudo
   for (let i = 1; i < JINGLES.ziel.length; i++) assert.ok(JINGLES.ziel[i] > JINGLES.ziel[i - 1]);
   for (let i = 1; i < JINGLES.woche_fail.length; i++) assert.ok(JINGLES.woche_fail[i] < JINGLES.woche_fail[i - 1]);
   assert.equal(JINGLES.woche_gut.length, 4); for (const c of JINGLES.woche_gut) assert.equal(c.length, 3);
+  // mittel: kürzer als gut, endet nicht auf der Tonika (G), bleibt offen
+  assert.equal(JINGLES.woche_mittel.length, 2); for (const c of JINGLES.woche_mittel) { assert.equal(c.length, 3); for (const m of c) assert.ok(m >= 55 && m <= 96); }
+  assert.notEqual(JINGLES.woche_mittel[1][0] % 12, 67 % 12, 'kein G-Grundton am Ende');
+  assert.deepEqual(JINGLES.woche_gut[3], [79, 83, 86], 'gut endet auf G');
   // Grillen-Schwall und Klirren-Abstand im Bereich
   const cb = cricketBurst(rng(1));
   assert.ok(cb.pulses >= 6 && cb.pulses <= 17 && cb.gap > 1 / 40 && cb.gap < 1 / 26 && cb.pause >= 0.25 && cb.freq >= 3900);
@@ -202,8 +206,8 @@ test('Helfer: rng deterministisch im Bereich, hash stabil, Möwenpause 8–22 s,
 
 test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Dauer', () => {
   for (const n of ['kasse', 'ablehnen', 'heat', 'verhaftet', 'ausverkauft', 'schritt_sand', 'ui_klick', 'hinschauen', 'pfeife', 'mango', 'funk', 'tuten', 'tuktuk_abwuergen', 'gaehnen',
-    'ui_oeffnen', 'ui_schliessen', 'ui_umschalten', 'ui_schritt', 'ziel', 'morgen', 'woche_gut', 'woche_fail']) assert.ok(SFX_NAMES.includes(n), n);
-  assert.equal(SFX_NAMES.length, 22);
+    'ui_oeffnen', 'ui_schliessen', 'ui_umschalten', 'ui_schritt', 'ziel', 'morgen', 'woche_gut', 'woche_fail', 'woche_mittel']) assert.ok(SFX_NAMES.includes(n), n);
+  assert.equal(SFX_NAMES.length, 23);
   for (const n of SFX_NAMES) assert.equal(sfx(n), 0);
   assert.equal(sfx('gibtsnicht'), 0);
   assert.equal(sfx('tuktuk_abwuergen', { gain: 0.5, pan: -0.3 }), 0, 'Optionen ohne Audio: no-op');

@@ -842,7 +842,7 @@ function showFinaleKarte() {
   finaleKarteOffen = finaleKarte(game, woche, texte);
   mode = 'finale';
   ui.showCard({ titel: finaleKarteOffen.titel, zeilen: finaleKarteOffen.zeilen, buttons: finaleKarteOffen.buttons, rot: finaleKarteOffen.stufe === 'fail' });
-  sfx(finaleKarteOffen.stufe === 'fail' ? 'woche_fail' : 'woche_gut');
+  sfx({ gut: 'woche_gut', mittel: 'woche_mittel', fail: 'woche_fail' }[finaleKarteOffen.stufe] || 'woche_gut');
 }
 function finaleChoice(i) {
   if (!finaleKarteOffen) return;
