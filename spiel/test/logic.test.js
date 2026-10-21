@@ -582,3 +582,11 @@ test('Streife P2: Route Hotelstrand ↔ Furt ↔ Pier folgt der Furt-Mittellinie
   for (let t = 0; t < 1; t += 1 / 60) c = cStep(c, r, { x: 0, z: -50 }, 1 / 60, { sees: false, heat: 0, schuhe: 'sandalen' }).st;
   assert.ok(Math.abs(Math.hypot(c.x - x0, c.z - z0) - PSPEED * WF) < 0.12, 'watet auch über chaseStep');
 });
+
+import { SPAWN_ZONE, assignAnchors as aA, ANCHORS as ALLE } from '../js/logic.js';
+test('Spawn-Zonen: K7 landet im Reisfeld, K8 im Kokoshain (hain_*), K1 im Hafen; ohne Spawn normale Rotation', () => {
+  assert.deepEqual(SPAWN_ZONE, { K1: 'pier', K7: 'reisfeld', K8: 'hain' });
+  const m = aA([{ id: 'nok', spawn: 'K7' }, { id: 'dao', spawn: 'K8' }, { id: 'f', spawn: 'K1' }, { id: 'x' }], ALLE, { day: 3 });
+  assert.equal(m.nok.zone, 'reisfeld'); assert.ok(m.dao.id.startsWith('hain_')); assert.equal(m.f.zone, 'pier'); assert.ok(!m.f.id.startsWith('hain_'), 'Fähre nicht in den Hain');
+  assert.ok(m.x);
+});

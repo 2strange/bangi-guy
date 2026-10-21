@@ -347,10 +347,14 @@ export function zoneSequence(n, anchors = ANCHORS, { day = 1, mix = ZONE_MIX } =
   const k = n ? (day - 1) % n : 0;
   return seq.slice(k).concat(seq.slice(0, k));
 }
+// Spawn-Punkte, die einen festen Bereich erzwingen: K1 Fähre → Hafenplätze, K7 → Reisfeld, K8 → Kokoshain (Plätze hain_*)
+export const SPAWN_ZONE = { K1: 'pier', K7: 'reisfeld', K8: 'hain' };
+const inZone = (a, zone) => (zone === 'hain' ? a.id.startsWith('hain_') : a.zone === zone);
 export function assignAnchors(kunden, anchors = ANCHORS, { minDist = ZIVI_MIN_DIST, day = 1, mix = ZONE_MIX } = {}) {
   const out = {};
   const taken = [];
-  const free = (zone) => anchors.filter((a) => !taken.includes(a) && (!zone || a.zone === zone));
+  const free = (zone) => anchors.filter((a) => !taken.includes(a) && (!zone || inZone(a, zone)));
+  const spawnZone = (k) => { const z = SPAWN_ZONE[k.spawn]; return z && free(z).length ? z : null; };
   const rot = (list, n) => list.slice(n % Math.max(1, list.length)).concat(list.slice(0, n % Math.max(1, list.length)));
   const pick = (k, cands) => {
     const a = cands[0] || anchors[(taken.length + day) % anchors.length];
@@ -362,12 +366,12 @@ export function assignAnchors(kunden, anchors = ANCHORS, { minDist = ZIVI_MIN_DI
   const seq = zoneSequence(kunden.length, anchors, { day, mix });
   others.forEach((k, i) => {
     // Fähren-Gäste (Spawn K1) bleiben im Hafen: vom Steg aus ist nur der Hafenplatz ohne Umweg erreichbar
-    const zone = k.spawn === 'K1' && free('pier').length ? 'pier' : seq[i];
+    const zone = spawnZone(k) || seq[i];
     const cands = free(zone).length ? free(zone) : free();
     pick(k, rot(cands, day + i));
   });
   zivis.forEach((z, j) => {
-    const zone = z.spawn === 'K1' && free('pier').length ? 'pier' : seq[others.length + j];
+    const zone = spawnZone(z) || seq[others.length + j];
     const inZone = free(zone).length ? free(zone) : free();
     const ok = inZone.filter((a) => taken.every((t) => dist2(a, t) >= minDist));
     const okAny = ok.length ? ok : free().filter((a) => taken.every((t) => dist2(a, t) >= minDist));

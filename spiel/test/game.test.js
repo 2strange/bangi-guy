@@ -876,7 +876,8 @@ test('Ereignisse: deterministisch je Seed/Woche/Tag, nie Tag 1 oder Tutorial, ge
   ] });
   assert.deepEqual(E.map((e) => e.id), ['a', 'b']); assert.deepEqual(E[0].wirkung, { kunden_faktor: 0.5 }); assert.equal(E[0].gewicht, 3);
   assert.equal(E[1].ab_tag, 2, 'nie vor Tag 2'); assert.equal(E[1].hinweis, 'B', 'Hinweis fällt auf den Titel zurück'); assert.equal(E[1].abends, null);
-  assert.deepEqual(normalizeEreignisse(null), normalizeEreignisse({ ereignisse: DEFAULT_EREIGNISSE })); assert.deepEqual(normalizeEreignisse({ ereignisse: [{ id: '' }] }).map((e) => e.id), DEFAULT_EREIGNISSE.map((e) => e.id));
+  assert.deepEqual(normalizeEreignisse(null), normalizeEreignisse({ ereignisse: DEFAULT_EREIGNISSE }));
+  assert.equal(E[1].hinweis, 'B'); assert.equal(E[0].abendsWer, 'mentor'); assert.deepEqual(normalizeEreignisse({ ereignisse: [{ id: '' }] }).map((e) => e.id), DEFAULT_EREIGNISSE.map((e) => e.id));
   assert.equal(ereignisFuerTag(E, { seed: 7, woche: 1, tag: 1 }), null, 'Tag 1 nie');
   assert.equal(ereignisFuerTag(E, { seed: 7, woche: 1, tag: 3, tutorial: true }), null, 'Tutorial-Tag nie');
   const a = ereignisFuerTag(E, { seed: 7, woche: 1, tag: 3 }), b = ereignisFuerTag(E, { seed: 7, woche: 1, tag: 3 });
@@ -922,4 +923,41 @@ test('Runde-10-Kunden: neue Accessoires/Extras/Spawns und Felder figuren/zahlt_i
   assert.equal(nK({ id: 'k', accessoire: 'helm_delle', extras: ['kokosnuss', 'seil_um_huefte', 'pflaster_stirn'], spawn: 'K8' }).spawn, 'K8');
   assert.ok(ACC.includes('kegelhut') && EXT.includes('blumenkranz') && SPW.includes('K8'));
   assert.equal(nK({ id: 'y', zahlt_in: 3 }).zahlt_in, null);
+});
+
+import { heatCap, kundenFuerTag, figurDef, patrolSpotted as pS } from '../js/game.js';
+test('Ereignisse nach Content-Schema: liste[], ware_minus, heat_max, tells_verdeckt, kunden_typen_plus, spawn_aus, kommentar{wer}; gewicht 0 nur per Skript', () => {
+  const E = normalizeEreignisse({ ereignisse: { _ablauf: 'doc', liste: ['kaputt',
+    { id: 'moewe_klaut', gewicht: 3, zeitpunkt: 'mittag', wirkung: { ware_minus: 1 }, ankuendigung: 'Die Möwe. Frag nicht.', kommentar: { wer: 'nong', text: 'Chef war das.' } },
+    { id: 'regen', gewicht: 3, zeitpunkt: 'mittag', dauer_s: 120, wirkung: { unter_dach: true, tells_verdeckt: ['schuhe', 'quatsch'] }, ankuendigung: 'Regen!', ende: 'Vorbei.', kommentar: { wer: 'mentor', text: 'Hemden lesen.' } },
+    { id: 'schiff', gewicht: 2, wirkung: { kunden_faktor: 1.5, kunden_typen_plus: ['touristin_1', 'paar_1'] } },
+    { id: 'pong', gewicht: 1, wirkung: { heat_max: 1, preis_faktor: 1.0 } },
+    { id: 'faehre', gewicht: 0, wirkung: { spawn_aus: ['K1'], kunden_faktor: 0.8 } },
+  ] } });
+  assert.deepEqual(E.map((e) => e.id), ['moewe_klaut', 'regen', 'schiff', 'pong', 'faehre']);
+  assert.deepEqual(E[0].wirkung, { ware: -1 }); assert.equal(E[0].abends, 'Chef war das.'); assert.equal(E[0].abendsWer, 'barkeeper'); assert.equal(E[0].hinweis, 'Die Möwe.'); assert.equal(E[0].zeitpunkt, 'mittag');
+  assert.deepEqual(E[1].wirkung, { tells_verdeckt: ['schuhe'] }); assert.equal(E[1].ende, 'Vorbei.'); assert.equal(E[1].dauer_s, 120); assert.equal(E[1].abendsWer, 'mentor');
+  assert.deepEqual(E[2].wirkung, { kunden_faktor: 1.5, kunden_typen_plus: ['touristin_1', 'paar_1'] });
+  assert.deepEqual(E[3].wirkung, { preis_faktor: 1, heat_max: 1 }); assert.deepEqual(E[4].wirkung, { kunden_faktor: 0.8, spawn_aus: ['K1'] });
+  // gewicht 0 wird nie gewürfelt
+  for (let seed = 1; seed <= 40; seed++) for (let tag = 2; tag <= 8; tag++) { const e = ereignisFuerTag(E, { seed, tag }); assert.ok(!e || e.id !== 'faehre'); }
+  // Heat-Deckel: Zivi-Verkauf, Streife und Gier steigen nicht über 1, was drüber ist, bleibt
+  const pong = newDay(initialState(), { ereignis: E[3] });
+  assert.equal(sell(pong, zivi).state.heat, 1); assert.equal(sell({ ...pong, heat: 1 }, zivi).state.heat, 1); assert.equal(sell({ ...pong, heat: 2 }, zivi).state.heat, 2);
+  assert.equal(pS({ ...pong, heat: 1 }, { selling: true }).state.heat, 1); assert.equal(verhandeln(pong, zivi, 0, { wuerfel: 0.1 }).state.heat, 1);
+  assert.equal(sell(newDay(initialState()), zivi).state.heat, 2, 'ohne Deckel wie bisher'); assert.equal(heatCap({ heat: 0 }, 3), 3);
+  // Kundschaft des Tages: Fähre fällt aus → keine K1-Gäste; Schiff → Touristin und Paar zusätzlich
+  const kat = normalizeKatalog({ kunden: [{ id: 'a', spawn: 'K1' }, { id: 'b', spawn: 'K2' }, { id: 'c' }, { id: 'touristin_1', spawn: 'K1' }, { id: 'paar_1' }, { id: 'z', zivi: true }] });
+  const ohne = kundenFuerTag(kat, 7, 1, 2, E[4]);
+  assert.ok(ohne.every((k) => k.spawn !== 'K1'), 'ohne Fähre keine K1-Gäste'); assert.ok(ohne.length >= 3);
+  const schiff = kundenFuerTag(kat, 2, 1, 2, E[2]);
+  assert.ok(schiff.some((k) => k.id === 'touristin_1') && schiff.some((k) => k.id === 'paar_1'), 'Schiff bringt die Typen zusätzlich');
+  assert.equal(new Set(schiff.map((k) => k.id)).size, schiff.length, 'keine Doppelten');
+  assert.deepEqual(kundenFuerTag(kat, 3, 1, 2, null).map((k) => k.id), pickKunden(kat, 3, 1, 2).map((k) => k.id), 'ohne Ereignis wie pickKunden');
+  // Regen: Figur in Gummistiefeln, Logik am Original
+  const d = normalizeKunde({ id: 's', schuhe: 'sandale', zahlt: 30 });
+  assert.equal(figurDef(d, E[1]).schuhe, 'gummistiefel'); assert.equal(figurDef(d, E[0]).schuhe, 'sandale'); assert.equal(figurDef(d, null), d); assert.equal(d.schuhe, 'sandale');
+  // Datei-Stand: Content-Liste lädt und hat die Pflichtfelder
+  const echt = normalizeEreignisse(JSON.parse(readFileSync(new URL('../data/texte.json', import.meta.url), 'utf8')));
+  assert.ok(echt.length >= 5 && echt.every((e) => e.id && e.ankuendigung));
 });

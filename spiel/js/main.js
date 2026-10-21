@@ -22,7 +22,7 @@ import {
   mergeTexte, mergeKundenKatalog, normalizeOptionen, toSave, fromSave, hatFortschritt, fillText,
   normalizeTutorial, tutorialStart, tutorialEvent, tutorialSkip,
   normalizeWoche, tagesziel, tagModifikator, hudZiel, finaleStufe, KUNDEN_PRO_TAG, kalibriereWoche, neueWoche, finaleKarte,
-  normalizeEreignisse, ereignisFuerTag, ereignisKundenFaktor, ereignisZiviExtra,
+  normalizeEreignisse, ereignisFuerTag, ereignisKundenFaktor, ereignisZiviExtra, kundenFuerTag, figurDef,
   normalizeStimmen, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
   normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
@@ -231,7 +231,7 @@ function clearKunden() {
 function spawnKunden(day = 1) {
   clearKunden();
   // „Großer Markt“: doppelt so viele; Ereignisse (Regen, Kreuzfahrt) skalieren mit, ein Zivi extra bei zivi_extra
-  const list = pickKunden(katalog, Math.max(1, Math.round(KUNDEN_PRO_TAG * (tagModifikator(woche, day).kunden_faktor || 1) * ereignisKundenFaktor(game.ereignis))), 2 + ereignisZiviExtra(game.ereignis), day);
+  const list = kundenFuerTag(katalog, Math.max(1, Math.round(KUNDEN_PRO_TAG * (tagModifikator(woche, day).kunden_faktor || 1) * ereignisKundenFaktor(game.ereignis))), 2 + ereignisZiviExtra(game.ereignis), day, game.ereignis);
   const outfits = assignOutfits(list, day); // keine Doppel-Outfits pro Tag
   const anchors = assignAnchors(list, ANCHORS, { day }); // feste Plätze über alle Zonen (Markt-Plätze stecken in ANCHORS), Zivis mit Abstand
   const seen = {};
@@ -239,8 +239,13 @@ function spawnKunden(day = 1) {
     const a = anchors[def.id];
     const n = seen[a.id] = (seen[a.id] || 0) + 1; // Notnagel: geteilter Platz versetzt
     const pos = { x: a.x + (n - 1) * 2.2, z: a.z + (n - 1) * 1.3 };
-    const group = buildKunde(def, idSeed(def.id), outfits[def.id]);
+    const group = buildKunde(figurDef(def, game.ereignis), idSeed(def.id), outfits[def.id]); // Regen: alle in Gummistiefeln, Logik bleibt am Original
     kundenGroup.add(group);
+    if (def.figuren === 2) { // Paar: zweite Figur im Partnerlook daneben, ein Dialog, ein Verkauf
+      const partner = buildKunde(figurDef(def, game.ereignis), idSeed(def.id) + 1, outfits[def.id]);
+      partner.position.set(1.1, 0, 0.15); partner.rotation.y = -0.2; group.add(partner);
+      setMood(partner, def.stimmung_start || 'neutral');
+    }
     setMood(group, def.stimmung_start || 'neutral');
     // kein Kreisen: ein Punkt, der Kunde bleibt an seinem Platz und tut etwas
     const pts = [pos];
@@ -872,13 +877,23 @@ function startNewDay() {
 }
 // Morgen-Routine: Uhr, Mentor, Streifen, Kundschaft des Tages, Spieler am Start
 let hinweisBis = 0; // Einblendung zum Tagesereignis
+let musikWiederAt = 0; // Stromausfall: Musik setzt kurz aus
+// Ereignis-Klang je id (audio.js): Regen als Wetter, Schiffshorn, Möwen-Gezeter, Party, Stromausfall
+function ereignisTon(ev) {
+  const id = ev?.id || '';
+  try { audio?.ambience?.setWetter?.(id === 'regenschauer' || id === 'regen' ? 'regen' : 'klar'); } catch (e) { /* ohne Ton */ }
+  if (id === 'kreuzfahrtschiff' || id === 'kreuzfahrt') sfx('schiffshorn_fern', { pan: 0.3 });
+  else if (id === 'moewe_klaut' || id === 'moewe') sfx('moewe_klaut');
+  else if (id === 'pong_geburtstag') sfx('party');
+  else if (id === 'stromausfall') { sfx('stromausfall'); try { audio?.music?.stop?.(); musikWiederAt = performance.now() + 6000; } catch (e) { /* ohne Ton */ } }
+}
 function morgen() {
   zielGemeldet = false;
   // Tagesereignis: Einblendung, Requisite (world.setEreignis, falls vorhanden), Sound (audio.ereignis, falls vorhanden)
   const ev = game.ereignis;
   if (ev) { ui.showPrompt(ev.hinweis); hinweisBis = performance.now() + 8000; } else ui.showPrompt(null);
-  try { world.setEreignis?.(ev?.requisite || null); } catch (e) { /* ohne Requisite */ }
-  try { audio?.ereignis?.(ev?.sound || null); } catch (e) { /* ohne Ton */ }
+  try { world.setEreignis?.(ev?.requisite || ev?.id || null); } catch (e) { /* ohne Requisite */ }
+  ereignisTon(ev);
   tagesuhr = initialClock();
   applyTageszeit();
   placeMentor(false);
@@ -1439,6 +1454,7 @@ if (SNAP) {
     }
     if (nearK) tutorialFire('kunde_in_reichweite');
     if (hinweisBis && now > hinweisBis) { hinweisBis = 0; if (mode === 'free') ui.showPrompt(null); }
+    if (musikWiederAt && now > musikWiederAt) { musikWiederAt = 0; try { if (optionen.musik) audio?.music?.start?.(); } catch (e) { /* ohne Ton */ } }
     updateTutorial(now);
     updatePatrol(dt, now);
     // Schritt im Sand: jede volle Watschel-Periode (1.6 Einheiten ≈ 0.4 s Gehen)

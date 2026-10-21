@@ -227,14 +227,21 @@ weg, kein Heat). Zivis zahlen jeden Preis – es ist Beweismaterial: Enttarnung 
 vom Aufrufer).
 
 ## Tages-Ereignisse
-Ab Tag 2 (nie am Tutorial-Tag) gibt es pro Tag mit 60 % Chance ein Ereignis aus `texte.json → ereignisse[]`
-(Code-Defaults: Regenschauer, Kreuzfahrtschiff, Möwe, Markttag, Gerücht). Die Wahl ist deterministisch aus
+Ab Tag 2 (nie am Tutorial-Tag) gibt es pro Tag mit 60 % Chance ein Ereignis aus `texte.json → ereignisse.liste[]`
+(Möwe klaut, Regenschauer, Kreuzfahrtschiff, Pongs Geburtstag, Stromausfall, Fähre fällt aus; Code-Defaults, falls die
+Datei fehlt). Die Wahl ist deterministisch aus
 Spielstand-Seed, Woche und Tag (`ereignisFuerTag`, gewichtet nach `gewicht`, `ab_tag`), also reproduzierbar, aber je
 Spiel anders. Wirkungen (`wirkung{}`): `kunden_faktor` (weniger/mehr Gäste), `preis_faktor` (alle zahlen mehr/weniger,
-auch beim Verhandeln), `heat` (+/− am Morgen, nie direkt Verhaftung), `ware` (Möwe klaut / Geschenk), `zivi_extra`.
+auch beim Verhandeln), `heat` (+/− am Morgen, nie direkt Verhaftung), `ware`/`ware_minus` (Möwe klaut / Geschenk),
+`zivi_extra`, `heat_max` (Deckel für den Tag: Pongs Geburtstag), `tells_verdeckt: ["schuhe"]` (Regen: alle tragen
+Gummistiefel, man muss Hemden lesen; Preise/Logik bleiben am Original), `kunden_typen_plus` (bestimmte Gäste kommen
+zusätzlich), `spawn_aus` (z. B. keine Fähren-Gäste). `zeitpunkt`/`dauer_s` werden gelesen, Ereignisse gelten aber den
+ganzen Tag; `kommentar{wer,text}` ist der Satz abends an der Bar (Mentor oder Nong). Das Flitterwochen-Paar
+(`figuren: 2`) steht als zwei Figuren an einem Platz, ein Dialog, ein Verkauf; Bauer Nok (K7) steht im Reisfeld, der
+Kokos-Kletterer (K8) im Hain.
 Der Mentor kündigt das Ereignis morgens an, beim Tagesstart gibt es eine Einblendung, abends an der Bar optional
-einen Satz. Requisiten (`requisite`: wolke | schiff | moewe) und Sounds (`sound`) sind Hooks für `world.setEreignis`
-bzw. `audio.ereignis`, falls vorhanden. Reine Logik mit Tests; der Seed liegt im Spielstand.
+einen Satz. Klang je Ereignis über `audio.js` (Regen als Wetter, Schiffshorn, Möwen-Gezeter, Party, Stromausfall mit kurzer
+Musikpause); Requisiten über `world.setEreignis(id)`, falls vorhanden. Reine Logik mit Tests; der Seed liegt im Spielstand.
 
 ## Ziele: Tagesziel und Wochenbogen
 `texte.json → woche{}` beschreibt die Woche (7 Tage): `ziel.muenzen` bis zum letzten Tag, je Tag `titel`, `ziel`,

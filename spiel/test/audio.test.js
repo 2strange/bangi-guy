@@ -8,7 +8,7 @@ import {
   babble, sfx, setMuted, isMuted, ambience, music, stimmeFor, setStimmen, normalizePan,
   ZONES, normalizeZones, pseudoWords, nextRufDelay, nextFunkDelay, sputterTimes, normalizeSfxOpts,
   MOODS, normalizeMood, nextBpm, setMood, getMood, cricketBurst, nextClinkDelay, frogCall, nextFrogDelay, JINGLES,
-  WETTER, normalizeWetter, nextDropDelay, duoPlan, DUO_TONHOEHE, DUO_VERSATZ,
+  WETTER, normalizeWetter, nextDropDelay, duoPlan, DUO_TONHOEHE, DUO_VERSATZ, EREIGNIS_SOUNDS, ereignisAktionen, ereignis,
 } from '../js/audio.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -237,6 +237,18 @@ test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Daue
   assert.equal(ambience.setWetter('regen'), 'regen'); assert.equal(ambience.getWetter(), 'regen');
   assert.equal(ambience.setWetter('hagel'), 'klar'); assert.equal(ambience.getWetter(), 'klar');
   assert.equal(nextDropDelay(() => 0), 0.02); close(nextDropDelay(() => 1), 0.12);
+  // Ereignis-Slugs aus texte.json: jeder bekannte Slug gemappt, Aktionen zeigen auf existierende SFX/Wetter, Ende hebt Zustand auf
+  assert.deepEqual(ereignisAktionen('moewen'), [['sfx', 'moewe_klaut']]);
+  assert.deepEqual(ereignisAktionen('regen'), [['wetter', 'regen']]); assert.deepEqual(ereignisAktionen('regen', 'ende'), [['wetter', 'klar']]);
+  assert.deepEqual(ereignisAktionen('klick'), [['sfx', 'stromausfall'], ['musik_aus']]); assert.deepEqual(ereignisAktionen('klick', 'ende'), [['musik_an']]);
+  assert.deepEqual(ereignisAktionen('stille'), []); assert.deepEqual(ereignisAktionen('stille', 'ende'), []);
+  assert.equal(ereignisAktionen('erdbeben'), null);
+  for (const slug of Object.keys(EREIGNIS_SOUNDS)) for (const ph of ['start', 'ende']) for (const [art, arg] of ereignisAktionen(slug, ph)) {
+    if (art === 'sfx') assert.ok(SFX_NAMES.includes(arg), `${slug}: SFX ${arg}`);
+    if (art === 'wetter') assert.ok(WETTER.includes(arg), `${slug}: Wetter ${arg}`);
+  }
+  assert.equal(ereignis('regen'), 0); assert.equal(ambience.getWetter(), 'regen'); ereignis('regen', 'ende'); assert.equal(ambience.getWetter(), 'klar');
+  assert.equal(ereignis('stille'), 0); assert.equal(ereignis('erdbeben'), 0); assert.equal(ereignis('horn', 'start', { gain: 0.5 }), 0);
   ambience.setZone(null);
   setMuted(true); assert.equal(isMuted(), true); setMuted(false); assert.equal(isMuted(), false);
   const d = babble('zivi_polo', 'Nice shoes. Where did you get them?');
@@ -261,3 +273,10 @@ test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Daue
   assert.equal(normalizePan(-3), -1); assert.equal(normalizePan(2), 1); assert.equal(normalizePan(0.25), 0.25); assert.equal(normalizePan('-0.5'), -0.5);
 });
 const d0 = (t) => babble('zivi_polo', t);
+
+test('texte.json (Content): jeder Ereignis-Sound-Slug ist in audio.js gemappt', async () => {
+  const t = JSON.parse(await readFile(new URL('../data/texte.json', import.meta.url), 'utf8'));
+  const e = t.ereignisse; const liste = Array.isArray(e) ? e : (e && e.liste) || [];
+  assert.ok(liste.length >= 1, 'Ereignisse vorhanden');
+  for (const x of liste) if (x.sound) assert.ok(ereignisAktionen(x.sound) !== null, `Ereignis ${x.id}: Sound-Slug „${x.sound}“ unbekannt`);
+});

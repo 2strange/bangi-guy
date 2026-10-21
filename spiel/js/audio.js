@@ -1361,3 +1361,42 @@ export function setMood(m) {
   return normalizeMood(m);
 }
 export const getMood = () => music.getMood();
+
+// ---------- Tages-Ereignisse (Slug aus den Spieltexten → Sound) ----------
+// Slug = Feld `sound` je Ereignis in texte.json; Content darf die Namen frei wählen, hier wird gemappt.
+// start: Effekt oder Zustand setzen; ende: Zustand zurücknehmen (Regen aus, Musik wieder an). 'stille' = bewusst nichts.
+export const EREIGNIS_SOUNDS = {
+  moewen: { start: ['sfx', 'moewe_klaut'] },
+  regen:  { start: ['wetter', 'regen'], ende: ['wetter', 'klar'] },
+  horn:   { start: ['sfx', 'schiffshorn_fern'] },
+  troete: { start: ['sfx', 'party'] },
+  klick:  { start: ['sfx', 'stromausfall', 'musik_aus'], ende: ['musik_an'] },
+  stille: { start: [] },
+};
+/** Aktionen für einen Slug (rein, testbar): Liste aus ['sfx', name] | ['wetter', w] | ['musik_aus'] | ['musik_an'] */
+export function ereignisAktionen(slug, phase = 'start') {
+  const e = EREIGNIS_SOUNDS[slug];
+  if (!e) return null;
+  const a = e[phase === 'ende' ? 'ende' : 'start'] || [];
+  const out = [];
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] === 'sfx') out.push(['sfx', a[++i]]);
+    else if (a[i] === 'wetter') out.push(['wetter', a[++i]]);
+    else out.push([a[i]]);
+  }
+  return out;
+}
+/** Ereignis-Sound auslösen: ereignis('regen') / ereignis('regen', 'ende'); opts { gain, pan } gehen an den Effekt. Gibt die Dauer in s zurück. */
+let musikAusTimer = null;
+export function ereignis(slug, phase = 'start', opts) {
+  const acts = ereignisAktionen(slug, phase);
+  if (!acts) { if (!warned.has('ereignis:' + slug)) { warned.add('ereignis:' + slug); console.warn('audio: unbekanntes Ereignis', slug); } return 0; }
+  let d = 0;
+  for (const [art, arg] of acts) {
+    if (art === 'sfx') d = Math.max(d, sfx(arg, opts));
+    else if (art === 'wetter') ambience.setWetter(arg);
+    else if (art === 'musik_aus') { clearTimeout(musikAusTimer); musikAusTimer = setTimeout(() => { musikAusTimer = null; music.stop(); }, 1100); } // der Klack kommt nach 1,1 s, dann bricht die Musik ab
+    else if (art === 'musik_an') { clearTimeout(musikAusTimer); musikAusTimer = null; music.start(); }
+  }
+  return d;
+}
