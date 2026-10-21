@@ -454,7 +454,6 @@ export const FACE_EXTRAS = {
   touristin_1: { lids: [0.72, 0.72], wrinkles: true }, // Augen nur als Lachfalten
   lauter_typ_1: { look: [0, -8] },                     // Augen weit, alles ein Ausrufezeichen
   zivi_4: { look: [-34, 0] },                          // scannt den Markt statt dich anzuschauen
-  bauer_nok: { lids: [0.5, 0.5] },                     // Augen zu Schlitzen gegen die Sonne
   kletterer_1: { lids: [0.2, 0.85] },                  // ein Auge zugekniffen (Kokosnuss von gestern)
   zivi_5: { stirnstreifen: true },                     // Mützen-Streifen auf der Sonnenbrand-Stirn
 };

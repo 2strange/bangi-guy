@@ -232,7 +232,7 @@
       "extras": ["schlamm_bis_knie", "reissack", "hose_hochgekrempelt"],
       "zivi": false, "zahlt": 25, "zahlt_in": "reis", "feilschen": 0.1, "heat": 0, "tempo": 0.5, "spawn": "K7", "stimme": "bauer",
       "stimmung_start": "neutral",
-      "mimik": "Wettergegerbt, Augen zu Schlitzen gegen die Sonne, Mund entspannt. Beim Kauf: ein langsames Nicken, dann ein Blick zum Himmel, als käme das Geld von dort. Bei Ablehnung: zuckt nicht mal, pflanzt weiter.",
+      "mimik": "Wettergegerbt, normale Augen, blinzelt gegen die Sonne (Kegelhut-Schatten im Gesicht), Mund entspannt. Beim Kauf: ein langsames Nicken, dann ein Blick zum Himmel, als käme das Geld von dort. Bei Ablehnung: zuckt nicht mal, pflanzt weiter.",
       "tells": ["barfuß mit Schlamm bis zum Knie: steht den ganzen Tag im Wasser, rennt nirgendwohin", "Kegelhut, kein Hemd", "zahlt in Reis (gleicher Wert, schwerer zu tragen)", "spricht nur in Wetter"],
       "saetze": {
         "gruss": ["Regen kommt. Nicht heute. Aber er kommt.", "Du bist der Junge vom Hügel. Dein Mentor klaut mein Wasser.", "Komm nicht ins Feld. Die Reiher mögen keine Sandalen."],

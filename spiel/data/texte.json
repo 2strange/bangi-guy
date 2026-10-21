@@ -203,7 +203,7 @@
     {
       "id": "regenschauer", "titel": "Regenschauer", "gewicht": 3, "ab_tag": 2, "zeitpunkt": "mittag", "dauer_s": 120, "requisite": "wolke", "sound": "regen",
       "ankuendigung": "Heute kommt Regen. Mittags. Dann rennen alle unters Dach und ziehen Gummistiefel oder Tüten über die Füße. Die Schuhregel wackelt: dann liest du Hemden.",
-      "hinweis": "Regenschauer mittags: Schuhe sind dann nicht lesbar, Kunden stehen unterm Dach.",
+      "hinweis": "Regenschauer: alle in Gummistiefeln, Schuhe sind jetzt nicht lesbar. Lies die Hemden.",
       "ende": "Regen vorbei. Die Stiefel verschwinden so schnell, wie sie gekommen sind. Zwei Leute haben sie an behalten. Merk dir die.",
       "wirkung": { "tells_verdeckt": ["schuhe"] },
       "kommentar": { "wer": "mentor", "text": "„Regen ist die Prüfung. Wenn die Schuhe weg sind, bleibt das Hemd. Und das Hemd lügt seltener, als du denkst.“" }

@@ -38,7 +38,7 @@
       "kommentar": { "text": "'Chef brought something today. I didn't touch it. Neither did Chef. Chef only collects.'" } },
     { "id": "regenschauer", "titel": "Rain Shower",
       "ankuendigung": "Rain today. Around noon. Everyone runs for cover and pulls rubber boots or plastic bags over their feet. The shoe rule wobbles: then you read shirts.",
-      "hinweis": "Rain shower at noon: shoes unreadable then, customers under roofs.",
+      "hinweis": "Rain shower: everyone in rubber boots, shoes unreadable now. Read the shirts.",
       "ende": "Rain's over. The boots vanish as fast as they came. Two people kept theirs on. Remember those.",
       "kommentar": { "text": "'Rain is the test. When the shoes are gone, the shirt remains. And the shirt lies less often than you think.'" } },
     { "id": "kreuzfahrtschiff", "titel": "Ship Day",
