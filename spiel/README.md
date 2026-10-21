@@ -24,6 +24,13 @@ Dann `http://localhost:8000/` öffnen.
 - **Klick / Tippen auf den Boden** – hinlaufen
 - **Touch-Geräte** (automatisch, oder `?touch=1`): Joystick links (weit ausgelenkt = rennen), rechts große Buttons
   **Reden** und **Schauen**, darüber ↺ ↻ für die Kamera. Die Seite scrollt und zoomt nicht (`touch-action: none`).
+  Auf schmalen Bildschirmen ist das HUD kompakt.
+- **Hinweise:** Der ausführliche Hinweis (ansprechen, hinschauen, beenden) erscheint nur beim ersten Mal; danach
+  blinkt ein kleines E/F-Badge über der Figur (mobil pulsieren die Buttons). In der Hinschau-Ansicht steht nur eine
+  kleine Pille am Rand, die Figur bleibt frei. Gemerkt wird das in `localStorage` (robust, mit Fallback).
+- **Ton:** 🔊/🔇 oben rechts (erscheint, sobald `js/audio.js` vorhanden ist). Audio startet erst nach der ersten
+  Geste; die Spiellogik ruft nur Hooks (`sfx('kasse')`, `babble(kundeId, text)`, …); Brandung und Musik-Loop starten mit
+  der ersten Geste.
 - **E** – ansprechen (nur mit Kunde in Reichweite). In der Sprechblase: **1 / 2** oder Pfeile + **Enter**
   wählen (Verkaufen / Lieber nicht), **Esc** bricht ab.
 - **F** in Kundennähe – genau hinschauen: die Kamera fährt vor die Figur, Füße bis Kopf, der Spieler wird dabei
@@ -43,9 +50,11 @@ Dann `http://localhost:8000/` öffnen.
   Kopfhörer) und Extras (Socken, Preisschild, Stirnband, Hundehalstuch, Funkgerät, Strohhut, Cocktail, Einkaufskorb,
   Bändchen). Die Fallen (Socken in Sandalen, Preisschild, Ohrknopf, Hund) sind bewusst groß. Hautton, Bart, Brille,
   Falten und Start-Stimmung gehen in die gemalten Gesichter (`face(kind, mood, opts)` aus `faces.js`). Tempo und
-  Spawn-Code (K1–K6) steuern Schlendern und Startplatz. Noch nicht dargestellt: Rollator, Pulsuhr, Notizblock,
-  „nass“, „schwitzt“, die Mimik-Beschreibungen und Tells (nur Text). Sie schlendern zwischen 2–3 Punkten, pausieren
-  und schauen dem Spieler nach.
+  Spawn-Code (K1–K6) sind im Katalog erhalten, die Plätze kommen aber aus `ANCHORS` in `js/logic.js`: jeder Kunde
+  bekommt einen festen Ankerplatz (Liege, Bar-Hocker, Steg, Palme, Dorfecke …) mit Tätigkeit (sitzt, telefoniert,
+  fotografiert, schaut aufs Meer, steht); `assignAnchors()` hält Zivis ≥ 8 Einheiten von allen anderen Kunden fern
+  (getestet), damit Verkaufen vor dem Zivi nicht der Normalfall ist. Kein Kreisen mehr. Noch nicht dargestellt: Rollator, Pulsuhr, Notizblock,
+  „nass“, „schwitzt“, die Mimik-Beschreibungen und Tells (nur Text). Sie schauen dem Spieler nach, wenn er nah ist.
 - **Ansprechen (E):** Sprechblase im Comic-Look über dem Kopf: Gruß → Wahl **Verkaufen / Lieber nicht** → Ergebnis.
 - **Ergebnis:** Unbedenklicher → +Geld, Ware −1, Kunde zufrieden. Zivi → Heat +1…3, der Beutel ist weg (an die
   Polizei, kein Geld; umschaltbar über `ZIVI_BESCHLAGNAHMT` in `js/game.js`), Reveal-Satz, Kunde misstrauisch und setzt die Polizeimütze auf. Die Bilanz rechnet
@@ -65,6 +74,11 @@ Dann `http://localhost:8000/` öffnen.
   weitergeht), „immer“-Gags alle 6–10 s als Idle-Tick, wenn der Spieler in der Nähe ist — der Hinweis zum
   Leute-Lesen. Während eines Gags steht der Kunde still und bekommt keine Schlender-Pose. `?snap=1&scene=gag&id=zivi_3`
   zeigt einen Kunden mitten im Kauf-Gag.
+- **Barks:** `data/stimmen.json` liefert je Stimme kurze englische Ausrufe (gruss, kauf, ablehnung,
+  zivi_verdaechtig). Lookup: `zuordnung[id]` → `stimme`-Feld des Kunden → id. Beim Näherkommen ruft der Kunde
+  einen Gruß, nach Verkauf/Ablehnung etwas hinterher, Zivis beim genauen Hinschauen etwas Verdächtiges — als
+  kleine Blase über dem Kopf (2–3 s), nie zweimal hintereinander dieselbe Zeile (getestet). Dieselbe Zeile geht
+  als `babble(kundeId, text)` ans Audio (Gebrabbel). `?snap=1&scene=bark` zeigt eine Gruß-Blase.
 - **Mimik:** `setMood(figur, stimmung)` tauscht nur die Gesichtstextur; sobald `faces.js` eine Funktion
   `face(kind, mood)` exportiert, wird sie automatisch benutzt, bis dahin bleiben die vorhandenen Gesichter.
 - **Logik rein und getestet:** `js/game.js` (Zustand, Verkauf/Heat/Ware, Verhaftung + neuer Tag, Gesprächs-

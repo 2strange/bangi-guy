@@ -295,9 +295,10 @@ export function buildKunde(k, seed = 1, outfit = null) {
         const screen = toonMesh(new THREE.BoxGeometry(0.12, 0.24, 0.02), 0x6ee7ff, { outline: 0, basic: true });
         screen.position.z = 0.02; phone.add(screen);
       } else if (k.accessoire === 'surfbrett') {
+        // quer unter dem Arm getragen: lange Achse horizontal (entlang der Laufrichtung), seitlich an der Hüfte
         const bg = new THREE.SphereGeometry(1, 12, 10); bg.scale(0.28, 1.2, 0.07);
         const board = toonMesh(bg, 0xff5fa2, { outline: 0.045 });
-        board.position.copy(hp).add(V(0.3, 0.3, 0)); board.rotation.z = 0.08; arm.add(board);
+        board.position.set(0.38, -0.72, 0.1); board.rotation.set(Math.PI / 2, 0, Math.PI / 2 - 0.1); arm.add(board);
         const stripe = toonMesh(new THREE.BoxGeometry(0.08, 2.0, 0.17), 0xffffff, { outline: 0.02 }); board.add(stripe);
       } else if (extras.has('cocktail')) {
         const glass = toonMesh(new THREE.ConeGeometry(0.16, 0.3, 10), 0xffb13b, { outline: 0.025 });
@@ -496,4 +497,40 @@ export function setMood(group, mood) {
 export function setRevealed(group, on) {
   const P = group.userData.parts;
   if (P) P.capPolice.visible = !!on;
+}
+
+/**
+ * Tätigkeits-Pose (ohne Rig, über die Pivot-Gruppen): sitzt | telefoniert | fotografiert | schaut | steht.
+ * Wird nur gesetzt, wenn kein Gag läuft und der Kunde steht. Gibt zurück, ob die Figur tiefer sitzt (y-Offset).
+ */
+export function setActivity(group, activity) {
+  const P = group.userData.parts;
+  if (!P) return 0;
+  const [L, R] = P.legs, [aL, aR] = P.arms;
+  // Grundstellung
+  L.rotation.set(0, 0, 0); R.rotation.set(0, 0, 0); aL.rotation.set(0, 0, 0); aR.rotation.set(0, 0, 0);
+  P.head.rotation.set(0, P.head.rotation.y, 0);
+  switch (activity) {
+    case 'sitzt': // Beine nach vorn, Körper tiefer (auf Liege/Hocker)
+      L.rotation.x = -1.35; R.rotation.x = -1.35;
+      aL.rotation.x = -0.4; aR.rotation.x = -0.4;
+      group.userData.sitOffset = -0.55;
+      return -0.55;
+    case 'telefoniert': // rechte Hand ans Ohr, Kopf leicht geneigt
+      aR.rotation.set(-2.6, 0, -0.55); aL.rotation.x = 0.15;
+      P.head.rotation.z = -0.18;
+      break;
+    case 'fotografiert': // beide Hände vors Gesicht
+      aL.rotation.set(-2.2, 0, 0.5); aR.rotation.set(-2.2, 0, -0.5);
+      P.head.rotation.x = 0.12;
+      break;
+    case 'schaut': // Hand über die Augen, Blick zum Meer
+      aR.rotation.set(-2.9, 0, -0.3); aL.rotation.x = 0.1;
+      P.head.rotation.x = -0.08;
+      break;
+    default: // steht: eine Hand lässig in der Hüfte
+      aL.rotation.set(-0.3, 0, 0.6);
+  }
+  group.userData.sitOffset = 0;
+  return 0;
 }

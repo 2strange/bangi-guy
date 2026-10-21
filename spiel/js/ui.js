@@ -7,6 +7,18 @@ export function isTouchDevice() {
   return (typeof window !== 'undefined') && (('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0);
 }
 
+// Hinweis schon gesehen? (localStorage, robust: privater Modus/blockiert → immer „nicht gesehen“ pro Sitzung)
+const seenMem = new Set();
+export function hintSeen(key) {
+  if (seenMem.has(key)) return true;
+  try { if (localStorage.getItem('bangi.hint.' + key) === '1') { seenMem.add(key); return true; } } catch (e) { /* ignorieren */ }
+  return false;
+}
+export function markHint(key) {
+  seenMem.add(key);
+  try { localStorage.setItem('bangi.hint.' + key, '1'); } catch (e) { /* ignorieren */ }
+}
+
 export function createUI() {
   const hud = document.getElementById('hud');
   const prompt = document.getElementById('prompt');
@@ -22,11 +34,62 @@ export function createUI() {
       <span class="hud-item heat-${state.heat}">Heat <b>${heatLabel(state.heat)}</b></span>`;
   }
 
-  function showPrompt(text) {
+  function showPrompt(text, { small = false } = {}) {
     if (!prompt) return;
     if (!text) { prompt.style.display = 'none'; return; }
     prompt.textContent = text;
+    prompt.classList.toggle('pill', small);
     prompt.style.display = 'block';
+  }
+  // Kleines blinkendes Tasten-Badge („E“/„F“) an einer Bildschirmposition (über der Figur)
+  const badge = document.getElementById('badge');
+  function showBadge(keys, sx, sy) {
+    if (!badge) return;
+    if (!keys) { badge.style.display = 'none'; return; }
+    badge.innerHTML = keys.map((k) => `<span class="key">${escapeHtml(k)}</span>`).join('');
+    badge.style.left = `${Math.max(8, Math.min(window.innerWidth - 8, sx))}px`;
+    badge.style.top = `${Math.max(8, Math.min(window.innerHeight - 8, sy))}px`;
+    badge.style.display = 'flex';
+  }
+  // Touch-Buttons pulsieren lassen (statt Badge)
+  function pulseButtons(which) {
+    for (const [id, on] of [['#btn-talk', which?.talk], ['#btn-look', which?.look]]) {
+      const b = document.querySelector(id);
+      if (b) b.classList.toggle('pulse', !!on);
+    }
+  }
+  // Kleine Bark-Blase über dem Kopf eines Kunden (eine je Kunde, verschwindet nach ttl Sekunden)
+  const barks = new Map(); // id -> { el, until }
+  function showBark(id, text, ttl = 2.6) {
+    let b = barks.get(id);
+    if (!b) {
+      const el = document.createElement('div');
+      el.className = 'bark comic';
+      document.body.appendChild(el);
+      b = { el, until: 0 };
+      barks.set(id, b);
+    }
+    b.el.textContent = text;
+    b.el.style.display = 'block';
+    b.until = performance.now() / 1000 + ttl;
+  }
+  function placeBark(id, sx, sy, now = performance.now() / 1000) {
+    const b = barks.get(id);
+    if (!b) return;
+    if (now > b.until) { b.el.style.display = 'none'; return; }
+    const w = b.el.offsetWidth || 80;
+    b.el.style.left = `${Math.max(6, Math.min(window.innerWidth - w - 6, sx - w / 2))}px`;
+    b.el.style.top = `${Math.max(6, sy - (b.el.offsetHeight || 30) - 14)}px`;
+  }
+  function hideBarks() { for (const b of barks.values()) { b.el.style.display = 'none'; b.until = 0; } }
+  // Mute-Schalter im HUD (Audio-Modul hängt sich per onToggle an)
+  function createMuteButton(onToggle, muted = false) {
+    const b = document.getElementById('mute');
+    if (!b) return { set() {} };
+    const paint = (m) => { b.textContent = m ? '🔇' : '🔊'; b.classList.toggle('muted', m); };
+    paint(muted);
+    b.addEventListener('click', () => { muted = !muted; paint(muted); onToggle?.(muted); });
+    return { set(m) { muted = m; paint(m); } };
   }
 
   /** dialog: { text, options[] }, speaker: Name/Typ; selected: markierte Option */
@@ -90,7 +153,7 @@ export function createUI() {
         <button id="btn-cam-r" class="tbtn small" aria-label="Kamera rechts">↻</button>
         <button id="btn-look" class="tbtn" aria-label="Schauen">👀<span>Schauen</span></button>
         <button id="btn-talk" class="tbtn" aria-label="Reden">💬<span>Reden</span></button>
-      </div>`;
+      </div>`; // eine Reihe unten: ↺ ↻ klein, Schauen/Reden groß
     const joy = root.querySelector('#joy'), base = root.querySelector('#joy-base'), knob = root.querySelector('#joy-knob');
     const radius = 60;
     let pointerId = null, cx = 0, cy = 0;
@@ -137,7 +200,7 @@ export function createUI() {
     };
   }
 
-  return { setHud, showPrompt, showBubble, hideBubble, placeBubble, showCard, showArrest, hideCard, hideArrest: hideCard, onOptionClick, createTouchControls };
+  return { setHud, showPrompt, showBadge, pulseButtons, createMuteButton, showBark, placeBark, hideBarks, showBubble, hideBubble, placeBubble, showCard, showArrest, hideCard, hideArrest: hideCard, onOptionClick, createTouchControls };
 }
 
 function escapeHtml(s) {

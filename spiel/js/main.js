@@ -3,16 +3,18 @@
 import * as THREE from 'three';
 import { buildWorld } from './world.js';
 import { schluffi } from './figures.js';
-import { buildKunde, setMood, setRevealed } from './kunden.js';
-import { createUI, isTouchDevice } from './ui.js';
+import { buildKunde, setMood, setRevealed, setActivity } from './kunden.js';
+import { createUI, isTouchDevice, hintSeen, markHint } from './ui.js';
 import { prepareGags, playGag, stopGag } from './gags.js';
 import {
   inputToDir, dirToTarget, stepPlayer, followCamera, waddlePose, CAM_OFFSET, DEFAULT_CAM_YAW, isOccluder, joystickInput, rotateDir,
+  ANCHORS, assignAnchors,
 } from './logic.js';
 import {
   initialState, normalizeKatalog, pickKunden, startDialog, advanceDialog, chooseOption, isArrested, newDay, moodFor,
   kundeStatus, nearestKunde, wanderStep, inspectCamera, kundeLookYaw, TALK_DIST, idSeed,
   normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE, gagFor, nextIdleGagDelay,
+  normalizeStimmen, barksFor, pickBark,
 } from './game.js';
 
 // Tastenbelegung (Konstanten, einfach umzulegen): E = immer ansprechen, F = hinschauen, Kamera Q/R
@@ -91,26 +93,42 @@ let talking = null;         // Kunde im Gespräch / im Blick
 let lineIdx = 0;            // Satzwahl zyklisch
 const ui = createUI();
 ui.setHud(game);
+// Audio (audio.js, eigenes Modul): optional geladen; initAudio() wartet selbst auf die erste Geste (Mobil!).
+// Die Spiellogik ruft nur Einzeiler-Hooks; ohne Modul bleibt alles stumm.
+let audio = null;
+const SFX = { talk: 'ui_klick', kasse: 'kasse', alarm: 'heat', ablehnung: 'ablehnen', look: 'hinschauen', feierabend: 'ui_klick', verhaftet: 'verhaftet', ausverkauft: 'ausverkauft' };
+const sfx = (name) => { try { audio?.sfx?.(SFX[name] || name); } catch (e) { /* ohne Ton weiter */ } };
+const muteBtn = ui.createMuteButton((m) => { try { audio?.setMuted?.(m); } catch (e) { /* ignorieren */ } });
+let audioStarted = false;
+function startAudio() {
+  if (!audio || audioStarted) return;
+  audioStarted = true;
+  try { audio.ambience?.start?.(); audio.music?.start?.(); } catch (e) { /* ignorieren */ }
+}
+import('./audio.js').then((m) => {
+  audio = m;
+  try { audio.initAudio?.(); audio.loadStimmen?.(); muteBtn.set(!!audio.isMuted?.()); } catch (e) { /* ignorieren */ }
+  const el = document.getElementById('mute');
+  if (el) el.style.display = 'block';
+  if (gestureSeen) startAudio();
+}).catch(() => { /* kein Audio-Modul → stumm */ });
+let gestureSeen = false;
+const firstGesture = () => { gestureSeen = true; startAudio(); };
+window.addEventListener('pointerdown', firstGesture, { once: true });
+window.addEventListener('keydown', firstGesture, { once: true });
 let texte = normalizeTexte(null);
+let stimmen = normalizeStimmen(null);
+const barkPrev = {}; // `${id}/${kind}` -> zuletzt gesagter Index (nie zweimal dieselbe Zeile)
+let barkSeed = 0;
 let soldOutShown = false; // Ausverkauft-Meldung einmal pro Tag
 
 // ---------- Kundschaft ----------
-// Spawn + Schlenderpunkte am Strand (frei von Gebäuden); mehr Kunden als Plätze teilen sich Plätze
-const SPAWNS = [
-  [{ x: -4, z: 10 }, { x: 3, z: 12 }, { x: 8, z: 7 }],
-  [{ x: 14, z: 7 }, { x: 22, z: 11 }],
-  [{ x: -25, z: 10 }, { x: -31, z: 13 }, { x: -21, z: 6 }], // Bar-Bereich, frei von den Hängematten-Palmen
-  [{ x: 30, z: 4 }, { x: 40, z: 9 }],
-  [{ x: 52, z: 9 }, { x: 60, z: 4 }],
-  [{ x: -38, z: 5 }, { x: -44, z: 11 }],
-];
+// Kundschaft steht an festen Ankerplätzen (logic.ANCHORS) und tut etwas; Zuteilung in assignAnchors()
 const kunden = []; // { def, group, npc, collider, look }
 const kundenGroup = new THREE.Group();
 scene.add(kundenGroup);
 let katalog = []; // normalisierter Kundenkatalog (für den Tageswechsel)
 
-// Spawn-Codes aus dem Katalog (Karte): K1 Fähre/Ost, K2 Verleih, K3 Bar, K4 Mitte, K5 Richtung Dorf, K6 Hotel-Liegen
-const SPAWN_CODE = { K1: 4, K2: 5, K3: 2, K4: 0, K5: 1, K6: 3 };
 function clearKunden() {
   for (const k of kunden) {
     kundenGroup.remove(k.group);
@@ -124,19 +142,23 @@ function spawnKunden(day = 1) {
   clearKunden();
   const list = pickKunden(katalog, undefined, 2, day);
   const outfits = assignOutfits(list, day); // keine Doppel-Outfits pro Tag
-  const used = {};
+  const anchors = assignAnchors(list, ANCHORS, { day }); // feste Plätze, Zivis mit Abstand
+  const seen = {};
   list.forEach((def, i) => {
-    const si = def.spawn && SPAWN_CODE[def.spawn] !== undefined ? SPAWN_CODE[def.spawn] : i % SPAWNS.length;
-    const n = used[si] = (used[si] || 0) + 1; // mehrere Kunden am selben Platz: versetzt
-    const pts = SPAWNS[si].map((p) => ({ x: p.x + (n - 1) * 2.2, z: p.z + (n - 1) * 1.3 }));
+    const a = anchors[def.id];
+    const n = seen[a.id] = (seen[a.id] || 0) + 1; // Notnagel: geteilter Platz versetzt
+    const pos = { x: a.x + (n - 1) * 2.2, z: a.z + (n - 1) * 1.3 };
     const group = buildKunde(def, idSeed(def.id), outfits[def.id]);
     kundenGroup.add(group);
     setMood(group, def.stimmung_start || 'neutral');
-    const npc = { x: pts[0].x, z: pts[0].z, yaw: Math.PI, points: pts, idx: 1, pause: 1 + i * 0.7, speed: 0.5 + def.tempo * 1.1, phase: 0 };
+    // kein Kreisen: ein Punkt, der Kunde bleibt an seinem Platz und tut etwas
+    const pts = [pos];
+    const npc = { x: pos.x, z: pos.z, yaw: a.blick ?? 0, points: pts, idx: 0, pause: 99, speed: 0.5 + def.tempo * 1.1, phase: 0, activity: a.activity };
     const collider = { x: npc.x, z: npc.z, r: 0.7 };
     colliders.push(collider);
     prepareGags(group);
-    kunden.push({ def, group, npc, collider, look: 0, id: def.id, gag: null, idleN: i, nextIdle: 3 + i * 1.3 });
+    kunden.push({ def, group, npc, collider, look: 0, id: def.id, gag: null, idleN: i, nextIdle: 3 + i * 1.3, anchor: a });
+    setActivity(group, a.activity);
     applyKunde(kunden[kunden.length - 1]);
   });
 }
@@ -144,9 +166,18 @@ function applyKunde(k) {
   k.group.position.set(k.npc.x, 0, k.npc.z);
   k.group.rotation.y = k.npc.yaw;
   k.collider.x = k.npc.x; k.collider.z = k.npc.z;
+  k.group.position.y = k.group.userData.sitOffset || 0;
   if (k.gag) return; // gags.js hat Arme/Beine/Kopf/Hund in der Hand
-  const pose = waddlePose(k.npc.phase, k.npc.moving ? k.npc.speed : 0);
   const parts = k.group.userData.parts;
+  if (!k.npc.moving) {
+    // steht am Platz: Tätigkeits-Pose (einmal gesetzt, nur der Kopf folgt dem Spieler)
+    if (!k.posed) { setActivity(k.group, k.npc.activity); k.posed = true; }
+    parts.head.rotation.y = k.look;
+    if (parts.dog) parts.dog.userData.head.rotation.y = k.look * 0.6;
+    return;
+  }
+  k.posed = false;
+  const pose = waddlePose(k.npc.phase, k.npc.speed);
   parts.legs[0].rotation.x = pose.legL; parts.legs[1].rotation.x = pose.legR;
   parts.arms[0].rotation.x = pose.armL; parts.arms[1].rotation.x = pose.armR;
   parts.head.rotation.y = k.look;
@@ -163,6 +194,34 @@ async function loadTexte() {
   } catch (e) { /* Datei fehlt → Platzhalter-Texte */ }
   texte = normalizeTexte(json);
   game = { ...game, texte };
+}
+async function loadStimmen() {
+  let json = null;
+  try {
+    const res = await fetch('./data/stimmen.json', { cache: 'no-store' });
+    if (res.ok) json = await res.json();
+  } catch (e) { /* ohne Datei keine Barks */ }
+  stimmen = normalizeStimmen(json);
+}
+// Bark: kurze englische Zeile als kleine Blase über dem Kopf (+ Gebrabbel-Hook fürs Audio)
+function bark(k, kind, ttl) {
+  const list = barksFor(stimmen, k.def, kind);
+  const key = `${k.id}/${kind}`;
+  const r = pickBark(list, barkPrev[key] ?? -1, barkSeed++);
+  if (!r) return;
+  barkPrev[key] = r.idx;
+  ui.showBark(k.id, r.text, ttl);
+  try { audio?.babble?.(k.def.id, r.text); } catch (e) { /* ohne Ton weiter */ }
+}
+const barkHead = new THREE.Vector3();
+function placeBarks() {
+  const now = performance.now() / 1000;
+  for (const k of kunden) {
+    k.group.userData.parts.head.getWorldPosition(barkHead);
+    barkHead.y += 0.9;
+    barkHead.project(camera);
+    ui.placeBark(k.id, (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now);
+  }
 }
 async function loadKunden() {
   let json = null;
@@ -227,6 +286,9 @@ ui.onOptionClick((i, where) => {
 
 // ---------- Gespräch ----------
 function startTalk(k) {
+  markHint('talk');
+  sfx('talk');
+  ui.hideBarks();
   talking = k;
   for (const key in keys) keys[key] = false;
   clickTarget = null;
@@ -263,6 +325,7 @@ function confirmDialog() {
     game = r.state; dialog = r.dialog;
     ui.setHud(game);
     setMood(talking.group, moodFor(kundeStatus(game, talking.id)));
+    if (dialog.result === 'kauf') sfx('kasse'); else if (dialog.result === 'reveal') sfx('alarm'); else sfx('ablehnung');
     if (dialog.result === 'reveal') setRevealed(talking.group, true);
     const wann = dialog.result === 'ablehnung' ? 'ablehnung' : (dialog.result === 'kauf' || dialog.result === 'reveal') ? 'kauf' : null;
     if (wann) startGag(talking, gagFor(texte, talking.id, wann));
@@ -274,16 +337,20 @@ function confirmDialog() {
   if (next) { dialog = next; selected = 0; renderBubble(); } else endDialog();
 }
 function endDialog() {
+  // der Kunde ruft noch etwas hinterher (englischer Bark), je nach Ausgang
+  if (dialog && talking && (dialog.result === 'kauf' || dialog.result === 'reveal')) bark(talking, 'kauf');
+  else if (dialog && talking && dialog.result === 'ablehnung') bark(talking, 'ablehnung');
   dialog = null;
   ui.hideBubble();
   mode = 'free';
-  if (isArrested(game)) { mode = 'arrest'; const c = dayEndCard(game, texte, lineIdx++); ui.showCard({ titel: c.titel, zeilen: [c.spruch, ...c.zeilen], button: c.button, rot: true }); return; }
+  if (isArrested(game)) { mode = 'arrest'; sfx('verhaftet'); const c = dayEndCard(game, texte, lineIdx++); ui.showCard({ titel: c.titel, zeilen: [c.spruch, ...c.zeilen], button: c.button, rot: true }); return; }
   if (isSoldOut(game) && !soldOutShown) showSoldOut();
 }
 // Ausverkauft: Sprechblase des Spielers mit „Tag beenden“ / „Weiterbummeln“
 function showSoldOut() {
   talking = null;
   dialog = soldOutDialog(texte, lineIdx++);
+  sfx('ausverkauft');
   selected = 0;
   mode = 'dialog';
   ui.showPrompt(null);
@@ -294,6 +361,7 @@ function endDay() {
   dialog = null;
   ui.hideBubble();
   mode = 'card';
+  sfx('feierabend');
   const c = dayEndCard(game, texte, lineIdx++);
   ui.showCard({ titel: c.titel, zeilen: [c.spruch, ...c.zeilen], button: c.button, rot: c.lage === 'verhaftet' });
 }
@@ -315,9 +383,14 @@ function inspectOpts(k) {
 }
 function toggleInspect() {
   if (mode === 'inspect') endInspect();
-  else if (nearK) { talking = nearK; mode = 'inspect'; ui.showPrompt('F / Esc: fertig geschaut'); }
+  else if (nearK) { talking = nearK; mode = 'inspect'; markHint('look'); sfx('look'); showInspectHint(); if (nearK.def.zivi) bark(nearK, 'zivi_verdaechtig', 3.5); }
 }
-function endInspect() { mode = 'free'; ui.showPrompt(null); }
+function endInspect() { mode = 'free'; markHint('end'); ui.showPrompt(null); }
+// Inspect-Ansicht bleibt frei: Beenden-Hinweis als kleine Pille am Rand, groß nur beim ersten Mal
+function showInspectHint() {
+  if (!hintSeen('end')) ui.showPrompt(TOUCH ? 'Nochmal Schauen oder weggehen: fertig' : 'F oder Esc: fertig geschaut — weggehen geht auch', { small: true });
+  else ui.showPrompt(TOUCH ? '👀 fertig' : 'F / Esc', { small: true });
+}
 
 // ---------- Pose anwenden ----------
 function applyPose(st) {
@@ -408,8 +481,9 @@ function updateFade(focus) {
       groups.add(o);
     }
   }
-  // direkt vor der Linse: Mesh-Kugel nahe an der Kamera
-  for (const o of candidates) {
+  // direkt vor der Linse: Mesh-Kugel nahe an der Kamera. Nicht beim Hinschauen: die Kamera steht dann bewusst
+  // nah am Kunden, und ein Gebäude daneben (Hotelwand) würde sonst als riesiger halbtransparenter Block erscheinen.
+  for (const o of mode === 'inspect' ? [] : candidates) {
     if (groups.has(o)) continue;
     o.traverse((m) => {
       if (groups.has(o) || !m.isMesh || !m.geometry.boundingSphere) return;
@@ -457,6 +531,7 @@ function endGag(k) {
   if (!k.gag) return;
   stopGag(k.group);
   k.gag = null;
+  k.posed = false;
   setMood(k.group, kundeStatus(game, k.id) === 'neutral' ? (k.def.stimmung_start || 'neutral') : moodFor(kundeStatus(game, k.id)));
   setRevealed(k.group, kundeStatus(game, k.id) === 'misstrauisch');
 }
@@ -468,6 +543,29 @@ function updateGag(k, now) {
   if (k.gag.entry.wann === 'immer') { if (!running) endGag(k); return; }
   // kauf/ablehnung halten den Endzustand, bis der Spieler weitergeht oder ein anderes Gespräch beginnt
   if (!running && (d > TALK_DIST + 3 || (mode === 'dialog' && talking !== k))) endGag(k);
+}
+
+// ---------- Hinweise in Kundennähe: groß nur beim ersten Mal, danach kleines blinkendes E/F-Badge über der Figur ----------
+const badgeWorld = new THREE.Vector3();
+function updateNearHint() {
+  if (!nearK) { ui.showPrompt(null); ui.showBadge(null); ui.pulseButtons(null); return; }
+  const name = nearK.def.name || nearK.def.typ;
+  const firstTalk = !hintSeen('talk'), firstLook = !hintSeen('look');
+  if (firstTalk || firstLook) {
+    const parts = [];
+    if (firstTalk) parts.push(TOUCH ? '💬 Reden' : 'E: ansprechen');
+    if (firstLook) parts.push(TOUCH ? '👀 Schauen = genau hinsehen (Schuhe!)' : 'F: genau hinschauen (Schuhe!)');
+    ui.showPrompt(`${name} — ${parts.join(' · ')}`);
+    ui.showBadge(null);
+    ui.pulseButtons({ talk: firstTalk, look: firstLook });
+    return;
+  }
+  ui.showPrompt(null);
+  if (TOUCH) { ui.pulseButtons({ talk: true, look: true }); ui.showBadge(null); return; }
+  nearK.group.userData.parts.head.getWorldPosition(badgeWorld);
+  badgeWorld.y += 1.2;
+  badgeWorld.project(camera);
+  ui.showBadge(['E', 'F'], (badgeWorld.x + 1) / 2 * window.innerWidth, (1 - badgeWorld.y) / 2 * window.innerHeight);
 }
 
 // ---------- Kunden je Frame ----------
@@ -520,6 +618,22 @@ function setupScene() {
     mode = 'inspect'; // Hinschau-Kamera + Spieler ausgeblendet, damit der Gag frei steht
     return;
   }
+  if (SCENE === 'bark') {
+    const k = kunden.find((x) => x.anchor.activity === 'schaut' || x.anchor.activity === 'steht') || kunden[0];
+    state = { ...state, x: k.npc.x + 1.8, z: k.npc.z + 1.6, yaw: Math.atan2(k.npc.x - state.x, k.npc.z - state.z), speed: 0 };
+    markHint('talk'); markHint('look');
+    nearK = k; bark(k, 'gruss', 999);
+    mode = 'free';
+    return;
+  }
+  if (SCENE === 'badge' || SCENE === 'hint') {
+    // Spieler neben dem ersten Kunden; 'badge' = Hinweise schon gesehen (kleines E/F), 'hint' = erstes Mal (groß)
+    const k = kunden.find((x) => x.anchor.activity === 'schaut' || x.anchor.activity === 'steht') || kunden[0];
+    state = { ...state, x: k.npc.x + 1.8, z: k.npc.z + 1.6, yaw: Math.atan2(k.npc.x - state.x, k.npc.z - state.z), speed: 0 };
+    if (SCENE === 'badge') { markHint('talk'); markHint('look'); }
+    mode = 'free';
+    return;
+  }
   if (SCENE === 'bilanz') {
     game = { ...game, ware: 0, verkauftHeute: START_WARE - 1, anZivisHeute: 1, geldHeute: 95, geld: 95, heat: 2 }; // Zahlen gehen auf: verkauft + an Zivis + übrig = Start
     ui.setHud(game);
@@ -560,12 +674,12 @@ function setupScene() {
     renderBubble();
   } else {
     mode = 'inspect';
-    ui.showPrompt('F / Esc: fertig geschaut');
+    showInspectHint();
   }
 }
 
 if (SNAP) {
-  Promise.all([loadTexte(), loadKunden()]).then(() => {
+  Promise.all([loadTexte(), loadStimmen(), loadKunden()]).then(() => {
     const overview = AT === 'overview';
     setupScene();
     applyPose(state);
@@ -584,6 +698,7 @@ if (SNAP) {
     updateFade(mode === 'inspect' ? talking.npc : state);
     const shoot = () => {
       resize(); camera.updateMatrixWorld();
+      if (SCENE === 'badge' || SCENE === 'hint' || SCENE === 'bark') { const near = nearestKunde(state, kundenPos()); nearK = near ? near.ref : null; updateNearHint(); placeBarks(); }
       if (mode === 'dialog') placeBubbleAtHead();
       renderer.render(scene, camera);
       requestAnimationFrame(() => { resize(); if (mode === 'dialog') placeBubbleAtHead(); renderer.render(scene, camera); stats(); });
@@ -595,6 +710,7 @@ if (SNAP) {
   resize();
   window.addEventListener('resize', resize);
   loadTexte();
+  loadStimmen();
   loadKunden();
   let last = performance.now();
   renderer.setAnimationLoop((now) => {
@@ -621,8 +737,12 @@ if (SNAP) {
 
     // Nähe + Prompt
     const near = nearestKunde(state, kundenPos());
+    const prevNear = nearK;
     nearK = near ? near.ref : null;
-    if (mode === 'free') ui.showPrompt(nearK ? `${nearK.def.name || nearK.def.typ} — E: ansprechen · F: genau hinschauen` : null);
+    if (nearK && nearK !== prevNear && mode === 'free') bark(nearK, 'gruss'); // Gruß beim Näherkommen
+    placeBarks();
+    if (mode === 'free') updateNearHint();
+    else { ui.showBadge(null); ui.pulseButtons(null); }
     if (mode === 'inspect' && talking) {
       const d = Math.hypot(talking.npc.x - state.x, talking.npc.z - state.z);
       if (d > TALK_DIST + 1.5) endInspect(); // Weggehen beendet das Hinschauen

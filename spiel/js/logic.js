@@ -269,3 +269,48 @@ export function rotateDir(dir, camYaw = 0) {
   const c = Math.cos(camYaw), s = Math.sin(camYaw);
   return { x: dir.x * c + dir.z * s, z: -dir.x * s + dir.z * c };
 }
+
+// ---------- Ankerplätze für die Kundschaft: fester Ort + Tätigkeit, kein Kreisen ----------
+// Tätigkeiten: sitzt | telefoniert | fotografiert | schaut | steht. `blick` = Blickrichtung (yaw), sonst zum Meer (+z).
+export const ANCHORS = [
+  { id: 'liege_1', x: 28, z: -3.2, r: 0.4, activity: 'sitzt', blick: 0 },
+  { id: 'liege_2', x: 31.8, z: -1.8, r: 0.4, activity: 'sitzt', blick: 0 },
+  { id: 'liege_3', x: 39.4, z: -1.8, r: 0.4, activity: 'sitzt', blick: 0 },
+  { id: 'hocker_bar', x: -29.6, z: -1.2, r: 0.5, activity: 'sitzt', blick: Math.PI },
+  { id: 'bar_vorn', x: -25.5, z: 1.5, r: 1.0, activity: 'telefoniert', blick: 2.6 },
+  { id: 'steg', x: -33, z: 10.5, r: 1.0, activity: 'fotografiert', blick: 0.3 },
+  { id: 'palme_mitte', x: 4, z: 7, r: 1.2, activity: 'schaut', blick: 0 },
+  { id: 'palme_west', x: -17, z: 9.5, r: 1.2, activity: 'steht', blick: 0.5 }, // vor den Hängematten-Palmen, nicht darunter
+  { id: 'ufer_ost', x: 50, z: 10, r: 1.2, activity: 'schaut', blick: 0 },
+  { id: 'dorfecke', x: -3, z: -20, r: 1.2, activity: 'telefoniert', blick: 0.2 },
+  { id: 'verleih', x: -46, z: 6, r: 1.2, activity: 'steht', blick: -0.4 },
+  { id: 'ufer_mitte', x: 16, z: 11, r: 1.2, activity: 'fotografiert', blick: 0 },
+];
+export const ZIVI_MIN_DIST = 8;
+const dist2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+/**
+ * Verteilt die Kunden eines Tages auf Ankerplätze: jeder Platz nur einmal, Zivis mit Abstand ≥ minDist zu allen
+ * anderen Kunden (damit Verkaufen „vor dem Zivi“ nicht der Normalfall ist). Reihenfolge deterministisch über day.
+ * Gibt { [kundeId]: anchor } zurück; sind mehr Kunden als Plätze, teilen sich die letzten einen Platz versetzt.
+ */
+export function assignAnchors(kunden, anchors = ANCHORS, { minDist = ZIVI_MIN_DIST, day = 1 } = {}) {
+  const out = {};
+  const taken = [];
+  const free = () => anchors.filter((a) => !taken.includes(a));
+  const rot = (list, n) => list.slice(n % Math.max(1, list.length)).concat(list.slice(0, n % Math.max(1, list.length)));
+  // Unbedenkliche zuerst (bevorzugt „ihre“ Plätze, sonst reihum), dann Zivis mit Abstand
+  const others = kunden.filter((k) => !k.zivi), zivis = kunden.filter((k) => k.zivi);
+  const pick = (k, cands) => {
+    const a = cands[0] || anchors[(taken.length + day) % anchors.length];
+    taken.push(a);
+    out[k.id] = a;
+  };
+  others.forEach((k, i) => pick(k, rot(free(), day + i)));
+  for (const z of zivis) {
+    const ok = free().filter((a) => taken.every((t) => dist2(a, t) >= minDist));
+    // Notnagel: der Platz mit dem größten Mindestabstand
+    const best = ok.length ? rot(ok, day) : free().sort((a, b) => Math.min(...taken.map((t) => dist2(b, t))) - Math.min(...taken.map((t) => dist2(a, t))));
+    pick(z, best);
+  }
+  return out;
+}

@@ -6,6 +6,7 @@ import {
   startDialog, advanceDialog, chooseOption, moodFor, nearestKunde, wanderStep, inspectCamera, kundeLookYaw,
   START_WARE, MAX_HEAT, pickKunden, idSeed,
   DEFAULT_TEXTE, normalizeTexte, fillText, dayReport, soldOutDialog, isSoldOut, assignOutfits, outfitKey, variantCount, lageFor, dayEndCard, normalizeGags, gagFor, nextIdleGagDelay, ZIVI_BESCHLAGNAHMT,
+  normalizeStimmen, stimmeSlug, barksFor, pickBark,
 } from '../js/game.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -382,4 +383,36 @@ test('ZIVI_BESCHLAGNAHMT = false: Zivi nimmt keinen Beutel, Ware unverändert, B
   assert.equal(dayEndCard(t.state, normalizeTexte(null)).zeilen[0], 'Tag 1: 2 Beutel weg (1 an die Polizei 🙈), 20 Münzen dazu.');
   // Standard ohne Option = Konstante
   assert.equal(sell(s, zivi).state.ware, ZIVI_BESCHLAGNAHMT ? START_WARE - 2 : START_WARE - 1);
+});
+
+test('Stimmen: Lookup zuordnung > stimme > id, Barks je Art, kaputte Daten → keine Blase', () => {
+  const st = normalizeStimmen({
+    zuordnung: { zivi_1: 'zivi_polo', kaputt: 7 },
+    stimmen: { zivi_polo: { charakter: { stil: 'zackig' }, barks: { gruss: ['Hello there.', 'Normal tourist.'], kauf: 'nope', zivi_verdaechtig: ['Hm.'] } },
+      surfer: { barks: { gruss: ['Yo.'] } }, default: null },
+  });
+  assert.equal(stimmeSlug(st, { id: 'zivi_1', stimme: 'x' }), 'zivi_polo', 'zuordnung gewinnt');
+  assert.equal(stimmeSlug(st, { id: 'surfer_1', stimme: 'surfer' }), 'surfer', 'stimme-Feld');
+  assert.equal(stimmeSlug(st, { id: 'oma_1', stimme: null }), 'oma_1', 'id als Fallback');
+  assert.deepEqual(barksFor(st, { id: 'zivi_1' }, 'gruss'), ['Hello there.', 'Normal tourist.']);
+  assert.deepEqual(barksFor(st, { id: 'zivi_1' }, 'kauf'), [], 'String statt Liste → leer');
+  assert.deepEqual(barksFor(st, { id: 'oma_1', stimme: null }, 'gruss'), [], 'unbekannt → keine Blase');
+  assert.deepEqual(normalizeStimmen(undefined), { zuordnung: {}, stimmen: {} });
+  // kunden.json-Feld stimme wird normalisiert
+  assert.equal(normalizeKunde({ stimme: ' surfer ' }).stimme, 'surfer');
+  assert.equal(normalizeKunde({ stimme: 3 }).stimme, null);
+});
+
+test('pickBark: nie zweimal hintereinander dieselbe Zeile, eine Zeile darf wiederholen, leer → null', () => {
+  const list = ['a', 'b', 'c'];
+  let prev = -1;
+  for (let i = 0; i < 30; i++) {
+    const r = pickBark(list, prev, i * 7);
+    assert.notEqual(r.idx, prev, `Runde ${i}`);
+    assert.equal(r.text, list[r.idx]);
+    prev = r.idx;
+  }
+  assert.deepEqual(pickBark(['solo'], 0, 5), { text: 'solo', idx: 0 });
+  assert.equal(pickBark([], 0), null);
+  assert.equal(pickBark(undefined, 0), null);
 });

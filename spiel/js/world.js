@@ -246,6 +246,7 @@ export function buildWorld() {
     pier: { x: -37, z: 9, yaw: 0.4 },
     mitte: { x: 6, z: 5, yaw: -2.4 },
     hotel: { x: 20, z: -4, yaw: 1.3 },
+    liegen: { x: 33, z: 2.5, yaw: Math.PI },
     verleih: { x: -46, z: 7, yaw: 0.3 },
     ost: { x: 58, z: -2, yaw: Math.PI / 2 },
     hecke: { x: 8, z: -17, yaw: 0.3 }, // Strandseite vor der Heckenlücke („nord“ gehört dem Dorf)

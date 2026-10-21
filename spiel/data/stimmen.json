@@ -1,0 +1,120 @@
+{
+  "_schema": "Stimmen und Barks (kurze englische Ausrufe, 1–5 Wörter, Lebowski-/Surfer-Ton) für Sprechblasen und das Gebrabbel (Animal-Crossing-Stil). Eigentümer: Content. LOOKUP: slug = zuordnung[kundeId] ?? kundeId; profil = stimmen[slug]?.charakter ?? stimmen.default.charakter. Feste Slugs: default (Fallback), spieler (der Schluffi), mentor. stimmen{slug} = charakter {tonhoehe 0.5–2.0 (1.0 = mittlere Männerstimme ~220 Hz, 0.6 Bass, 1.6 Oma/Kind), tempo 0.6–1.6 (1.0 = ~8 Silben/s), stil (schluffig|brummig|knarzig|quietschig|zackig|piepsig|cool), vibrato 0–1 (nervös = hoch), laut 0.5–1.2 (relative Lautstärke)} und barks {situation: []}. Situationen bei Kunden: gruss (Spieler kommt in Reichweite), kauf (Verkauf abgeschlossen), ablehnung (Spieler lehnt ab oder Kunde will nicht), zivi_verdaechtig (Spieler schaut genau hin / Kunde merkt Misstrauen; bei Zivis die Tarnung, bei Harmlosen Verwirrung); mentor hat stattdessen gruss, lektion, nachschub, abschied; default und spieler haben keine barks. zuordnung{kundeId: slug} verbindet kunden.json mit einer Stimme (gleiche Info als Feld stimme in kunden.json; zuordnung gewinnt bei Widerspruch). Barks werden zufällig gewählt, nie zweimal hintereinander dieselbe; Satzzeichen steuern das Gebrabbel (? = Tonhöhe hoch, ! = lauter, … = Pause). Apostrophe sind gerade (').",
+
+  "zuordnung": {
+    "stammkunde_1": "stammkunde",
+    "surfer_1": "surfer",
+    "backpacker_1": "backpacker",
+    "rentner_1": "rentner",
+    "oma_1": "oma",
+    "erstkaeufer_1": "erstkaeufer",
+    "jogger_1": "jogger",
+    "zivi_1": "zivi_polo",
+    "zivi_2": "zivi_verkleidet",
+    "zivi_3": "zivi_hund"
+  },
+
+  "stimmen": {
+    "default": { "charakter": { "tonhoehe": 1.0, "tempo": 1.0, "stil": "schluffig", "vibrato": 0.1, "laut": 1.0 } },
+    "spieler": { "charakter": { "tonhoehe": 0.8, "tempo": 0.8, "stil": "schluffig", "vibrato": 0.1, "laut": 0.9 } },
+    "stammkunde": {
+      "charakter": { "tonhoehe": 0.8, "tempo": 0.65, "stil": "schluffig", "vibrato": 0.1, "laut": 0.8 },
+      "barks": {
+        "gruss": ["Duuude.", "Heyyy, man.", "Still here.", "Nice clouds.", "Oh. Hey."],
+        "kauf": ["Far out.", "You're a saint.", "Righteous.", "That's the stuff.", "Whoa, thanks, man."],
+        "ablehnung": ["It's cool.", "All good, man.", "Whatever, dude.", "Ocean's still there.", "No worries."],
+        "zivi_verdaechtig": ["Why so serious?", "You okay, man?", "That's… a lot of looking.", "Am I in trouble?"]
+      }
+    },
+    "surfer": {
+      "charakter": { "tonhoehe": 0.9, "tempo": 0.8, "stil": "cool", "vibrato": 0.0, "laut": 0.9 },
+      "barks": {
+        "gruss": ["Bro.", "Sup, bro.", "Wave was… yeah.", "Hang loose.", "Epic morning."],
+        "kauf": ["Bro bro bro.", "Stoked!", "Gnarly, thanks.", "Shaka, dude.", "Best wave today."],
+        "ablehnung": ["Chill.", "Next tide, bro.", "It's all water.", "No stress.", "Cool cool."],
+        "zivi_verdaechtig": ["Dude, my board.", "Bro?", "Chill, I'm wet.", "Just surfing, man."]
+      }
+    },
+    "backpacker": {
+      "charakter": { "tonhoehe": 1.15, "tempo": 1.25, "stil": "quietschig", "vibrato": 0.3, "laut": 1.0 },
+      "barks": {
+        "gruss": ["Hi! Hi!", "Just arrived!", "Is this the spot?", "Oh wow, local!", "Hey, cool beach!"],
+        "kauf": ["Yes! Finally!", "So authentic.", "Not for the blog.", "Best trip ever.", "Thank youuu."],
+        "ablehnung": ["Oh. Okay.", "Totally fine.", "I'll go find myself.", "No worries, mate.", "Maybe tomorrow?"],
+        "zivi_verdaechtig": ["Is it my bun?", "I'm not a cop!", "Do I look new?", "It's the backpack, right?"]
+      }
+    },
+    "rentner": {
+      "charakter": { "tonhoehe": 0.75, "tempo": 0.7, "stil": "brummig", "vibrato": 0.2, "laut": 1.1 },
+      "barks": {
+        "gruss": ["Young man!", "Is this the hotel?", "Postcards?", "Pardon me.", "Hello there."],
+        "kauf": ["Don't tell Hannelore.", "Like the sixties!", "Coins okay?", "How exciting.", "Ho ho, well then."],
+        "ablehnung": ["Postcards it is.", "Quite right.", "Hannelore would agree.", "Oh well.", "Fair enough."],
+        "zivi_verdaechtig": ["My socks?", "I'm retired, son.", "Something on my hat?", "Is it the camera?"]
+      }
+    },
+    "oma": {
+      "charakter": { "tonhoehe": 1.45, "tempo": 0.9, "stil": "knarzig", "vibrato": 0.4, "laut": 1.0 },
+      "barks": {
+        "gruss": ["You look thin.", "Psst.", "For my knees.", "Not so loud.", "Come here, boy."],
+        "kauf": ["Change, please.", "Medicine, this is.", "Good boy.", "Pong won't ask.", "Don't cheat grandma."],
+        "ablehnung": ["Too pricey.", "The bar, then.", "Tsk tsk.", "My husband was nicer.", "Youth today."],
+        "zivi_verdaechtig": ["Me? A cop?", "I knew Pong's mother.", "Look all you want.", "Cheeky."]
+      }
+    },
+    "erstkaeufer": {
+      "charakter": { "tonhoehe": 1.3, "tempo": 1.5, "stil": "piepsig", "vibrato": 0.9, "laut": 1.2 },
+      "barks": {
+        "gruss": ["HELLO. NORMAL.", "Is this… organic?", "First time. Sorry.", "Am I doing this right?", "Hi. HI. Hi."],
+        "kauf": ["THANKS. quiet thanks.", "Where do I put it?", "Walking normally now.", "Okay okay okay.", "Is my hand okay?"],
+        "ablehnung": ["I SAID NOTHING.", "Just kidding!", "Who are you?", "Phew. I mean, aw.", "Totally fine! FINE."],
+        "zivi_verdaechtig": ["Why the staring?!", "I'm NOT nervous.", "Is it the flashlight?", "Please don't."]
+      }
+    },
+    "jogger": {
+      "charakter": { "tonhoehe": 1.0, "tempo": 1.4, "stil": "zackig", "vibrato": 0.2, "laut": 1.0 },
+      "barks": {
+        "gruss": ["Quick break.", "Kilometer twelve!", "Pulse check. Hi.", "Every day, this beach.", "Morning!"],
+        "kauf": ["Electrolytes, right?", "Recovery!", "Sweet, thanks.", "Thumbs up!", "Telling my run club."],
+        "ablehnung": ["No biggie.", "Same pace tomorrow.", "I'm just fit, man.", "Keep moving!", "Cool, cool."],
+        "zivi_verdaechtig": ["It's a headband.", "I'm not police.", "Just cardio, bro.", "Pulse is fine!"]
+      }
+    },
+    "zivi_polo": {
+      "charakter": { "tonhoehe": 0.95, "tempo": 1.05, "stil": "cool", "vibrato": 0.0, "laut": 0.9 },
+      "barks": {
+        "gruss": ["Sir, I'm just a tourist.", "Normal tourist here.", "Lovely beach.", "The usual, please.", "Totally normal day."],
+        "kauf": ["Interesting.", "Noted. I mean, nice.", "Say that again, louder?", "Very interesting.", "Thank you, citizen."],
+        "ablehnung": ["Shame. For you.", "Same spot tomorrow?", "Understood.", "I'll be around.", "Just for fun. On duty."],
+        "zivi_verdaechtig": ["What earpiece?", "This is a hearing aid.", "Normal. Normal.", "Nothing to see.", "Stop looking at my shoes."]
+      }
+    },
+    "zivi_verkleidet": {
+      "charakter": { "tonhoehe": 0.85, "tempo": 0.9, "stil": "schluffig", "vibrato": 0.2, "laut": 1.0 },
+      "barks": {
+        "gruss": ["Yo, dude. Bro.", "Totally relaxed.", "Nice shirt, right?", "Alter! Right word?", "What's the… ware, brother?"],
+        "kauf": ["Groovy.", "Nice. Epic. Words.", "For the file. For me!", "Let me note… enjoy that.", "Radical, citizen."],
+        "ablehnung": ["Uncool, man.", "Totally chill. Chill.", "Did I use 'digga' right?", "Noted.", "Shame, bruh."],
+        "zivi_verdaechtig": ["Price tag? What tag?", "The socks are a choice.", "I'm super casual.", "Don't read the tag.", "Relaxed. So relaxed."]
+      }
+    },
+    "zivi_hund": {
+      "charakter": { "tonhoehe": 0.65, "tempo": 0.75, "stil": "brummig", "vibrato": 0.0, "laut": 0.8 },
+      "barks": {
+        "gruss": ["Rex is just a dog.", "Sit, Rex.", "Nice day for… whatever.", "He's friendly. Mostly.", "Don't mind the dog."],
+        "kauf": ["Rex, mark. I mean, sit.", "Rex has decided.", "Smells… interesting.", "Good boy, Rex.", "Thank you. Rex thanks you."],
+        "ablehnung": ["Smart kid.", "Rex remembers.", "Tomorrow. Coincidence.", "Rex, we go.", "Shame. Says Rex."],
+        "zivi_verdaechtig": ["It's a bandana.", "Bottle opener. Yes.", "He sniffs everyone.", "Rex, heel.", "Beach dog. Totally."]
+      }
+    },
+    "mentor": {
+      "charakter": { "tonhoehe": 0.7, "tempo": 0.65, "stil": "knarzig", "vibrato": 0.15, "laut": 0.85 },
+      "barks": {
+        "gruss": ["Sit. Not on the beds.", "Ah. The kid.", "You again. Good.", "Water the beds first.", "Morning, apprentice."],
+        "lektion": ["Listen, man.", "Thailand, '94…", "Rule of thumb.", "Write that down. Or don't.", "Here's the thing."],
+        "nachschub": ["Fresh from the garden.", "Today's harvest.", "Don't drop it.", "One bag. Make it count.", "Organic, obviously."],
+        "abschied": ["Go sell, man.", "Sandals, remember.", "Evening, at the bar.", "Don't get caught.", "Be the wave."]
+      }
+    }
+  }
+}

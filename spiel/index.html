@@ -35,14 +35,41 @@
   #joy { position: absolute; left: 18px; bottom: 18px; width: 170px; height: 170px; pointer-events: auto; touch-action: none; }
   #joy-base { position: absolute; left: 15px; top: 15px; width: 140px; height: 140px; border-radius: 50%; background: rgba(255,248,230,.55); border: 4px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); }
   #joy-knob { position: absolute; left: 36px; top: 36px; width: 60px; height: 60px; border-radius: 50%; background: #ffd54a; border: 4px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
-  #touch-buttons { position: absolute; right: 18px; bottom: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; pointer-events: auto; }
+  #touch-buttons { position: absolute; right: 14px; bottom: 18px; display: flex; align-items: flex-end; gap: 10px; pointer-events: auto; }
   .tbtn { width: 84px; height: 84px; border-radius: 50%; background: var(--paper); border: 4px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); font: inherit; font-size: 30px; line-height: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: none; }
   .tbtn span { font-size: 13px; font-weight: bold; }
-  .tbtn.small { width: 56px; height: 56px; font-size: 26px; justify-self: center; }
+  .tbtn.small { width: 44px; height: 44px; font-size: 20px; border-width: 3px; box-shadow: 3px 3px 0 var(--ink); margin-bottom: 6px; }
   .tbtn:active { background: #ffd54a; transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); }
-  body.touch button.opt { font-size: 20px; padding: 12px 18px; min-height: 52px; }
-  body.touch #bubble { max-width: 90vw; font-size: 21px; }
-  body.touch #prompt { bottom: 200px; }
+  body.touch button.opt { font-size: 17px; padding: 8px 14px; min-height: 44px; }
+  body.touch #bubble { max-width: 86vw; font-size: 17px; padding: 8px 12px 8px; }
+  body.touch #prompt { bottom: 120px; font-size: 14px; padding: 4px 10px; }
+  /* Hinweis als kleine Pille am Rand (Inspect-Ansicht bleibt frei) */
+  #prompt.pill { left: auto; right: 12px; bottom: auto; top: 54px; transform: none; font-size: 13px; padding: 3px 10px; border-width: 2px; box-shadow: 2px 2px 0 var(--ink); opacity: .9; }
+  /* Pille schlägt die Touch-Regel (gleiche ID-Spezifität, deshalb explizit bottom/left zurücksetzen) */
+  body.touch #prompt.pill, #prompt.pill { top: 48px; right: 10px; bottom: auto; left: auto; transform: none; width: auto; max-width: 70vw; }
+  /* blinkendes Tasten-Badge über der Figur */
+  #badge { position: fixed; display: none; gap: 4px; transform: translate(-50%, -100%); pointer-events: none; z-index: 3; animation: blink 1s steps(2, start) infinite; }
+  #badge .key { display: inline-block; min-width: 22px; padding: 2px 7px; border: 3px solid var(--ink); border-radius: 8px; background: #ffd54a; font-size: 16px; font-weight: bold; text-align: center; box-shadow: 2px 2px 0 var(--ink); }
+  @keyframes blink { 50% { opacity: .35; } }
+  .tbtn.pulse { animation: pulse .9s ease-in-out infinite; background: #ffd54a; }
+  @keyframes pulse { 50% { transform: scale(1.12); } }
+  /* Bark: kleine englische Blase über dem Kopf */
+  .bark { position: fixed; display: none; background: #fff; border: 3px solid var(--ink); border-radius: 14px; padding: 3px 10px; font-size: 15px; font-weight: bold; white-space: nowrap; box-shadow: 3px 3px 0 var(--ink); pointer-events: none; z-index: 3; }
+  .bark::after { content: ""; position: absolute; left: 50%; bottom: -14px; border: 7px solid transparent; border-top: 9px solid var(--ink); transform: translateX(-50%); }
+  body.touch .bark { font-size: 13px; padding: 2px 8px; }
+  /* Mute im HUD */
+  #mute { pointer-events: auto; cursor: pointer; font-size: 18px; line-height: 1; }
+  #mute.muted { opacity: .6; }
+  /* schmale Bildschirme: alles kompakter */
+  @media (max-width: 720px) {
+    .hud-item { font-size: 13px; padding: 2px 8px; border-width: 2px; box-shadow: 2px 2px 0 var(--ink); }
+    #hud { gap: 6px; left: 8px; top: 6px; }
+    #hint { display: none; }
+    #arrest .card { padding: 14px 18px; } #arrest h1 { font-size: 28px; } #arrest p { font-size: 15px; }
+    .tbtn { width: 62px; height: 62px; font-size: 24px; } .tbtn span { font-size: 11px; } .tbtn.small { width: 40px; height: 40px; font-size: 18px; }
+    #touch-buttons { gap: 8px; right: 10px; bottom: 14px; }
+    #joy { width: 130px; height: 130px; } #joy-base { width: 104px; height: 104px; left: 13px; top: 13px; } #joy-knob { width: 46px; height: 46px; left: 25px; top: 25px; }
+  }
 </style>
 <script type="importmap">
 { "imports": {
@@ -54,6 +81,8 @@
 <body>
 <div id="hint">WASD / Pfeile = gehen · Shift = „rennen“ · Q/R = Kamera drehen · Klick = hinlaufen · E = ansprechen · F = genau hinschauen</div>
 <div id="hud" class="comic"></div>
+<button id="mute" class="hud-item comic" aria-label="Ton an/aus" style="position:fixed;right:12px;top:10px;display:none">🔊</button>
+<div id="badge" class="comic"></div>
 <div id="prompt" class="comic"></div>
 <div id="bubble" class="comic"></div>
 <div id="arrest" class="comic"></div>

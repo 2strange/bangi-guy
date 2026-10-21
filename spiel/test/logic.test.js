@@ -293,3 +293,29 @@ test('Pool-Leiter (außen am Ostrand des Beckens) liegt in einem Collider, aber 
   assert.equal(rectsOverlap({ x: c.x, z: c.z, w: c.r * 2, d: c.r * 2 }, PROMENADE), false);
   assert.equal(POOL_LADDER_OFFSET.dx, 9.5);
 });
+
+// ---------- Ankerplätze ----------
+import { ANCHORS, assignAnchors, ZIVI_MIN_DIST } from '../js/logic.js';
+test('assignAnchors: jeder Platz einmal, Zivis halten ≥ 8 Abstand zu allen anderen Kunden, deterministisch', () => {
+  const ks = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }, { id: 'e' }, { id: 'z1', zivi: true }, { id: 'z2', zivi: true }];
+  for (let day = 1; day <= 4; day++) {
+    const m = assignAnchors(ks, ANCHORS, { day });
+    const ids = Object.values(m).map((a) => a.id);
+    assert.equal(new Set(ids).size, ks.length, `Tag ${day}: Plätze eindeutig`);
+    for (const z of ['z1', 'z2']) for (const k of ks) {
+      if (k.id === z) continue;
+      const d = Math.hypot(m[z].x - m[k.id].x, m[z].z - m[k.id].z);
+      assert.ok(d >= ZIVI_MIN_DIST, `Tag ${day}: ${z} zu nah an ${k.id} (${d.toFixed(1)})`);
+    }
+    assert.deepEqual(assignAnchors(ks, ANCHORS, { day }), m, 'deterministisch');
+  }
+  assert.notEqual(assignAnchors(ks, ANCHORS, { day: 1 }).a.id, assignAnchors(ks, ANCHORS, { day: 2 }).a.id, 'andere Tage, andere Plätze');
+  // Anker tragen Tätigkeit und Radius
+  for (const a of ANCHORS) assert.ok(['sitzt', 'telefoniert', 'fotografiert', 'schaut', 'steht'].includes(a.activity) && a.r > 0);
+});
+test('assignAnchors: zu wenig Plätze → Notnagel mit größtem Abstand, nichts stürzt ab', () => {
+  const few = ANCHORS.slice(0, 3);
+  const m = assignAnchors([{ id: 'a' }, { id: 'b' }, { id: 'z', zivi: true }, { id: 'c' }], few, { day: 1 });
+  assert.equal(Object.keys(m).length, 4);
+  assert.ok(few.includes(m.z));
+});

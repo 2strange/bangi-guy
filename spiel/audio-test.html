@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bangi Beach — Audio-Test</title>
+<style>
+  :root { --ink: #111; --paper: #fff8e6; }
+  html, body { margin: 0; background: #8fe0ff; font-family: "Comic Sans MS", "Chalkboard SE", "Marker Felt", "Segoe Print", sans-serif; color: var(--ink); }
+  main { max-width: 760px; margin: 0 auto; padding: 16px; }
+  h1 { margin: 8px 0 4px; }
+  .box { background: var(--paper); border: 3px solid var(--ink); border-radius: 14px; padding: 10px 14px; margin: 12px 0; box-shadow: 4px 4px 0 var(--ink); }
+  .box h2 { margin: 0 0 8px; font-size: 18px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button { font: inherit; font-size: 16px; background: #fff; border: 3px solid var(--ink); border-radius: 10px; padding: 6px 12px; box-shadow: 3px 3px 0 var(--ink); cursor: pointer; }
+  button:active { background: #ffd54a; transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+  button.on { background: #9be37a; }
+  input[type=range] { width: 160px; }
+  select, textarea { font: inherit; font-size: 15px; border: 2px solid var(--ink); border-radius: 8px; padding: 4px 6px; }
+  textarea { width: 100%; box-sizing: border-box; min-height: 56px; }
+  #status { font-size: 14px; opacity: .8; }
+  .small { font-size: 13px; opacity: .75; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Audio-Test</h1>
+  <div id="status">Noch kein Ton: erst irgendwo klicken (Autoplay-Sperre).</div>
+
+  <div class="box">
+    <h2>Master</h2>
+    <div class="row">
+      <button id="mute">🔇 Mute</button>
+      <button id="alles">▶ Alles (Ambience + Musik)</button>
+      <button id="stopall">⏹ Alles aus</button>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>Effekte</h2>
+    <div class="row" id="sfx"></div>
+  </div>
+
+  <div class="box">
+    <h2>Ambience</h2>
+    <div class="row">
+      <button id="amb">🌊 Brandung + Möwe</button>
+      <span class="small">Möwe kommt alle 8–22 s von selbst.</span>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>Musik (Strand-Loop, 75 BPM, 16 Takte)</h2>
+    <div class="row">
+      <button id="mus">🎵 Loop</button>
+      <label>Lautstärke <input id="musvol" type="range" min="0" max="1" step="0.01"></label>
+      <label><input id="musen" type="checkbox"> Musik erlaubt (persistent)</label>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>Gebrabbel</h2>
+    <div class="row">
+      <label>Stimme <select id="stimme"></select></label>
+      <label>Modus
+        <select id="mode"><option value="babble">Gebrabbel</option><option value="tts">Browser-Sprache (en)</option></select>
+      </label>
+    </div>
+    <textarea id="text">Hey dude, got any of the good stuff? Nice shoes, by the way!</textarea>
+    <div class="row">
+      <button id="say">💬 Sagen</button>
+      <button id="hush">🤫 Stop</button>
+      <span id="dur" class="small"></span>
+    </div>
+    <div class="row" style="margin-top:6px"><span class="small">Barks aus stimmen.json:</span><span id="barks" class="row"></span></div>
+    <div class="row small" style="margin-top:6px">
+      <label>tonhoehe <input id="p" type="range" min="0.5" max="2" step="0.05" value="1"></label>
+      <label>tempo <input id="t" type="range" min="0.6" max="1.6" step="0.05" value="1"></label>
+      <label>stil <select id="stil"></select></label>
+      <button id="sayfree">💬 Mit diesen Reglern</button>
+    </div>
+  </div>
+</main>
+<script type="module">
+  import * as A from './js/audio.js';
+  const $ = (id) => document.getElementById(id);
+  const status = $('status');
+  A.initAudio();
+  const tick = () => {
+    const c = A.getContext();
+    status.textContent = c ? `AudioContext: ${c.state} · Mute: ${A.isMuted() ? 'an' : 'aus'} · Musik: ${A.music.isPlaying() ? 'läuft' : 'aus'} · Ambience: ${A.ambience.isPlaying() ? 'läuft' : 'aus'}` : 'Kein WebAudio verfügbar';
+    $('mute').classList.toggle('on', A.isMuted());
+    $('mus').classList.toggle('on', A.music.isPlaying());
+    $('amb').classList.toggle('on', A.ambience.isPlaying());
+  };
+  setInterval(tick, 300);
+
+  for (const n of A.SFX_NAMES) {
+    const b = document.createElement('button'); b.textContent = n;
+    b.onclick = () => A.sfx(n);
+    $('sfx').appendChild(b);
+  }
+  $('mute').onclick = () => A.setMuted(!A.isMuted());
+  $('amb').onclick = () => (A.ambience.isPlaying() ? A.ambience.stop() : A.ambience.start());
+  $('mus').onclick = () => (A.music.isPlaying() ? A.music.stop() : A.music.start());
+  $('musvol').value = A.music.getVolume();
+  $('musvol').oninput = (e) => A.music.setVolume(e.target.value);
+  $('musen').checked = A.music.isEnabled();
+  $('musen').onchange = (e) => A.music.setEnabled(e.target.checked);
+  $('alles').onclick = () => { A.ambience.start(); A.music.start(); };
+  $('stopall').onclick = () => { A.ambience.stop(); A.music.stop(); A.stopBabble(); };
+
+  // Stimmen: aus data/stimmen.json, sonst Default + Stil-Liste
+  await A.loadStimmen();
+  const sel = $('stimme');
+  for (const id of A.stimmenIds()) { const o = document.createElement('option'); o.value = id; o.textContent = `${id} (${A.stimmeFor(id).stil})`; sel.appendChild(o); }
+  for (const s of Object.keys(A.STIL)) { const o = document.createElement('option'); o.value = s; o.textContent = s; $('stil').appendChild(o); }
+  $('mode').value = A.getVoiceMode();
+  $('mode').onchange = (e) => { A.setVoiceMode(e.target.value); $('mode').value = A.getVoiceMode(); };
+  const show = (d, text) => { $('dur').textContent = `Dauer ≈ ${d.toFixed(2)} s` + (text ? ` · „${text}“` : ''); };
+  $('say').onclick = () => show(A.babble(sel.value, $('text').value));
+  const renderBarks = () => {
+    $('barks').innerHTML = '';
+    for (const sit of A.barkSituations(sel.value)) {
+      const b = document.createElement('button'); b.textContent = sit;
+      b.onclick = () => { const r = A.bark(sel.value, sit); if (r) show(r.dauer, r.text); };
+      $('barks').appendChild(b);
+    }
+  };
+  sel.onchange = renderBarks; renderBarks();
+  $('sayfree').onclick = () => show(A.babble({ tonhoehe: +$('p').value, tempo: +$('t').value, stil: $('stil').value }, $('text').value));
+  $('hush').onclick = () => A.stopBabble();
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 {
-  "_schema": "Spieltexte für Bangi Beach (Sprechblasen, HUD, Tagesende). Eigentümer: Content. Alles kurz, Deutsch, Lebowski-Ton. Struktur: ausverkauft[] = Sprüche, wenn die Ware alle ist (zufällig wählen; zeigen auf Mentor/Kuppe tagsüber oder Bar abends). tagesende{lage: []} = Bilanz-Sprüche nach Lage, Schlüssel: gut (viel verkauft, Heat ≤ 1), heat (Heat 2+, Tag überstanden), nichts (kein Verkauf), verhaftet (Heat 3, Tag verloren, Geld bleibt); je Lage zufällig einen wählen. reveal_gags[] = pro Zivi bzw. Falle ein Eintrag: id (Kunde aus kunden.json), wann (kauf = beim Verkauf, ablehnung = bei Ablehnung, immer = Idle-Tick), gag (was man sieht, 1 Satz), mood (Grundgesicht der Mimik-API: neutral|misstrauisch|erschrocken|zufrieden|selig), extra (Requisit, das erscheint, als Kennwort für die Figuren-Bauer: dienstmarke|polizistenaugen|handschellen|funkgeraet|notizblock|pfeife|halstuch_marke|taschenlampe|pulsuhr|null), dauer_s (ungefähre Länge der Kleinanimation). mentor[] = Weisheiten für die Kuppe: id, titel, mechanik (welche Regel sie freischaltet), einleitung (Mentor-Gerede, 1–2 Sätze), regel (der eigentliche Merksatz, so steht er später im Hilfe-Menü), pointe (Schluss-Gag), kunden_beispiel (ids aus kunden.json, an denen man die Regel übt).",
+  "_schema": "Spieltexte für Bangi Beach (Sprechblasen, HUD, Tagesende). Eigentümer: Content. Alles kurz, Deutsch, Lebowski-Ton. Struktur: ausverkauft[] = Sprüche, wenn die Ware alle ist (zufällig wählen; zeigen auf Mentor/Kuppe tagsüber oder Bar abends). tagesende{lage: []} = Bilanz-Sprüche nach Lage, Schlüssel: gut (viel verkauft, Heat ≤ 1), heat (Heat 2+, Tag überstanden), nichts (kein Verkauf), verhaftet (Heat 3, Tag verloren, Geld bleibt); je Lage zufällig einen wählen. reveal_gags[] = pro Zivi bzw. Falle ein Eintrag: id (Kunde aus kunden.json), wann (kauf = beim Verkauf, ablehnung = bei Ablehnung, immer = Idle-Tick), gag (was man sieht, 1 Satz), mood (Grundgesicht der Mimik-API: neutral|misstrauisch|erschrocken|zufrieden|selig), extra (Requisit, das erscheint, als Kennwort für die Figuren-Bauer: dienstmarke|polizistenaugen|handschellen|funkgeraet|notizblock|pfeife|halstuch_marke|taschenlampe|pulsuhr|null), dauer_s (ungefähre Länge der Kleinanimation). mentor_szene{} = Ablauf der Kuppe-Szene (siehe _ablauf darin; schritte[] mit id, wer, text[] oder @-Verweis, quelle, blasen[], aktion ware_auffuellen|heat_minus, menge/wert, weiter). mentor[] = Weisheiten für die Kuppe: id, titel, mechanik (welche Regel sie freischaltet), einleitung (Mentor-Gerede, 1–2 Sätze), regel (der eigentliche Merksatz, so steht er später im Hilfe-Menü), pointe (Schluss-Gag), kunden_beispiel (ids aus kunden.json, an denen man die Regel übt).",
 
   "ausverkauft": [
     "Alles weg. Der Mentor hockt auf der Kuppe und gießt. Hoch mit dir.",
@@ -98,6 +98,46 @@
       "mood": "zufrieden", "extra": null, "dauer_s": 1.5
     }
   ],
+
+  "mentor_szene": {
+    "_ablauf": "Szene auf der Kuppe, einmal pro Tag. Trigger: Spieler kommt an die Hütte (Mentor gärtnert). Schritte in Reihenfolge, je Schritt eine Sprechblase (bei text[] zufällig eine Zeile). Schritt lektion zeigt die Weisheit des Tages aus mentor[] als drei Blasen: einleitung, regel, pointe (Tag 1 → weisheit_1, Tag 2 → weisheit_2, Tag 3 → weisheit_3, danach ausgelernt[] statt lektion). Schritt nachschub füllt die Ware (menge) und Schritt abschied kühlt Heat um 1. Kommt der Spieler am selben Tag noch einmal: nur schon_geholt[]. Kommt er mit voller Tasche: voll[]. Optionale Vertiefung: gieß-Minispiel (giessen[]) gibt +1 Beutel für morgen.",
+    "ankunft": [
+      "Setz dich. Nein, nicht auf die Beete.",
+      "Ah, der Kleine. Gieß die Beete, während ich rede.",
+      "Du bist in Sandalen hochgelaufen. Gut. Das ist Lektion null."
+    ],
+    "schritte": [
+      { "id": "ankunft", "wer": "mentor", "text": "@ankunft", "weiter": "lektion" },
+      { "id": "lektion", "wer": "mentor", "quelle": "mentor[tag]", "blasen": ["einleitung", "regel", "pointe"], "weiter": "nachschub" },
+      { "id": "nachschub", "wer": "mentor", "text": [
+          "Hier. Frisch aus dem Garten. Ein Beutel, mach was draus.",
+          "Ernte von heute. Nicht fallen lassen, nicht in der Öffentlichkeit dran riechen.",
+          "Bio, logisch. Hier oben ist alles bio."
+        ], "aktion": "ware_auffuellen", "menge": 5, "weiter": "abschied" },
+      { "id": "abschied", "wer": "mentor", "text": [
+          "Geh verkaufen, Mann. Erst Sandalen, dann Hemden, dann Hunde.",
+          "Bis heute Abend an der Bar. Ich bin zufällig da.",
+          "Sei die Welle. Nicht der Typ, der vor ihr wegrennt."
+        ], "aktion": "heat_minus", "wert": 1, "weiter": null }
+    ],
+    "schon_geholt": [
+      "Den Beutel für heute hast du schon, Mann. Der Garten ist kein Automat.",
+      "Schon wieder da? Dann gieß die Beete. Mehr gibt's nicht.",
+      "Morgen. Pflanzen haben einen Zeitplan. Im Gegensatz zu dir."
+    ],
+    "voll": [
+      "Deine Taschen sind voll. Geh runter und leer sie. Legal. Na ja."
+    ],
+    "ausgelernt": [
+      "Heute keine Weisheit. Nur Gras und Schweigen. Schweigen ist auch eine Lektion.",
+      "Du kennst die Regeln jetzt. Lass sie mich nicht wiederholen, ich hab die Hälfte vergessen.",
+      "Weisheit von heute: Setz dich. Guck aufs Meer. Okay, jetzt geh."
+    ],
+    "giessen": [
+      "Gieß ordentlich. Der Beutel von morgen hängt davon ab.",
+      "Siehst du? Die Pflanzen mögen dich lieber als Pong."
+    ]
+  },
 
   "mentor": [
     {

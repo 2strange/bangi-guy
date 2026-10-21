@@ -46,6 +46,7 @@ export function normalizeKunde(raw, i = 0) {
     haare: pick(k.haare, HAIRS, 'kurz'),
     extras,
     stimmung_start: pick(k.stimmung_start, MOODS, 'neutral'),
+    stimme: typeof k.stimme === 'string' && k.stimme.trim() ? k.stimme.trim() : null,
     tempo,
     spawn: pick(k.spawn, SPAWNS, null),
     id: typeof k.id === 'string' && k.id ? k.id : `kunde_${i + 1}`,
@@ -348,3 +349,36 @@ export function assignOutfits(kunden, day = 1) {
 }
 // Schlüssel „Hemd-Typ + Farbe/Muster + Accessoire“ — pro Tag eindeutig
 export const outfitKey = (k, o) => `${k.hemd}|${o.pattern}|${o.color}|${k.accessoire}`;
+
+// ---------- Stimmen & Barks (data/stimmen.json): kurze englische Ausrufe als kleine Blase über dem Kopf ----------
+export const BARK_KINDS = ['gruss', 'kauf', 'ablehnung', 'zivi_verdaechtig'];
+export function normalizeStimmen(json) {
+  const t = json && typeof json === 'object' ? json : {};
+  const zuordnung = {};
+  if (t.zuordnung && typeof t.zuordnung === 'object') for (const [id, slug] of Object.entries(t.zuordnung)) if (typeof slug === 'string' && slug) zuordnung[id] = slug;
+  const stimmen = {};
+  if (t.stimmen && typeof t.stimmen === 'object') {
+    for (const [slug, v] of Object.entries(t.stimmen)) {
+      const b = v && typeof v === 'object' && v.barks && typeof v.barks === 'object' ? v.barks : {};
+      const barks = {};
+      for (const kind of Object.keys(b)) barks[kind] = strList(b[kind], []);
+      stimmen[slug] = { barks };
+    }
+  }
+  return { zuordnung, stimmen };
+}
+// Slug eines Kunden: zuordnung gewinnt, dann das stimme-Feld, dann die id
+export const stimmeSlug = (st, kunde) => st?.zuordnung?.[kunde.id] ?? kunde.stimme ?? kunde.id;
+// Barks einer Art; leer, wenn es keine gibt (dann keine Blase)
+export function barksFor(st, kunde, kind) {
+  const slug = stimmeSlug(st, kunde);
+  return st?.stimmen?.[slug]?.barks?.[kind] || [];
+}
+// Nie zweimal hintereinander dieselbe Zeile: nächste Zeile ungleich der vorigen (prev = Index oder -1)
+export function pickBark(list, prev = -1, seed = 0) {
+  if (!list || !list.length) return null;
+  if (list.length === 1) return { text: list[0], idx: 0 };
+  let idx = ((seed % list.length) + list.length) % list.length;
+  if (idx === prev) idx = (idx + 1) % list.length;
+  return { text: list[idx], idx };
+}
