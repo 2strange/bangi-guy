@@ -125,6 +125,43 @@ export function hawaiiTexture(base = '#ff7f3f', petals = ['#ffe14a', '#3bb84a'])
  * Aufbau: root → body (Pivot an der Hüfte, schief/zurückgelehnt) → Rumpf, Arme (Pivot Schulter), Kopf.
  *         root → legs[] (Pivot an der Hüfte) → Bein + Shorts + Sandale.
  */
+// ---------- Hemd mit Bauch (Spieler, Mentor) ----------
+// Eine geschlossene Hemdkugel, die vorn unten selbst die Bauchwölbung trägt und am Saum glatt abgeschnitten ist
+// (wellige Kante). Der nackte Bauch ist nur der Teil UNTER dem Saum; sein oberer Teil ist verschlankt und liegt
+// mit ≥ 2 cm Luft im Hemd — Teile, die aus dem Hemd herausragen, stechen samt Konturhülle durch. Maße rechnerisch
+// geprüft (Hülle 0.035 gegen die verformte Hemdfläche). Rückgabe { torso, belly }, alles hängt an parent.
+export function hemdMitBauch(parent, hemdMat, skin, { hipY = 1.0, bellyR = 0.34, knoepfe = false } = {}) {
+  const shirtDeform = (v) => {
+    const bulge = smoothstep(-v.y, -0.15, 0.32);    // 0 an der Brust … 1 am Saum
+    v.z = v.z * 0.85 + 0.36 * bulge * Math.max(0, v.z) / 0.5;
+    const hem = -0.32 + 0.03 * Math.sin(5 * Math.atan2(v.z, v.x)); // Saum
+    if (v.y < hem) v.y = hem;
+  };
+  const tg = new THREE.SphereGeometry(0.5, 20, 16);
+  deform(tg, shirtDeform);
+  const torso = toonMesh(tg, hemdMat, { outline: 0.05 });
+  torso.position.set(0, hipY + 0.42, 0.05);
+  torso.rotation.x = 0.12;
+  parent.add(torso);
+  const bellyGeo = new THREE.SphereGeometry(bellyR, 16, 12);
+  deform(bellyGeo, (v) => { const k = 1 - 0.7 * smoothstep(v.y, -0.15, 0.18); v.x *= k; v.z *= k; }); // oben schlanker: bleibt im Hemd
+  const belly = toonMesh(bellyGeo, skin, { outline: 0.035 });
+  belly.position.set(0.02, hipY - 0.02, 0.3);
+  parent.add(belly);
+  const navel = toonMesh(new THREE.SphereGeometry(0.035, 6, 5), BLACK, { outline: 0, basic: true });
+  navel.position.set(0, -0.08, bellyR - 0.015);
+  belly.add(navel);
+  if (knoepfe) for (let i = 0; i < 3; i++) { // Knöpfe sitzen auf der Hemdfläche (gleiche Verformung), als Kinder des Hemds
+    const p = new THREE.Vector3(-0.3 + i * 0.07, 0.2 - i * 0.14, 0);
+    p.z = Math.sqrt(Math.max(0, 0.25 - p.x * p.x - p.y * p.y));
+    shirtDeform(p);
+    const btn = toonMesh(new THREE.SphereGeometry(0.035, 6, 5), 0xfff5e0, { outline: 0.012 });
+    btn.position.set(p.x, p.y, p.z + 0.012);
+    torso.add(btn);
+  }
+  return { torso, belly };
+}
+
 export function schluffi() {
   const root = new THREE.Group();
   const skin = 0xf0b98a;
@@ -158,37 +195,7 @@ export function schluffi() {
   inner.position.set(0, -(hipY - 0.1), 0);
   body.add(inner);
 
-  // Hemd: eine geschlossene Kugel, die vorn unten selbst die Bauchwölbung trägt und am Saum glatt
-  // abgeschnitten ist (wellige Kante). Der nackte Bauch ist nur der Teil UNTER dem Saum; sein oberer Teil
-  // liegt mit Abstand im Hemd — Teile, die aus dem Hemd herausragen, würden samt Konturhülle durchstechen.
-  const shirtDeform = (v) => {
-    const bulge = smoothstep(-v.y, -0.15, 0.32);    // 0 an der Brust … 1 am Saum
-    v.z = v.z * 0.85 + 0.36 * bulge * Math.max(0, v.z) / 0.5;
-    const hem = -0.32 + 0.03 * Math.sin(5 * Math.atan2(v.z, v.x)); // Saum
-    if (v.y < hem) v.y = hem;
-  };
-  const tg = new THREE.SphereGeometry(0.5, 20, 16);
-  deform(tg, shirtDeform);
-  const torso = toonMesh(tg, toon(0xffffff, { map: hawaiiTexture() }), { outline: 0.05 });
-  torso.position.set(0, hipY + 0.42, 0.05);
-  torso.rotation.x = 0.12;
-  inner.add(torso);
-  const bellyGeo = new THREE.SphereGeometry(0.34, 16, 12);
-  deform(bellyGeo, (v) => { const k = 1 - 0.7 * smoothstep(v.y, -0.15, 0.18); v.x *= k; v.z *= k; }); // oben schlanker: bleibt im Hemd
-  const belly = toonMesh(bellyGeo, skin, { outline: 0.035 });
-  belly.position.set(0.02, hipY - 0.02, 0.3);
-  inner.add(belly);
-  const navel = toonMesh(new THREE.SphereGeometry(0.035, 6, 5), BLACK, { outline: 0, basic: true });
-  navel.position.set(0, -0.08, 0.325);
-  belly.add(navel);
-  for (let i = 0; i < 3; i++) { // Knöpfe sitzen auf der Hemdfläche (gleiche Verformung), als Kinder des Hemds
-    const p = new THREE.Vector3(-0.3 + i * 0.07, 0.2 - i * 0.14, 0);
-    p.z = Math.sqrt(Math.max(0, 0.25 - p.x * p.x - p.y * p.y));
-    shirtDeform(p);
-    const btn = toonMesh(new THREE.SphereGeometry(0.035, 6, 5), 0xfff5e0, { outline: 0.012 });
-    btn.position.set(p.x, p.y, p.z + 0.012);
-    torso.add(btn);
-  }
+  hemdMitBauch(inner, toon(0xffffff, { map: hawaiiTexture() }), skin, { hipY, knoepfe: true });
 
   // Arme: Pivot an der Schulter
   const shoulderY = hipY + 0.66;
@@ -449,7 +456,7 @@ export function pose(figur, name = 'stehen') {
 // buildNong() → Gruppe (Füße auf y = 0, Blick nach +z); updateNong(g, t) = Idle-Loop (polieren, nicken, Möwe);
 // setNongMood(g, 'neutral' | 'muede' | 'gruss' | …) tauscht nur das Gesicht (das halb geschlossene Auge bleibt).
 const NONG_SKIN = 0x8d5a3a;
-const NONG_FACE = { skin: '#8d5a3a', bart: 'schnauzer', seed: 41, lids: [0.55, 0.2] };
+const NONG_FACE = { skin: '#8d5a3a', bart: 'schnauzer', beardColor: '#1c1c1c', seed: 41, lids: [0.55, 0.2] }; // Schnauzer nur gemalt, kein 3D-Klotz davor
 
 export function bareFoot(skin, side = 'L') {
   const m = sideSign(side);
@@ -515,7 +522,6 @@ export function buildNong() {
   head.add(toonMesh(hg, skin, { outline: 0.05 }));
   const decal = faceDecal(face('kunde', 'neutral', NONG_FACE), 0.527, shape); head.add(decal);
   const nose = toonMesh(new THREE.SphereGeometry(0.13, 10, 8), 0x7a4a2e, { outline: 0.03 }); nose.position.set(0, -0.08, 0.52); head.add(nose);
-  const mo = toonMesh(new THREE.BoxGeometry(0.36, 0.09, 0.08), 0x222222, { outline: 0.025 }); mo.position.set(0, -0.22, 0.52); head.add(mo);
   for (const s of [-1, 1]) { const ear = toonMesh(new THREE.SphereGeometry(0.1, 8, 6), skin, { outline: 0.03 }); ear.position.set(s * 0.52, -0.02, 0); head.add(ear); }
   const shine = toonMesh(new THREE.SphereGeometry(0.08, 6, 5), 0xffffff, { outline: 0 }); shine.position.set(-0.2, 0.42, 0.25); head.add(shine);
   // Möwe Chef auf der linken Schulter

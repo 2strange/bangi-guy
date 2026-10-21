@@ -113,7 +113,7 @@ function normalize(o) {
     lids: o.lids ?? null,
     brows: o.brows ?? null,
     stirnstreifen: !!o.stirnstreifen,
-    beardColor: cssColor(o.beardColor, weiss ? '#d8d8e0' : '#6b4423'),
+    beardColor: cssColor(o.beardColor, weiss ? '#f1f1f4' : '#6b4423'),
     browColor: weiss ? '#d8d8e0' : null,
   };
 }
@@ -301,6 +301,8 @@ function beard(ctx, m, skin, color, big) {
   ctx.quadraticCurveTo(800, 470, 740, 560); ctx.quadraticCurveTo(620, 610, 512, 612);
   ctx.quadraticCurveTo(404, 610, 284, 560); ctx.quadraticCurveTo(224, 470, 150, 360);
   ctx.closePath(); ctx.fill(); ctx.stroke();
+  // Haarstriche im Bart, sonst wirkt ein heller Bart wie ein grauer Schleier überm Gesicht
+  for (let i = 0; i < 7; i++) { const x = 300 + i * 70, y = 700 + (i % 2) * 40; strokePath(ctx, [[x, y], [x - 10, y + 110]], 6, 'rgba(17,17,17,0.45)'); }
   ctx.fillStyle = skin;
   ctx.beginPath(); ctx.ellipse(m.x, m.y + (big ? 40 : 14), m.w * (big ? 0.62 : 0.54), big ? 170 : 84, 0, 0, Math.PI * 2); ctx.fill();
   mustache(ctx, m, color);

@@ -137,7 +137,7 @@ export function buildKunde(k, seed = 1, outfit = null) {
   const root = new THREE.Group();
   const rand = rng(seed * 31 + 7);
   const skin = SKIN[k.hautton] || 0xe8a773;
-  const hairColor = k.haare === 'weiss' ? 0xeeeeee : HAIR[Math.floor(rand() * HAIR.length)];
+  const hairColor = k.haare === 'weiss' ? 0xf1f1f4 : HAIR[Math.floor(rand() * HAIR.length)]; // Weiß leicht kühl: das Toon-Material zieht 0xeeeeee in den Schattenstufen zu Grau (Schleier)
   const stance = 0.46;
   const hipY = 1.1;
   const hose = k.hose || (k.hemd === 'polo_sauber' || k.hemd === 'uniform_versteckt' ? 'chino' : 'shorts');
@@ -415,7 +415,7 @@ export function buildKunde(k, seed = 1, outfit = null) {
     }
   } else if (hairKind !== 'glatze') {
     const cap = toonMesh(new THREE.SphereGeometry(0.55, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), hairColor, { outline: 0.045 });
-    cap.position.set(0, 0.12, -0.05); cap.rotation.x = -0.15; head.add(cap);
+    cap.position.set(0, k.haare === 'weiss' ? 0.17 : 0.12, -0.05); cap.rotation.x = k.haare === 'weiss' ? -0.22 : -0.15; head.add(cap); // weißes Haar sitzt höher: der Kappenrand darf nicht über Stirn/Brille hängen
     if (hairKind === 'lang') {
       for (const s of [-1, 1]) {
         const strand = toonMesh(new THREE.BoxGeometry(0.16, 0.9, 0.3), hairColor, { outline: 0.035 });

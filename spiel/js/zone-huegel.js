@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { toonMesh, toon, deform, rng, BLACK } from './toon.js';
 import { limb, hut } from './props.js';
-import { sandal, pose } from './figures.js';
+import { sandal, pose, hemdMitBauch } from './figures.js';
 import { coconut } from './props.js';
 import { BUILDING_POS, buildingScale } from './logic.js';
 import { face, faceDecal } from './faces.js';
@@ -196,11 +196,7 @@ export function mentor() {
     shoe.position.set(fx, -hipY, 0); shoe.rotation.y = s * 0.6; leg.add(shoe);
     root.add(leg); legs.push(leg);
   }
-  const tg = new THREE.SphereGeometry(0.5, 16, 12); tg.scale(1, 1.0, 0.85);
-  const torso = toonMesh(tg, toon(0xffffff, { map: fadedShirtTexture() }), { outline: 0.05 });
-  torso.position.set(0, hipY + 0.42, 0.04); root.add(torso);
-  const belly = toonMesh(new THREE.SphereGeometry(0.3, 12, 9), skin, { outline: 0.035 });
-  belly.position.set(0, hipY + 0.2, 0.36); root.add(belly);
+  hemdMitBauch(root, toon(0xffffff, { map: fadedShirtTexture() }), skin, { hipY, bellyR: 0.3 }); // Bauch nur unterm Saum, wie beim Spieler
   const shoulderY = hipY + 0.68;
   const arms = [];
   for (const s of [-1, 1]) {
@@ -224,7 +220,7 @@ export function mentor() {
   const shape = (geo) => { geo.scale(1, 1.1, 1); };
   const hg = new THREE.SphereGeometry(0.55, 28, 20); shape(hg);
   head.add(toonMesh(hg, skin, { outline: 0.05 }));
-  head.add(faceDecal(face('kunde', 'selig', { skin: '#d9a06e', beard: true, haare: 'weiss', seed: 77, beardColor: '#d8d8e0' }), 0.557, shape));
+  head.add(faceDecal(face('kunde', 'selig', { skin: '#d9a06e', beard: true, haare: 'weiss', seed: 77, beardColor: '#f1f1f4' }), 0.557, shape)); // weißer Bart, nicht grau
   const nose = toonMesh(new THREE.SphereGeometry(0.15, 10, 8), 0xc98a5a, { outline: 0.03 });
   nose.position.set(0, -0.06, 0.56); head.add(nose);
   for (const s of [-1, 1]) {
