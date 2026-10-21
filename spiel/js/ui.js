@@ -27,6 +27,7 @@ export function createUI() {
   const menue = document.getElementById('menue');
   const tutorialBox = document.getElementById('tutorial');
   const hudPulse = { heat: false }; // Tutorial: Heat-Anzeige pulsiert
+  const zielEl = document.getElementById('ziel');
 
   function setHud(state) {
     if (!hud) return;
@@ -35,6 +36,14 @@ export function createUI() {
       <span class="hud-item">💰 <b>${state.geld}</b></span>
       <span class="hud-item${state.ware === 0 ? ' empty' : ''}">🌿 <b>${state.ware}</b></span>
       <span class="hud-item heat-${state.heat}${hudPulse.heat ? ' pulse' : ''}">Heat <b>${heatLabel(state.heat)}</b></span>${state.mangos > 0 ? `<span class="hud-item">🥭 <b>${state.mangos}</b></span>` : ''}`;
+    // Ziel-Zeile: Tagesziel + Fortschritt + Wochenstand (null = keine Woche mehr)
+    if (zielEl) {
+      const z = state.ziel;
+      if (z) {
+        zielEl.innerHTML = `<b>${escapeHtml(z.titel)}</b> · ${escapeHtml(z.ziel)}<span class="fort${z.erreicht ? ' ok' : ''}">${escapeHtml(z.fortschritt)}</span> · ${escapeHtml(z.woche)}`;
+        zielEl.style.display = 'block';
+      } else zielEl.style.display = 'none';
+    }
   }
 
   function showPrompt(text, { small = false } = {}) {

@@ -7,6 +7,9 @@ export const MAX_WARE = 15; // Taschen-Maximum: darüber gibt der Mentor nichts 
 // Nimmt ein Zivi beim „Verkauf“ den Beutel mit (Ware −1, Bilanz „an die Polizei“)? Entscheid steht noch aus —
 // ein Wert zum Umschalten. sell() nimmt die Option auch pro Aufruf entgegen, damit Tests beide Fälle prüfen.
 export const ZIVI_BESCHLAGNAHMT = true;
+// Verhandeln („Mehr verlangen“): Aufschlag auf den Kundenpreis; Risiko, dass er geht (1 − feilschen)
+export const VERHANDLUNG_AUFSCHLAG = 0.5;
+export const FEILSCHEN_DEFAULT = 0.5;
 export const MAX_HEAT = 3;
 export const TALK_DIST = 3.2;     // so nah muss man ran für E/F
 export const SHOES = ['sandale', 'flipflop', 'turnschuh', 'barfuss', 'gummistiefel'];
@@ -24,7 +27,7 @@ export const EXTRAS = ['socken', 'preisschild', 'stirnband', 'halstuch_hund', 'f
 export const SPAWNS = ['K1', 'K2', 'K3', 'K4', 'K5', 'K6'];
 
 export function initialState() {
-  return { geld: 0, ware: START_WARE, heat: 0, tag: 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, mangos: 0, tageOhneVorfall: 0 };
+  return { geld: 0, ware: START_WARE, heat: 0, tag: 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, mangos: 0, tageOhneVorfall: 0, verkaeufeHeute: [], zivisAbgelehntHeute: 0, mangosHeute: 0, finale: null };
 }
 
 // ---------- Kundschaft: fehlende/kaputte Felder robust auffüllen ----------
@@ -58,6 +61,7 @@ export function normalizeKunde(raw, i = 0) {
     accessoire: ACCESSORIES.includes(k.accessoire) ? k.accessoire : null,
     zivi: k.zivi === true,
     zahlt: Number.isFinite(k.zahlt) ? Math.max(0, Math.round(k.zahlt)) : 20,
+    feilschen: Number.isFinite(k.feilschen) ? Math.max(0, Math.min(1, k.feilschen)) : FEILSCHEN_DEFAULT, // Chance, dass er den Aufschlag zahlt
     heat,
     saetze: {
       gruss: arr(s.gruss, DEFAULT_SAETZE.gruss),
@@ -87,7 +91,8 @@ export function pickLine(list, idx = 0) {
 // ---------- Verkauf / Ablehnen / Heat ----------
 export function kundeStatus(state, id) { return state.status[id] || 'neutral'; }
 
-export function sell(state, kunde, lineIdx = 0, { beschlagnahmt = ZIVI_BESCHLAGNAHMT, posten = null, pos = null } = {}) {
+export function sell(state, kunde, lineIdx = 0, { beschlagnahmt = ZIVI_BESCHLAGNAHMT, posten = null, pos = null, preis = null } = {}) {
+  const zahlt = Number.isFinite(preis) ? preis : kunde.zahlt; // Verhandlung kann den Preis anheben
   if (state.verhaftet) return { state, result: 'verhaftet', text: '' };
   if (kundeStatus(state, kunde.id) !== 'neutral') return { state, result: 'schon_erledigt', text: '' };
   if (state.ware <= 0) return { state, result: 'keine_ware', text: pickLine(state.texte?.ausverkauft_kunde, lineIdx) || 'Alles leer, Mann. Morgen wieder.' };
@@ -104,16 +109,17 @@ export function sell(state, kunde, lineIdx = 0, { beschlagnahmt = ZIVI_BESCHLAGN
     return { state: next, result: 'reveal', text: pickLine(kunde.saetze.reveal, lineIdx), heatPlus: heat - state.heat };
   }
   const next = {
-    ...state, geld: state.geld + kunde.zahlt, ware: state.ware - 1,
-    verkauftHeute: (state.verkauftHeute || 0) + 1, geldHeute: (state.geldHeute || 0) + kunde.zahlt,
+    ...state, geld: state.geld + zahlt, ware: state.ware - 1,
+    verkauftHeute: (state.verkauftHeute || 0) + 1, geldHeute: (state.geldHeute || 0) + zahlt,
+    verkaeufeHeute: [...(state.verkaeufeHeute || []), { id: kunde.id, schuhe: kunde.schuhe, preis: zahlt }], // fürs Tagesziel (Oma, nur Sandalen)
     status: { ...state.status, [kunde.id]: 'zufrieden' },
   };
-  return { state: next, result: 'kauf', text: pickLine(kunde.saetze.kauf, lineIdx), geldPlus: kunde.zahlt };
+  return { state: next, result: 'kauf', text: pickLine(kunde.saetze.kauf, lineIdx), geldPlus: zahlt };
 }
 
 export function decline(state, kunde, lineIdx = 0) {
   if (kundeStatus(state, kunde.id) !== 'neutral') return { state, result: 'schon_erledigt', text: '' };
-  const next = { ...state, status: { ...state.status, [kunde.id]: 'abgelehnt' } };
+  const next = { ...state, status: { ...state.status, [kunde.id]: 'abgelehnt' }, zivisAbgelehntHeute: (state.zivisAbgelehntHeute || 0) + (kunde.zivi ? 1 : 0) };
   return { state: next, result: 'ablehnung', text: pickLine(kunde.saetze.ablehnung, lineIdx) };
 }
 
@@ -124,14 +130,15 @@ export const streifeP2Aktiv = (state) => (state.tag || 1) >= STREIFE_P2_AB_TAG;
 
 // Verhaftung mild: Tag verloren, Ware weg, Geld bleibt, alle Kunden wieder neutral
 export const NACHT_ABKUEHLUNG = { bar: 2, haengematte: 1 };
-export function newDay(state, { nacht = 'bar' } = {}) {
+export function newDay(state, { nacht = 'bar', modifikator = null } = {}) {
   // Tafel „Tage ohne Vorfall“: zählt hoch, springt bei einer Verhaftung auf 0
   const tageOhneVorfall = isArrested(state) ? 0 : (state.tageOhneVorfall || 0) + 1;
   // Über Nacht kühlt der Heat: Bar −2, Hängematte −1; nach einer Verhaftung ist er ohnehin abgegolten (0)
-  const heat = isArrested(state) ? 0 : Math.max(0, state.heat - (NACHT_ABKUEHLUNG[nacht] ?? NACHT_ABKUEHLUNG.bar));
+  const gekuehlt = isArrested(state) ? 0 : Math.max(0, state.heat - (NACHT_ABKUEHLUNG[nacht] ?? NACHT_ABKUEHLUNG.bar));
+  const heat = Math.min(MAX_HEAT - 1, Math.max(gekuehlt, Number.isFinite(modifikator?.heat_start) ? modifikator.heat_start : 0)); // Tagesmodifikator „Razzia“: Heat startet höher
   // Restware bleibt über Nacht in der Tasche (Nachschub gibt es morgens beim Mentor obendrauf); nach einer Verhaftung ist sie weg
   const ware = isArrested(state) ? 0 : state.ware;
-  return { ...state, geld: state.geld, ware, heat, tag: state.tag + 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, tageOhneVorfall };
+  return { ...state, geld: state.geld, ware, heat, tag: state.tag + 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, tageOhneVorfall, verkaeufeHeute: [], zivisAbgelehntHeute: 0, mangosHeute: 0 };
 }
 
 // Heat als Text/Icons für das HUD
@@ -154,17 +161,37 @@ export function startDialog(kunde, state, lineIdx = 0, texte = null) {
 export function advanceDialog(dialog, texte = null) {
   const T = texte || DEFAULT_TEXTE;
   if (!dialog) return null;
-  if (dialog.phase === 'gruss') return { ...dialog, phase: 'wahl', text: T.dialog.was_laeuft, options: [T.dialog.verkaufen, T.dialog.lieber_nicht] };
+  if (dialog.phase === 'gruss') return { ...dialog, phase: 'wahl', text: T.dialog.was_laeuft, options: [T.dialog.verkaufen, T.dialog.mehr_verlangen, T.dialog.lieber_nicht] };
   if (dialog.phase === 'ergebnis') return null; // Gespräch zu Ende
   return dialog;
 }
-// option: Index (0 = verkaufen) oder Beschriftung — Index ist sprachunabhängig
+// option: Index (0 = verkaufen, 1 = mehr verlangen, 2 = lieber nicht) oder Beschriftung — Index ist sprachunabhängig
 export function chooseOption(state, dialog, kunde, option, lineIdx = 0, sellOpts = undefined, texte = null) {
   const T = texte || DEFAULT_TEXTE;
   if (!dialog || dialog.phase !== 'wahl') return { state, dialog };
   const verkaufen = option === 0 || option === T.dialog.verkaufen || option === 'Verkaufen';
-  const r = verkaufen ? sell(state, kunde, lineIdx, sellOpts) : decline(state, kunde, lineIdx);
-  return { state: r.state, dialog: { ...dialog, phase: 'ergebnis', text: r.text, options: [T.dialog.weiter], result: r.result, geldPlus: r.geldPlus, heatPlus: r.heatPlus } };
+  const mehr = option === 1 || option === T.dialog.mehr_verlangen;
+  const r = verkaufen ? sell(state, kunde, lineIdx, sellOpts) : mehr ? verhandeln(state, kunde, lineIdx, sellOpts || {}, T) : decline(state, kunde, lineIdx);
+  return { state: r.state, dialog: { ...dialog, phase: 'ergebnis', text: r.text, options: [T.dialog.weiter], result: r.result, geldPlus: r.geldPlus, heatPlus: r.heatPlus, teuer: !!r.teuer } };
+}
+
+/** Preis mit Aufschlag, gerundet auf ganze Münzen */
+export const verhandlungsPreis = (kunde, aufschlag = VERHANDLUNG_AUFSCHLAG) => Math.round(kunde.zahlt * (1 + aufschlag));
+/**
+ * „Mehr verlangen“: wuerfel (0..1, vom Aufrufer) < feilschen → er zahlt den Aufschlag (Verkauf wie sell, teuer: true);
+ * sonst geht er (Status abgelehnt, keine Ware weg, result 'weg'). Ein Zivi reagiert wie beim normalen Verkauf (reveal).
+ */
+export function verhandeln(state, kunde, lineIdx = 0, sellOpts = {}, texte = null) {
+  const T = texte || DEFAULT_TEXTE;
+  if (kundeStatus(state, kunde.id) !== 'neutral' || state.verhaftet || state.ware <= 0) return sell(state, kunde, lineIdx, sellOpts);
+  if (kunde.zivi) return sell(state, kunde, lineIdx, sellOpts);
+  const wuerfel = Number.isFinite(sellOpts.wuerfel) ? sellOpts.wuerfel : 0.5;
+  if (wuerfel < (Number.isFinite(kunde.feilschen) ? kunde.feilschen : FEILSCHEN_DEFAULT)) {
+    const r = sell(state, kunde, lineIdx, { ...sellOpts, preis: verhandlungsPreis(kunde) });
+    return { ...r, teuer: true, text: `${pickLine(T.verhandeln.angenommen, lineIdx)} ${r.text}` };
+  }
+  const next = { ...state, status: { ...state.status, [kunde.id]: 'abgelehnt' } };
+  return { state: next, result: 'weg', text: pickLine(T.verhandeln.weg, lineIdx) };
 }
 
 // Stimmung des Kunden aus Status (für Mimik: setMood)
@@ -261,7 +288,8 @@ export const DEFAULT_TEXTE = {
   polizei: ' ({anZivis} an die Polizei 🙈)',
   titel: { feierabend: 'Feierabend.', verhaftet: 'VERHAFTET.' },
   optionen: { tag_beenden: 'Tag beenden', weiter: 'Weiterbummeln', neuer_tag: 'Neuer Tag' },
-  dialog: { was_laeuft: 'Was läuft?', verkaufen: 'Verkaufen', lieber_nicht: 'Lieber nicht', weiter: 'Weiter', hinschauen: 'Genau hinschauen', beenden: 'Beenden' },
+  dialog: { was_laeuft: 'Was läuft?', verkaufen: 'Verkaufen', mehr_verlangen: 'Mehr verlangen', lieber_nicht: 'Lieber nicht', weiter: 'Weiter', hinschauen: 'Genau hinschauen', beenden: 'Beenden' },
+  verhandeln: { angenommen: ['Okay, okay. Aber nur heute.', 'Teuer. Aber du guckst so ehrlich.'], weg: ['Zu teuer, Mann. Ich frag den Typ am Pier.', 'Nee. Dafür geh ich lieber schwimmen.'] },
   heat_label: { 0: 'kalt', 1: 'lauwarm', 2: 'heiß', 3: 'FAHNDUNG' },
   // Optionen-Menü (⚙): Oberflächen-Beschriftungen, Content kann sie unter ui.menue{} übersetzen
   menue: { titel: 'Optionen', sprache: 'Textsprache', beschlagnahme: 'Zivi nimmt die Ware ab', musik: 'Musik', ton: 'Ton', an: 'an', aus: 'aus', schliessen: 'Schließen', hinweis: 'Stimmen bleiben Englisch.' },
@@ -278,7 +306,7 @@ export function normalizeTexte(json) {
   const pick = (key) => (u[key] !== undefined ? u[key] : t[key]);
   const obj = (v) => (v && typeof v === 'object' ? v : {});
   const te = obj(t.tagesende);
-  const op = obj(pick('optionen')), ti = obj(pick('titel')), di = obj(pick('dialog')), hl = obj(pick('heat_label')), me = obj(pick('menue')), sta = obj(pick('start'));
+  const op = obj(pick('optionen')), ti = obj(pick('titel')), di = obj(pick('dialog')), hl = obj(pick('heat_label')), me = obj(pick('menue')), sta = obj(pick('start')), vh = obj(pick('verhandeln'));
   const tagesende = {};
   for (const l of LAGEN) tagesende[l] = strList(te[l], DEFAULT_TEXTE.tagesende[l]);
   const strMap = (src, defaults) => Object.fromEntries(Object.keys(defaults).map((k) => [k, str(src[k], defaults[k])]));
@@ -295,6 +323,7 @@ export function normalizeTexte(json) {
     heat_label: strMap(hl, DEFAULT_TEXTE.heat_label),
     menue: strMap(me, DEFAULT_TEXTE.menue),
     start: strMap(sta, DEFAULT_TEXTE.start),
+    verhandeln: { angenommen: strList(vh.angenommen, DEFAULT_TEXTE.verhandeln.angenommen), weg: strList(vh.weg, DEFAULT_TEXTE.verhandeln.weg) },
   };
 }
 
@@ -330,6 +359,75 @@ export function mergeKundenKatalog(deJson, enJson) {
     return m;
   });
   return deJson && Array.isArray(deJson.kunden) ? { ...deJson, kunden: out } : out;
+}
+
+// ---------- Ziele: Tagesziel + Wochenbogen (data/texte.json → woche{}), Anzeige im HUD, Finale an der Bar ----------
+export const FINALE_STUFEN = ['gut', 'mittel', 'fail'];
+export const SANDALEN = ['sandale', 'sandalen', 'flipflop', 'barfuss'];
+export const DEFAULT_WOCHE = {
+  titel: 'Die Woche', ziel: { text: 'Bis Sonntag 1000 Münzen.', muenzen: 1000, mittel_ab: 600 }, intro: [],
+  zwischenstand: ['Noch {rest} Münzen. {tage_rest} Tage.'],
+  tage: [1, 2, 3, 4, 5, 6, 7].map((t) => ({ tag: t, titel: `Tag ${t}`, ziel: `${2 + t} Beutel verkaufen`, zielwert: { verkauft: 2 + t }, modifikator: {}, mentor: `Heute ${2 + t} Beutel.`, geschafft: 'Geschafft.', verfehlt: 'Nicht geschafft.' })),
+  finale: { gut: { text: ['Die Hütte ist deine.'] }, mittel: { text: ['Reicht fast.'] }, fail: { text: ['Montag fangen wir von vorn an.'] } },
+};
+export function normalizeWoche(json) {
+  const w = json && typeof json === 'object' && json.woche && typeof json.woche === 'object' ? json.woche : {};
+  const D = DEFAULT_WOCHE;
+  const num = (v, d) => (Number.isFinite(v) ? v : d);
+  const z = w.ziel && typeof w.ziel === 'object' ? w.ziel : {};
+  const rawTage = Array.isArray(w.tage) && w.tage.length ? w.tage : D.tage;
+  const tage = rawTage.filter((t) => t && typeof t === 'object' && Number.isFinite(t.tag)).map((t) => {
+    const zw = t.zielwert && typeof t.zielwert === 'object' ? t.zielwert : {};
+    const mo = t.modifikator && typeof t.modifikator === 'object' ? t.modifikator : {};
+    const zielwert = {};
+    for (const k of ['verkauft', 'oma', 'mango', 'zivi_abgelehnt', 'kasse']) if (Number.isFinite(zw[k]) && zw[k] > 0) zielwert[k] = zw[k];
+    if (zw.ohne_verhaftung === true) zielwert.ohne_verhaftung = true;
+    const modifikator = {};
+    if (Number.isFinite(mo.heat_start)) modifikator.heat_start = mo.heat_start;
+    if (Number.isFinite(mo.kunden_faktor) && mo.kunden_faktor > 0) modifikator.kunden_faktor = mo.kunden_faktor;
+    if (mo.nur_sandalen === true) modifikator.nur_sandalen = true;
+    return { tag: t.tag, titel: str(t.titel, `Tag ${t.tag}`), ziel: str(t.ziel, ''), zielwert, modifikator, mentor: str(t.mentor, ''), geschafft: str(t.geschafft, D.tage[0].geschafft), verfehlt: str(t.verfehlt, D.tage[0].verfehlt) };
+  }).sort((a, b) => a.tag - b.tag);
+  const fin = w.finale && typeof w.finale === 'object' ? w.finale : {};
+  const finale = {};
+  for (const st of FINALE_STUFEN) finale[st] = { text: strList(fin[st]?.text, D.finale[st].text) };
+  const muenzen = num(z.muenzen, D.ziel.muenzen);
+  return {
+    titel: str(w.titel, D.titel),
+    ziel: { text: str(z.text, D.ziel.text), muenzen, mittel_ab: Math.min(muenzen, num(z.mittel_ab, D.ziel.mittel_ab)) },
+    intro: Array.isArray(w.intro) ? w.intro.filter((t) => typeof t === 'string' && t.trim()) : [],
+    zwischenstand: strList(w.zwischenstand, D.zwischenstand),
+    tage: tage.length ? tage : D.tage, finale,
+  };
+}
+export const tagesziel = (woche, tag) => (woche ? woche.tage.find((t) => t.tag === tag) || null : null);
+export const tagModifikator = (woche, tag) => tagesziel(woche, tag)?.modifikator || {};
+/** Fortschritt je Zielwert: [{ key, ist, soll, ok }] — „verkauft“ zählt mit nur_sandalen nur Sandalen/Flip-Flops/barfuß */
+export function zielFortschritt(state, tz) {
+  if (!tz) return [];
+  const v = state.verkaeufeHeute || [];
+  const verkauft = tz.modifikator.nur_sandalen ? v.filter((e) => SANDALEN.includes(e.schuhe)).length : v.length;
+  const ist = {
+    verkauft, oma: v.filter((e) => /^oma/.test(e.id)).length, mango: state.mangosHeute || 0, zivi_abgelehnt: state.zivisAbgelehntHeute || 0,
+    ohne_verhaftung: isArrested(state) ? 0 : 1, kasse: state.geld,
+  };
+  return Object.entries(tz.zielwert).map(([key, soll]) => { const s = soll === true ? 1 : soll; return { key, ist: ist[key], soll: s, ok: ist[key] >= s }; });
+}
+export const zielErreicht = (state, tz) => !!tz && zielFortschritt(state, tz).every((e) => e.ok);
+export function wocheStand(state, woche) {
+  const rest = Math.max(0, woche.ziel.muenzen - state.geld);
+  const tage_rest = Math.max(0, woche.tage.length - state.tag);
+  return { rest, tage_rest, vorbei: state.tag > woche.tage.length };
+}
+export const finaleStufe = (state, woche) => (state.geld >= woche.ziel.muenzen ? 'gut' : state.geld >= woche.ziel.mittel_ab ? 'mittel' : 'fail');
+/** Zeile fürs HUD: Tagesziel mit Fortschritt + Zwischenstand der Woche; null, wenn die Woche vorbei ist */
+export function hudZiel(state, woche, lineIdx = 0) {
+  const tz = tagesziel(woche, state.tag);
+  if (!tz) return null;
+  const f = zielFortschritt(state, tz);
+  const fortschritt = f.map((e) => (e.key === 'ohne_verhaftung' ? (e.ok ? '✓' : '✗') : `${Math.min(e.ist, e.soll)}/${e.soll}`)).join(' · ');
+  const st = wocheStand(state, woche);
+  return { titel: tz.titel, ziel: tz.ziel, fortschritt, erreicht: f.every((e) => e.ok), woche: fillText(pickLine(woche.zwischenstand, lineIdx), st), ...st };
 }
 
 // ---------- Tutorial Tag 1 (data/texte.json → tutorial{}): geführte Schritte, folgen dem Spieler, überspringbar ----------
@@ -373,11 +471,11 @@ export function tutorialEvent(tut, T, trigger) {
 
 // ---------- Spielstand: automatisch am Tagesende (Morgenstand des neuen Tages), „Weiter“/„Neues Spiel“ beim Start ----------
 export const SAVE_VERSION = 1;
-export const SAVE_FELDER = ['tag', 'geld', 'ware', 'heat', 'mangos', 'tageOhneVorfall'];
+export const SAVE_FELDER = ['tag', 'geld', 'ware', 'heat', 'mangos', 'tageOhneVorfall', 'finale'];
 /** Nur das, was über Nacht zählt: Tag, Kasse, Tasche, Heat, Mangos, Tafel. Tagesinternes (status, verkauftHeute …) ist morgens ohnehin frisch. */
 export function toSave(state) {
   const n = (v, d = 0) => (Number.isFinite(v) ? v : d);
-  return { version: SAVE_VERSION, tag: Math.max(1, Math.round(n(state.tag, 1))), geld: Math.max(0, n(state.geld)), ware: Math.max(0, Math.min(MAX_WARE, n(state.ware))), heat: Math.max(0, Math.min(MAX_HEAT, n(state.heat))), mangos: Math.max(0, n(state.mangos)), tageOhneVorfall: Math.max(0, n(state.tageOhneVorfall)) };
+  return { version: SAVE_VERSION, tag: Math.max(1, Math.round(n(state.tag, 1))), geld: Math.max(0, n(state.geld)), ware: Math.max(0, Math.min(MAX_WARE, n(state.ware))), heat: Math.max(0, Math.min(MAX_HEAT, n(state.heat))), mangos: Math.max(0, n(state.mangos)), tageOhneVorfall: Math.max(0, n(state.tageOhneVorfall)), finale: FINALE_STUFEN.includes(state.finale) ? state.finale : null };
 }
 /** Gespeicherter Stand → Spielzustand (auf initialState gelegt); null bei fremder Version, Müll oder Tag 1 ohne Fortschritt. */
 export function fromSave(json) {
@@ -571,7 +669,7 @@ export const mentorBesucht = (state) => state.mentorTag === state.tag;
  * Blasenfolge für den Besuch beim Mentor: [{ id, text, aktion?, value?, bark }]. Einmal pro Tag die volle Szene
  * (Ankunft → Lektion → Nachschub → Abschied); nochmal am selben Tag: schon_geholt; mit voller Tasche (MAX_WARE): voll.
  */
-export function mentorSzene(state, sz, lineIdx = 0) {
+export function mentorSzene(state, sz, lineIdx = 0, { woche = null } = {}) {
   const S = sz || normalizeMentorSzene(null);
   if (mentorBesucht(state)) return [{ id: 'schon_geholt', text: pickLine(S.schon_geholt, lineIdx), bark: 'gruss' }];
   if (state.ware >= MAX_WARE) return [{ id: 'voll', text: pickLine(S.voll, lineIdx), bark: 'gruss' }];
@@ -585,6 +683,12 @@ export function mentorSzene(state, sz, lineIdx = 0) {
       const w = S.weisheiten[state.tag - 1];
       if (w) for (const key of step.blasen) { if (w[key]) out.push({ id: `${step.id}:${key}`, text: w[key], titel: w.titel, bark }); }
       else out.push({ id: 'ausgelernt', text: pickLine(S.ausgelernt, lineIdx), bark });
+      // Wochenbogen: Tag 1 die Story-Einleitung, dann der Satz zum Tagesziel
+      const tz = woche ? tagesziel(woche, state.tag) : null;
+      if (tz) {
+        if (state.tag === 1) woche.intro.forEach((t, i) => out.push({ id: `intro:${i}`, text: t, bark }));
+        out.push({ id: 'tagesziel', text: tz.mentor, titel: tz.titel, bark });
+      }
     } else {
       const list = step.text === '@ankunft' ? S.ankunft : Array.isArray(step.text) ? step.text : [step.text];
       const entry = { id: step.id, text: pickLine(list, lineIdx), bark };
@@ -610,7 +714,7 @@ export const MANGO_PREIS = 10;
 // Mango am Markt-Stand kaufen (Geld −, Mango +); zu wenig Geld → unverändert
 export function buyMango(state, preis = MANGO_PREIS) {
   if (state.geld < preis) return { state, result: 'kein_geld' };
-  return { state: { ...state, geld: state.geld - preis, mangos: (state.mangos || 0) + 1 }, result: 'gekauft' };
+  return { state: { ...state, geld: state.geld - preis, mangos: (state.mangos || 0) + 1, mangosHeute: (state.mangosHeute || 0) + 1 }, result: 'gekauft' };
 }
 // Mango am Posten abgeben: Heat −1, einmal pro Tag, nur mit Mango
 export function giveMango(state) {
@@ -747,13 +851,17 @@ export function normalizeAbend(json) {
 }
 // Abend in der Bar: Barkeeper-Gruß → Mentor-Rückblick nach Lage → letzte Runde; danach die Bilanz-Karte (gute Nacht als Fußzeile).
 // Nach einer Verhaftung sitzt der Spieler abends trotzdem an der Bar (Pong bringt ihn vorbei) und der Mentor kommentiert.
-export function barAbend(state, abend, lineIdx = 0) {
+export function barAbend(state, abend, lineIdx = 0, { woche = null } = {}) {
   const A = abend || DEFAULT_ABEND;
   const rep = dayReport(state);
   const lage = lageFor(rep);
+  const tz = woche ? tagesziel(woche, state.tag) : null;
+  const finale = woche && tz && state.tag === woche.tage.length ? woche.finale[finaleStufe(state, woche)].text : [];
   return [
     { id: 'gruss', wer: 'barkeeper', text: pickLine(A.barkeeper.gruss, lineIdx), bark: 'gruss' },
     { id: 'rueckblick', wer: 'mentor', text: fillText(pickLine(A.mentor[lage], lineIdx), rep), bark: 'abend', lage },
+    ...(tz && lage !== 'verhaftet' ? [{ id: 'tagesziel', wer: 'mentor', text: zielErreicht(state, tz) ? tz.geschafft : tz.verfehlt, bark: 'abend' }] : []),
+    ...finale.map((t, i) => ({ id: `finale:${i}`, wer: /^Nong/.test(t) ? 'barkeeper' : 'mentor', text: t, bark: 'abend' })),
     { id: 'letzte_runde', wer: 'barkeeper', text: pickLine(A.barkeeper.letzte_runde, lineIdx), bark: 'letzte_runde' },
     // Nach dem Gespräch fragt Nong „Feierabend?“ — Ja = Bilanz, sonst zurück an den Strand. Nach einer Verhaftung gibt es keine Wahl.
     ...(lage === 'verhaftet' ? [] : [{ id: 'feierabend', wer: 'barkeeper', text: FEIERABEND_FRAGE, frage: true, optionen: ['Feierabend', 'Noch nicht'] }]),

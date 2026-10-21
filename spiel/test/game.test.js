@@ -129,7 +129,7 @@ test('Gespräch: Gruß → Wahl → Ergebnis → Ende, Verkaufen wirkt auf den Z
   assert.equal(d.text, 'Duuude.');
   d = advanceDialog(d);
   assert.equal(d.phase, 'wahl');
-  assert.deepEqual(d.options, ['Verkaufen', 'Lieber nicht']);
+  assert.deepEqual(d.options, ['Verkaufen', 'Mehr verlangen', 'Lieber nicht']);
   // in der Wahl-Phase ändert advance nichts
   assert.equal(advanceDialog(d).phase, 'wahl');
   const r = chooseOption(s, d, schluffi, 'Verkaufen');
@@ -657,11 +657,11 @@ test('normalizeTexte liest die Oberflächen-Texte aus ui{} (Dialog-Beschriftunge
   assert.equal(nT({ ui: { bilanz: ['U'] }, bilanz: ['T'] }).bilanz[0], 'U', 'ui{} gewinnt');
   // Dialog nutzt die Beschriftungen; die Wahl läuft über den Index, nicht über den Text
   const d = aD(sD(schluffi, initialState(), 0, T), T);
-  assert.deepEqual(d.options, ['Sell', 'Lieber nicht']);
+  assert.deepEqual(d.options, ['Sell', 'Mehr verlangen', 'Lieber nicht']);
   const r = cO(initialState(), d, schluffi, 0, 0, undefined, T);
   assert.equal(r.dialog.result, 'kauf'); assert.deepEqual(r.dialog.options, ['Next']);
   assert.equal(cO(initialState(), d, schluffi, 'Sell', 0, undefined, T).dialog.result, 'kauf', 'Beschriftung geht auch');
-  assert.equal(cO(initialState(), d, schluffi, 1, 0, undefined, T).dialog.result, 'ablehnung');
+  assert.equal(cO(initialState(), d, schluffi, 2, 0, undefined, T).dialog.result, 'ablehnung');
 });
 test('mergeTexte: EN ersetzt Strings und gleich lange String-Listen, Objekte rekursiv; Zahlen/ids/fehlende Zweige bleiben DE', () => {
   const de = { a: 'A', l: ['x', 'y'], n: 3, o: { s: 'S', id: 'k1', t: ['1', '2', '3'] }, steps: [{ id: 's', text: ['T'], menge: 5 }] };
@@ -736,4 +736,91 @@ test('Tutorial: Schritte folgen den Ereignissen, überspringen Zwischenschritte,
   assert.ok(TUTORIAL_TRIGGER.includes('ware_leer'));
   assert.deepEqual(normalizeTutorial(null).schritte, DEFAULT_TUTORIAL.schritte);
   assert.equal(tutorialEvent(null, T, 'tag1_start').schritt, null);
+});
+
+import { normalizeWoche, tagesziel, tagModifikator, zielFortschritt, zielErreicht, wocheStand, finaleStufe, hudZiel, DEFAULT_WOCHE, buyMango as bM, decline as dc, mentorSzene as mS, barAbend as bA } from '../js/game.js';
+const WOCHE = normalizeWoche({ woche: { titel: 'Hütte', ziel: { text: 'Z', muenzen: 100, mittel_ab: 60 }, intro: ['I1', 'I2'], zwischenstand: ['Noch {rest}. {tage_rest} Tage.'], tage: [
+  { tag: 1, titel: 'Mo', ziel: '2 nur Sandalen', zielwert: { verkauft: 2 }, modifikator: { nur_sandalen: true }, mentor: 'M1', geschafft: 'G1', verfehlt: 'V1' },
+  { tag: 2, titel: 'Di', ziel: 'Oma', zielwert: { oma: 1 }, mentor: 'M2', geschafft: 'G2', verfehlt: 'V2' },
+  { tag: 3, titel: 'Mi', ziel: 'Mango+Zivi', zielwert: { mango: 1, zivi_abgelehnt: 1, ohne_verhaftung: true, kasse: 50, quatsch: 9, verkauft: 'x' }, modifikator: { heat_start: 1, kunden_faktor: 2 }, mentor: 'M3', geschafft: 'G3', verfehlt: 'V3' },
+], finale: { gut: { text: ['Nong legt den Schlüssel hin.', 'Deine.'] }, mittel: { text: ['Fast.'] } } } });
+test('normalizeWoche: Tage sortiert, nur bekannte Zielwerte/Modifikatoren, Finale mit Defaults; Defaults ohne Datei', () => {
+  assert.equal(WOCHE.tage.length, 3); assert.deepEqual(WOCHE.tage[2].zielwert, { mango: 1, zivi_abgelehnt: 1, kasse: 50, ohne_verhaftung: true });
+  assert.deepEqual(WOCHE.tage[2].modifikator, { heat_start: 1, kunden_faktor: 2 }); assert.deepEqual(WOCHE.tage[0].modifikator, { nur_sandalen: true });
+  assert.deepEqual(WOCHE.finale.fail.text, DEFAULT_WOCHE.finale.fail.text); assert.equal(WOCHE.ziel.mittel_ab, 60);
+  assert.equal(normalizeWoche(null).tage.length, 7); assert.equal(tagesziel(WOCHE, 9), null); assert.deepEqual(tagModifikator(WOCHE, 9), {});
+});
+test('Tagesziel: verkauft (nur Sandalen), Oma, Mango, Zivi abgelehnt, ohne Verhaftung, Kasse — Fortschritt und erreicht', () => {
+  const sand = { ...schluffi, id: 's1' }, sneak = { ...schluffi, id: 'n1', schuhe: 'turnschuh' }, oma = { ...schluffi, id: 'oma_1' };
+  let s = initialState();
+  s = sell(s, sand).state; s = sell(s, sneak).state;
+  const t1 = tagesziel(WOCHE, 1);
+  assert.deepEqual(zielFortschritt(s, t1), [{ key: 'verkauft', ist: 1, soll: 2, ok: false }], 'Turnschuh zählt bei nur_sandalen nicht');
+  s = sell(s, oma).state;
+  assert.equal(zielErreicht(s, t1), true, 'Oma kommt barfuß/in Sandalen: zählt');
+  assert.equal(zielErreicht(s, tagesziel(WOCHE, 2)), true, 'oma_1 verkauft');
+  const t3 = tagesziel(WOCHE, 3);
+  let u = { ...initialState(), geld: 60 };
+  assert.equal(zielErreicht(u, t3), false);
+  u = bM(u, 10).state; u = dc(u, zivi).state;
+  assert.equal(u.mangosHeute, 1); assert.equal(u.zivisAbgelehntHeute, 1);
+  assert.equal(zielErreicht(u, t3), true, 'Mango, Zivi abgelehnt, nicht verhaftet, Kasse 50');
+  assert.equal(zielErreicht({ ...u, verhaftet: true }, t3), false);
+  assert.equal(dc(u, schluffi).state.zivisAbgelehntHeute, 1, 'Nicht-Zivi zählt nicht');
+  // Tageswechsel setzt die Tageszähler zurück, Modifikator heat_start greift
+  const n = newDay(u, { modifikator: tagModifikator(WOCHE, 3) });
+  assert.deepEqual([n.verkaeufeHeute, n.zivisAbgelehntHeute, n.mangosHeute], [[], 0, 0]); assert.equal(n.heat, 1, 'Razzia: Heat startet bei 1');
+  assert.equal(newDay({ ...u, heat: 3, verhaftet: true }, { modifikator: { heat_start: 1 } }).heat, 1);
+  assert.equal(newDay(u, { modifikator: { heat_start: 9 } }).heat, MAX_HEAT - 1, 'nie direkt verhaftet aufwachen');
+});
+test('Woche: Zwischenstand, Finale-Stufe, HUD-Zeile; Mentor morgens Intro+Tagesziel, Bar abends geschafft/verfehlt + Finale am letzten Tag', () => {
+  const s = { ...initialState(), geld: 70, tag: 2 };
+  assert.deepEqual(wocheStand(s, WOCHE), { rest: 30, tage_rest: 1, vorbei: false });
+  assert.equal(finaleStufe(s, WOCHE), 'mittel'); assert.equal(finaleStufe({ ...s, geld: 100 }, WOCHE), 'gut'); assert.equal(finaleStufe({ ...s, geld: 5 }, WOCHE), 'fail');
+  const h = hudZiel(s, WOCHE);
+  assert.equal(h.titel, 'Di'); assert.equal(h.fortschritt, '0/1'); assert.equal(h.woche, 'Noch 30. 1 Tage.'); assert.equal(h.erreicht, false);
+  assert.equal(hudZiel({ ...s, tag: 4 }, WOCHE), null, 'Woche vorbei: keine Zeile');
+  assert.equal(hudZiel({ ...initialState(), tag: 3, verhaftet: true }, WOCHE).fortschritt.includes('✗'), true);
+  // Mentor morgens
+  const m1 = mS({ ...initialState(), ware: 0 }, SZ, 0, { woche: WOCHE }).map((e) => e.id);
+  assert.deepEqual(m1.slice(0, 7), ['ankunft', 'lektion:einleitung', 'lektion:regel', 'lektion:pointe', 'intro:0', 'intro:1', 'tagesziel']);
+  const m2 = mS({ ...initialState(), ware: 0, tag: 2 }, SZ, 0, { woche: WOCHE });
+  assert.ok(!m2.some((e) => e.id.startsWith('intro:'))); assert.equal(m2.find((e) => e.id === 'tagesziel').text, 'M2');
+  assert.ok(!mS({ ...initialState(), ware: 0 }, SZ, 0).some((e) => e.id === 'tagesziel'), 'ohne Woche wie bisher');
+  // Bar abends
+  const b2 = bA(sell({ ...initialState(), tag: 2 }, { ...schluffi, id: 'oma_1' }).state, DEFAULT_ABEND, 0, { woche: WOCHE });
+  assert.equal(b2.find((e) => e.id === 'tagesziel').text, 'G2'); assert.ok(!b2.some((e) => e.id.startsWith('finale')));
+  const b3 = bA({ ...initialState(), tag: 3, geld: 100 }, DEFAULT_ABEND, 0, { woche: WOCHE });
+  assert.equal(b3.find((e) => e.id === 'tagesziel').text, 'V3');
+  assert.deepEqual(b3.filter((e) => e.id.startsWith('finale')).map((e) => `${e.wer}:${e.text}`), ['barkeeper:Nong legt den Schlüssel hin.', 'mentor:Deine.']);
+  assert.ok(!bA({ ...initialState(), tag: 3, verhaftet: true, heat: 3 }, DEFAULT_ABEND, 0, { woche: WOCHE }).some((e) => e.id === 'tagesziel'), 'nach Verhaftung kein Tagesziel-Satz');
+  // Spielstand nimmt das Finale mit
+  assert.equal(fromSave(toSave({ ...s, finale: 'gut' })).finale, 'gut'); assert.equal(fromSave(toSave({ ...s, finale: 'x' })).finale, null);
+});
+
+import { verhandeln, verhandlungsPreis, VERHANDLUNG_AUFSCHLAG, normalizeKunde as nK, kundeStatus } from '../js/game.js';
+test('Preise je Kundschaft: zahlt aus kunden.json; „Mehr verlangen“ = +50 % mit Risiko (feilschen), Zivi reagiert wie beim Verkauf', () => {
+  const k = nK({ id: 'oma_1', zahlt: 60, feilschen: 0.7, saetze: { kauf: ['K'], ablehnung: ['A'] } });
+  assert.equal(k.feilschen, 0.7); assert.equal(nK({ id: 'x' }).feilschen, 0.5); assert.equal(nK({ id: 'y', feilschen: 7 }).feilschen, 1);
+  assert.equal(verhandlungsPreis(k), 90); assert.equal(VERHANDLUNG_AUFSCHLAG, 0.5);
+  const s = initialState();
+  const ja = verhandeln(s, k, 0, { wuerfel: 0.2 });
+  assert.equal(ja.result, 'kauf'); assert.equal(ja.teuer, true); assert.equal(ja.state.geld, 90); assert.equal(ja.state.ware, START_WARE - 1);
+  assert.ok(ja.text.startsWith('Okay') && ja.text.endsWith('K'), 'Verhandlungssatz + Kaufsatz');
+  assert.equal(ja.state.verkaeufeHeute[0].preis, 90);
+  const nein = verhandeln(s, k, 0, { wuerfel: 0.9 });
+  assert.equal(nein.result, 'weg'); assert.equal(nein.state.geld, 0); assert.equal(nein.state.ware, START_WARE, 'keine Ware weg');
+  assert.equal(kundeStatus(nein.state, 'oma_1'), 'abgelehnt', 'er ist weg, heute kein zweiter Versuch');
+  assert.equal(sell(nein.state, k).result, 'schon_erledigt');
+  assert.equal(verhandeln(s, zivi, 0, { wuerfel: 0.1 }).result, 'reveal', 'Zivi: Preis egal');
+  assert.equal(verhandeln({ ...s, ware: 0 }, k, 0, { wuerfel: 0.1 }).result, 'keine_ware');
+  // über den Dialog: Option 1 = mehr verlangen, Option 2 = lieber nicht
+  const d = advanceDialog(startDialog(k, s, 0));
+  assert.deepEqual(d.options, ['Verkaufen', 'Mehr verlangen', 'Lieber nicht']);
+  const r1 = chooseOption(s, d, k, 1, 0, { wuerfel: 0.1 });
+  assert.equal(r1.dialog.result, 'kauf'); assert.equal(r1.dialog.teuer, true); assert.equal(r1.dialog.geldPlus, 90);
+  assert.equal(chooseOption(s, d, k, 1, 0, { wuerfel: 0.95 }).dialog.result, 'weg');
+  assert.equal(chooseOption(s, d, k, 2, 0).dialog.result, 'ablehnung');
+  assert.equal(chooseOption(s, d, k, 0, 0).dialog.geldPlus, 60, 'normaler Verkauf zum Kundenpreis');
+  assert.equal(chooseOption(s, d, k, 'Lieber nicht', 0).dialog.result, 'ablehnung', 'Beschriftung geht weiter');
 });

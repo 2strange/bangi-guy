@@ -7,6 +7,7 @@ import { buildKunde, setMood, setRevealed, holdPose } from './kunden.js';
 import { pose as figurePose, updateNong, setNongMood } from './figures.js';
 import { initLicht } from './licht.js';
 import { zielMarker, updateMarker } from './marker.js';
+import { setHuetteZiel, setHuette } from './props.js';
 import { mentorBarSpot } from './zone-huegel.js';
 import { createUI, isTouchDevice, hintSeen, markHint } from './ui.js';
 import { prepareGags, playGag, stopGag } from './gags.js';
@@ -20,6 +21,7 @@ import {
   normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE, gagFor, nextIdleGagDelay,
   mergeTexte, mergeKundenKatalog, normalizeOptionen, toSave, fromSave, hatFortschritt, fillText,
   normalizeTutorial, tutorialStart, tutorialEvent, tutorialSkip,
+  normalizeWoche, tagesziel, tagModifikator, hudZiel, finaleStufe, KUNDEN_PRO_TAG,
   normalizeStimmen, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
   normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
@@ -170,6 +172,7 @@ async function fetchJson(url) { try { const res = await fetch(url, { cache: 'no-
 let texte = normalizeTexte(null);
 let abendTexte = normalizeAbend(null);
 let tutorialTexte = normalizeTutorial(null);
+let woche = normalizeWoche(null); // Wochenbogen: Tagesziele + Finale (texte.json → woche{})
 let tutorial = null; // Tutorial-Zustand (nur im ersten Spiel, Tag 1)
 let tagesuhr = initialClock();
 let phase = phaseFor(0);
@@ -185,7 +188,11 @@ function applyTageszeit() {
   }
 }
 applyTageszeit();
-function refreshHud() { ui.setHud({ ...game, clockLabel: clockLabel(tagesuhr.t01) }); }
+function refreshHud() { ui.setHud({ ...game, clockLabel: clockLabel(tagesuhr.t01), ziel: hudZiel(game, woche, game.tag) }); }
+function applyFinale(stufe) {
+  try { setHuette(world.huette, { gut: 'deine', mittel: 'halb', fail: 'posten8' }[stufe] || 'verkauf'); } catch (e) { /* ohne Hütte */ }
+  try { if (stufe === 'gut') world.huegel.mentorAnHuette?.(world.huette, true); } catch (e) { /* ohne Mentor */ }
+}
 let stimmen = normalizeStimmen(null);
 const barkPrev = {}; // `${id}/${kind}` -> zuletzt gesagter Index (nie zweimal dieselbe Zeile)
 let barkSeed = 0;
@@ -209,7 +216,7 @@ function clearKunden() {
 // Kunden für den aktuellen Tag aufstellen: 7 Stück, die Zivis rotieren pro Tag
 function spawnKunden(day = 1) {
   clearKunden();
-  const list = pickKunden(katalog, undefined, 2, day);
+  const list = pickKunden(katalog, KUNDEN_PRO_TAG * (tagModifikator(woche, day).kunden_faktor || 1), 2, day); // „Großer Markt“: doppelt so viele
   const outfits = assignOutfits(list, day); // keine Doppel-Outfits pro Tag
   const anchors = assignAnchors(list, ANCHORS, { day }); // feste Plätze über alle Zonen (Markt-Plätze stecken in ANCHORS), Zivis mit Abstand
   const seen = {};
@@ -272,7 +279,10 @@ async function loadTexte() {
   posten7 = normalizePosten7(json);
   abendTexte = normalizeAbend(json);
   tutorialTexte = normalizeTutorial(json);
+  woche = normalizeWoche(json);
+  try { setHuetteZiel(world.huette, woche.ziel.muenzen); } catch (e) { /* ohne Hütte */ }
   game = { ...game, texte };
+  refreshHud();
 }
 async function loadStimmen() {
   let json = null;
@@ -444,7 +454,9 @@ const barCamera = () => { const b = BUILDING_POS.bar; return { x: b.x - 5.5, y: 
 const barStehplatz = () => { const b = BUILDING_POS.bar; return { x: b.x - 4.2, z: b.z + 2.6, yaw: Math.PI }; }; // am linken Ende des Tresens, verdeckt weder Nong noch den Mentor
 function startBarAbend() {
   tutorialFire('bar_betreten');
-  barFolge = barAbend(game, abendTexte, lineIdx++);
+  // letzter Tag der Woche: Finale-Stufe festhalten, Hütte umbauen (Zustände aus props.js), Mentor zieht bei „gut“ hinter die Hütte
+  if (!game.finale && tagesziel(woche, game.tag) && game.tag === woche.tage.length) { game = { ...game, finale: finaleStufe(game, woche) }; applyFinale(game.finale); }
+  barFolge = barAbend(game, abendTexte, lineIdx++, { woche });
   barIdx = 0;
   nachtArt = 'bar';
   for (const key in keys) keys[key] = false;
@@ -542,7 +554,7 @@ let mentorIdx = 0;
 function startMentor() {
   // abends an der Bar: Abendgespräch (Rückblick + Abschied), kein Nachschub
   if (mentorAmTresen) { startBarAbend(); return; }
-  mentorFolge = mentorSzene(game, mentorSz, lineIdx++);
+  mentorFolge = mentorSzene(game, mentorSz, lineIdx++, { woche });
   mentorIdx = 0;
   talking = mentorRef;
   for (const key in keys) keys[key] = false;
@@ -658,6 +670,7 @@ function startChoice(i) {
   ui.hideCard();
   if (i === 0 && saved) {
     game = { ...game, ...saved };
+    if (game.finale) applyFinale(game.finale);
     spawnKunden(game.tag);
     for (const s of streifen) s.patrol = { ...patrolStart(s.route), mode: 'patrol' };
     tagesuhr = initialClock(); applyTageszeit(); placeMentor(false);
@@ -736,6 +749,7 @@ function dialogKey(e) {
   else if (e.code === 'ArrowRight' || e.code === 'KeyD') { selected = (selected + 1) % Math.max(1, n); renderBubble(); }
   else if (e.code === 'Digit1') { selected = 0; confirmDialog(); }
   else if (e.code === 'Digit2' && n > 1) { selected = 1; confirmDialog(); }
+  else if (e.code === 'Digit3' && n > 2) { selected = 2; confirmDialog(); }
   else if (e.code === 'Enter' || e.code === 'Space' || e.code === 'KeyE') confirmDialog();
   else if (e.code === 'Escape') endDialog();
   e.preventDefault();
@@ -750,7 +764,7 @@ function confirmDialog() {
   if (dialog.phase === 'wahl') {
     const heatBefore = game.heat;
     const inSicht = inPostenSicht(state, POSTEN_ZONE);
-    const r = chooseOption(game, dialog, talking.def, selected, lineIdx++, { posten: POSTEN_ZONE, pos: state, beschlagnahmt: optionen.beschlagnahme }, texte);
+    const r = chooseOption(game, dialog, talking.def, selected, lineIdx++, { posten: POSTEN_ZONE, pos: state, beschlagnahmt: optionen.beschlagnahme, wuerfel: Math.random() }, texte); // wuerfel: Verhandlungsrisiko
     game = r.state; dialog = r.dialog;
     if (game.heat > heatBefore) { sfx('alarm'); if (inSicht) { sfx('pfeife'); pongSay('sichtung'); } }
     // Streife hat den Verkauf gesehen (egal an wen): Heat +1, Pfiff
@@ -762,7 +776,7 @@ function confirmDialog() {
     }
     refreshHud();
     setMood(talking.group, moodFor(kundeStatus(game, talking.id)));
-    if (dialog.result === 'kauf' || dialog.result === 'reveal') { sfx('kasse'); tutorialFire('erster_verkauf'); } else { sfx('ablehnung'); if (dialog.result === 'ablehnung') tutorialFire('erste_ablehnung'); }
+    if (dialog.result === 'kauf' || dialog.result === 'reveal') { sfx('kasse'); if (dialog.teuer) sfx('kasse'); tutorialFire('erster_verkauf'); } else { sfx('ablehnung'); if (dialog.result === 'ablehnung') tutorialFire('erste_ablehnung'); }
     if (dialog.result === 'reveal') setRevealed(talking.group, true);
     const wann = dialog.result === 'ablehnung' ? 'ablehnung' : (dialog.result === 'kauf' || dialog.result === 'reveal') ? 'kauf' : null;
     if (wann) startGag(talking, gagFor(texte, talking.id, wann));
@@ -806,7 +820,7 @@ function endDay(vorspann = null, { fuss = null } = {}) {
   ui.showCard({ titel: c.titel, zeilen: [...(vorspann ? [vorspann] : []), c.spruch, ...c.zeilen, ...(fuss ? [fuss] : [])], button: c.button, rot: c.lage === 'verhaftet' });
 }
 function startNewDay() {
-  game = newDay(game, { nacht: nachtArt });
+  game = newDay(game, { nacht: nachtArt, modifikator: tagModifikator(woche, game.tag + 1) });
   nachtArt = 'bar';
   saveGame(); // Morgenstand des neuen Tages
   tagesuhr = initialClock();
@@ -1221,6 +1235,7 @@ function setupScene() {
     return;
   }
   if (SCENE === 'menue') { openMenu(); return; }
+  if (SCENE === 'huette') { state = { ...state, x: -57, z: 10, yaw: Math.PI, speed: 0 }; camYaw += Math.PI; mode = 'free'; return; } // Finale-Hütte am Weststrand, Kamera von der Meerseite
   if (SCENE === 'tutorial') {
     // Schritt „hinschauen“: Kunde in Reichweite, Zielmarker am Kunden, Hinweiskasten oben
     const k = kunden[0]; const p = k.npc.points[0];

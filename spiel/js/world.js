@@ -2,7 +2,7 @@
 // Bauten und Deko mit passenden Collidern (Kreise für Stämme/Pfosten, Rechtecke für Gebäude).
 import * as THREE from 'three';
 import { toonMesh, toon, basicMat, deform, rng } from './toon.js';
-import { palm, beachBar, pier, boat, signpost, hammock, parasol, beachBall, coconut, crab, cloud, sun, footprints, limb, hut, mailbox, hotel, lounger, rental, sleepingSurfer, barrier, lamp, hedge, shell, starfish, sandcastle, driftwood } from './props.js';
+import { palm, beachBar, pier, boat, signpost, hammock, parasol, beachBall, coconut, crab, cloud, sun, footprints, limb, hut, mailbox, hotel, lounger, rental, sleepingSurfer, barrier, finaleHuette, setHuette, lamp, hedge, shell, starfish, sandcastle, driftwood } from './props.js';
 import { shoreZ, WORLD, buildingScale, scaledRect, scaledCircle, BUILDING_POS, buildingFootprints, poolLadderCollider } from './logic.js';
 import { buildDorf } from './zone-dorf.js';
 import { buildHuegel } from './zone-huegel.js';
@@ -131,6 +131,11 @@ export function buildWorld() {
     circle(x, z, sc * 1.1);
   }
 
+  // Finale-Hütte auf den Felsen am Weststrand (Zustand aus dem Wochenbogen: verkauf → deine / halb / posten8)
+  const huette = finaleHuette(); setHuette(huette, 'verkauf');
+  huette.position.set(-61.5, 0.6, 5.5); huette.rotation.y = 0.55; huette.scale.setScalar(1.5); g.add(huette);
+  rect(-61.5, 5.5, 5, 4.6);
+
   // Palmen entlang des Strands (Position, Neigung, Seed)
   const palms = [
     [-60, -1, [1.2, 0, 0.6], 1], [-57, 7, [-0.9, 0, 0.8], 2], [-36, -9, [0.8, 0, 0.3], 3],
@@ -254,5 +259,5 @@ export function buildWorld() {
     ost: { x: 58, z: -2, yaw: Math.PI / 2 },
     hecke: { x: 8, z: -17, yaw: 0.3 }, // Strandseite vor der Heckenlücke („nord“ gehört dem Dorf)
   };
-  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots, ...markt.spots, ...hafen.spots }, hideouts: [...dorf.hideouts, ...(markt.hideouts || []), ...(hafen.hideouts || [])], dorf, huegel, markt, pier: hafen, sonne, nong };
+  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots, ...markt.spots, ...hafen.spots }, hideouts: [...dorf.hideouts, ...(markt.hideouts || []), ...(hafen.hideouts || [])], dorf, huegel, markt, pier: hafen, sonne, nong, huette };
 }

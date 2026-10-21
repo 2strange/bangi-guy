@@ -218,6 +218,25 @@ gelegt – fehlende Zweige, andere Listenlängen oder leere Strings fallen auf D
 `mergeKundenKatalog` in `js/game.js`, getestet). Dialog-Beschriftungen und Menütexte kommen aus `texte.json → ui{}`
 (`dialog`, `menue`, `titel`, `optionen`, …). `?lang=en` setzt die Sprache für Snaps, `?snap=1&scene=menue` zeigt das Menü.
 
+## Preise und Verhandeln
+Jede Kundschaft zahlt ihren eigenen Preis (`zahlt` in `kunden.json`, Default 20). Im Gespräch gibt es neben
+„Verkaufen“ und „Lieber nicht“ die Option **„Mehr verlangen“** (Taste 3): +50 % Aufschlag, aber der Kunde zahlt nur mit
+Wahrscheinlichkeit `feilschen` (0…1 in `kunden.json`, Default 0,5) – sonst geht er und ist für heute weg (keine Ware
+weg, kein Heat). Zivis reagieren auf den Preis gar nicht (Enttarnung wie beim Verkauf). Sätze aus `ui.verhandeln`
+(`angenommen[]`, `weg[]`). Logik rein in `js/game.js` (`verhandeln`, `verhandlungsPreis`, getestet; der Würfel kommt
+vom Aufrufer).
+
+## Ziele: Tagesziel und Wochenbogen
+`texte.json → woche{}` beschreibt die Woche (7 Tage): `ziel.muenzen` bis zum letzten Tag, je Tag `titel`, `ziel`,
+`zielwert` (verkauft · oma · mango · zivi_abgelehnt · ohne_verhaftung · kasse) und optionale `modifikator`
+(`nur_sandalen`: nur Sandalen/Flip-Flops/barfuß zählen, `heat_start`: Heat am Morgen, `kunden_faktor`: mehr Kundschaft).
+Unter dem HUD steht das Tagesziel mit Fortschritt (grün = erreicht) und der Wochenstand. Morgens sagt der Mentor den
+Satz zum Tagesziel (Tag 1 vorher die Einleitung), abends an der Bar `geschafft`/`verfehlt`. Am letzten Tag folgt das
+Finale nach Kassenstand (`gut` ≥ Ziel, `mittel` ≥ `mittel_ab`, sonst `fail`): die Hütte auf den Felsen am Weststrand
+wechselt in den passenden Zustand (deine / halb / posten8), bei `gut` gärtnert der Mentor fortan hinter der Hütte.
+Danach läuft das Spiel ohne Wochenziel weiter. Alles reine Logik in `js/game.js` (`normalizeWoche`, `zielFortschritt`,
+`hudZiel`, `finaleStufe`, getestet); der Spielstand merkt sich das Finale.
+
 ## Tutorial (Tag 1)
 Beim ersten Spiel führt Tag 1 in Schritten: zum Mentor (Ware), Kunde ansehen, erster Verkauf (Heat erklärt), abends
 Bar. Schritte und Texte stehen in `texte.json → tutorial{}` (`trigger` = Ereignis, `ziel` = Marker: huegel | strand |
