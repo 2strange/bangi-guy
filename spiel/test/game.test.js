@@ -10,7 +10,7 @@ import {
   normalizeMentorSzene, mentorSzene, finishMentor, applyMentorAktion, mentorBesucht,
   POSTEN_DEFAULT, inPostenSicht, buyMango, giveMango, mangoAbgegeben, tafelText, MANGO_PREIS,
   normalizePosten7, mangoText, pongText, tafelLines, DEFAULT_POSTEN7, patrolSpotted, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
-  DAY_LENGTH, phaseFor, initialClock, clockStep, clockLabel, abendBeginnt, nachtBeginnt, barBeendetTag, inBar, normalizeAbend, mentorAbend, DEFAULT_ABEND,
+  DAY_LENGTH, phaseFor, initialClock, clockStep, clockLabel, abendBeginnt, nachtBeginnt, barBeendetTag, inBar, normalizeAbend, barAbend, guteNacht, sonnenuntergangLine, einschlafenLine, DEFAULT_ABEND, NACHT_ABKUEHLUNG,
 } from '../js/game.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -603,14 +603,27 @@ test('Abend: Hinweis-Flanke, Bar beendet den Tag nur abends/nachts, Nacht-Flanke
   const bar = { x: -27, z: 2.5 };
   assert.equal(inBar({ x: -25, z: 4 }, bar), true); assert.equal(inBar({ x: -20, z: 4 }, bar), false);
 });
-test('Abendgespräch des Mentors: Rückblick nach Lage + Abschied, ohne Nachschub; Texte robust mit Defaults', () => {
-  const A = normalizeAbend({ abend: { mentor_abend: { gut: ['Top, Tag {tag}.'] }, abschied: 7, hinweis: ['Bar!'] } });
-  assert.deepEqual(A.hinweis, ['Bar!']); assert.deepEqual(A.abschied, DEFAULT_ABEND.abschied);
-  let s = sell(initialState(), schluffi).state;
-  const f = mentorAbend(s, A);
-  assert.deepEqual(f.map((e) => e.id), ['rueckblick', 'abschied']);
-  assert.equal(f[0].text, 'Top, Tag 1.'); assert.equal(f[0].lage, 'gut');
-  assert.ok(!f.some((e) => e.aktion), 'keine Aktion (kein Nachschub abends)');
-  assert.equal(mentorAbend({ ...s, heat: 3, verhaftet: true }, A)[0].lage, 'verhaftet');
+test('Bar-Abend: Barkeeper-Gruß → Mentor-Rückblick nach Lage → letzte Runde; keine Aktion; Texte aus abend_bar robust', () => {
+  const A = normalizeAbend({ abend_bar: { barkeeper: { name: 'Nong', gruss: ['Das Übliche?'], letzte_runde: 7 }, mentor: { gut: ['Top, Tag {tag}.'] }, einschlafen: { text: ['Zzz.'] }, sonnenuntergang: ['Bar!'] } });
+  assert.equal(A.barkeeper.name, 'Nong'); assert.deepEqual(A.barkeeper.letzte_runde, DEFAULT_ABEND.barkeeper.letzte_runde);
+  assert.deepEqual(A.einschlafen, ['Zzz.']); assert.equal(sonnenuntergangLine(A), 'Bar!'); assert.equal(einschlafenLine(A), 'Zzz.');
+  const s = sell(initialState(), schluffi).state;
+  const f = barAbend(s, A);
+  assert.deepEqual(f.map((e) => `${e.wer}:${e.id}`), ['barkeeper:gruss', 'mentor:rueckblick', 'barkeeper:letzte_runde', 'barkeeper:feierabend']);
+  assert.ok(f[3].frage && f[3].optionen.length === 2, 'zum Schluss die Frage „Feierabend?“ mit Ja/Noch nicht');
+  assert.equal(f[1].text, 'Top, Tag 1.'); assert.equal(f[1].lage, 'gut'); assert.equal(f[1].bark, 'abend');
+  assert.ok(!f.some((e) => e.aktion), 'kein Nachschub abends');
+  const v = barAbend({ ...s, heat: 3, verhaftet: true }, A);
+  assert.equal(v[1].lage, 'verhaftet', 'nach Verhaftung kommentiert der Mentor');
+  assert.ok(!v.some((e) => e.frage), 'nach Verhaftung keine Feierabend-Frage');
+  assert.ok(guteNacht(A).length > 3);
   assert.deepEqual(normalizeAbend(undefined), normalizeAbend({}));
+});
+test('Über Nacht kühlt der Heat: Bar −2, Hängematte −1, nie unter 0; nach Verhaftung 0', () => {
+  assert.deepEqual(NACHT_ABKUEHLUNG, { bar: 2, haengematte: 1 });
+  assert.equal(newDay({ ...initialState(), heat: 2 }).heat, 0);
+  assert.equal(newDay({ ...initialState(), heat: 2 }, { nacht: 'haengematte' }).heat, 1);
+  assert.equal(newDay({ ...initialState(), heat: 1 }).heat, 0);
+  assert.equal(newDay({ ...initialState(), heat: 1, verhaftet: true }, { nacht: 'haengematte' }).heat, 0, 'nach Verhaftung ist der Heat abgegolten');
+  assert.equal(newDay({ ...initialState(), heat: MAX_HEAT }, { nacht: 'haengematte' }).heat, 0, 'Heat-Max = Verhaftung');
 });

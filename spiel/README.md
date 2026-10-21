@@ -66,11 +66,16 @@ Dann `http://localhost:8000/` öffnen.
 - **HUD:** Tag, 💰 Geld, 🌿 Ware (Start 5), Heat als Sirenen 🚨 (0–3). Heat 3 → „VERHAFTET. Tag verloren. Geld
   bleibt.“ → Enter startet den nächsten Tag (Ware voll, Heat 0, Kunden wieder neutral).
 - **Tagesuhr:** Ein Tag dauert 7 Minuten Spielzeit (06:00 → 24:00 im HUD mit Sonne/Mond), Phasen morgen / mittag /
-  abend / nacht (reine Logik in `js/game.js`, getestet; die Uhr pausiert in Gesprächen und Karten). Abends kommt
-  der Hinweis „Ab in die Bangi Bar“ und der Mentor sitzt an der Bar: wer die Bar betritt, beendet den Tag mit der
-  Bilanz-Karte; sein Abendgespräch ist ein Rückblick nach Lage (kein Nachschub, der bleibt morgens am Hügel).
-  Spätestens nachts endet der Tag von allein (Hängematte). Hooks: `licht.js → setTageszeit(t01)`,
-  `audio.music.setMood('tag'|'abend')`. `?t=0.72` setzt die Tageszeit für Standbilder, `?snap=1&scene=abend`.
+  abend / nacht (reine Logik in `js/game.js`, getestet; die Uhr pausiert in Gesprächen und Karten). Abends setzt sich
+  der Mentor an die Bar, und der Schluffi denkt alle 20 s laut „ab in die Bar“ (`abend_bar.sonnenuntergang`).
+  E beim Mentor am Tresen startet den Abend: Nong (Barkeeper) grüßt → Mentor-Rückblick nach Lage → letzte Runde →
+  Nong fragt „Feierabend?“ (E/1 = ja, 2/Esc = noch nicht) → Bilanz-Karte mit Nongs Gute-Nacht-Zeile → neuer Tag.
+  Spätestens nachts endet der Tag von allein in der Hängematte (Gähnen, kein Rückblick). Über Nacht kühlt der Heat:
+  Bar −2, Hängematte −1. Nach einer Verhaftung bringt Pong den Schluffi abends an die Bar, der Mentor kommentiert
+  (ohne Feierabend-Frage), dann die Bilanz (Heat 0). Nachschub gibt es nur morgens am Hügel. Rund um das Bar-Dach hängt
+  eine Lichterkette, die abends glüht; in Bar-Nähe klirren Gläser (Ambience-Zone `bar`).
+  Licht: `licht.js → initLicht(scene, { sonne }).set(t01)` + `sunOffset(t01)` für die Schattensonne; Ton: `audio.setMood('tag'|'abend')`. `?t=0.72` setzt die Tageszeit,
+  `?snap=1&scene=abend` / `scene=bar`.
 - **Ausverkauft:** Bei Ware 0 meldet sich der Schluffi selbst in einer Sprechblase: **Tag beenden** zeigt die
   Tagesbilanz (verkauft, Geld, Heat) und startet den nächsten Tag; **Weiterbummeln** lässt einen die Leute weiter
   lesen. Die Bilanz-Karte wählt einen Spruch nach Lage (gut / heat / nichts / verhaftet) aus `data/texte.json`

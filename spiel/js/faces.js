@@ -5,7 +5,7 @@
 //
 // API: face(kind, mood, opts) → gecachte CanvasTexture (faceCanvas() liefert das rohe Canvas, z. B. für 2D-Vorschauen).
 //   kind: 'schluffi' | 'runner' | 'sun' | 'kunde'
-//   mood: 'neutral' | 'misstrauisch' | 'erschrocken' | 'zufrieden' | 'selig'   (selig = stoned, heutiger Schluffi-Look)
+//   mood: 'neutral' | 'misstrauisch' | 'erschrocken' | 'zufrieden' | 'selig' | 'reveal' | 'muede' | 'schlaeft'   (selig = stoned)
 //   opts: skin (CSS-Farbe oder Hex-Zahl, Lidfarbe = Haut), beard (true = Vollbart, 'stoppeln', 'schnauzer'),
 //         glasses (true/'lese' = Lesebrille, 'sonnen' = Sonnenbrille, 'sport' = Sportbrille), wrinkles (Oma),
 //         seed (kleine Abweichungen bei Augenabstand/-größe und Mundbreite, damit Kunden sich unterscheiden), look [px, py].
@@ -19,7 +19,7 @@ const S = 1024;
 const INK = '#111111';
 
 export const FACE_KINDS = ['schluffi', 'runner', 'sun', 'kunde'];
-export const FACE_MOODS = ['neutral', 'misstrauisch', 'erschrocken', 'zufrieden', 'selig', 'reveal'];
+export const FACE_MOODS = ['neutral', 'misstrauisch', 'erschrocken', 'zufrieden', 'selig', 'reveal', 'muede', 'schlaeft'];
 
 // ---------- Grundformen ----------
 function eye(ctx, cx, cy, r, { lid = 0, lidTilt = 0, lidColor = '#f0b98a', pupil = 24, px = 0, py = 0, veins = 0, bag = false, seed = 1, stroke = 16 }) {
@@ -130,6 +130,9 @@ const MOODS = {
   selig:        { lid: 0.5,  tilt: -0.06, pupil: 1,    px: [-26, 34], py: [30, 22], veins: 3 },
   // Reveal: kalte Polizistenaugen (schmal, kleine Pupillen, harte Brauen), der Mund lächelt weiter
   reveal:       { lid: 0.42, tilt: 0.1,   pupil: 0.6,  px: 0,         py: 2 },
+  // Müde: schwere Lider, Pupillen nach unten; schläft: Augen zu
+  muede:        { lid: 0.72, tilt: -0.1,  pupil: 1,    px: 0,         py: 26 },
+  schlaeft:     { lid: 1.0,  tilt: -0.08, pupil: 1,    px: 0,         py: 0 },
 };
 
 // ---------- Figurentypen: Augenlayout, Mundanker (y = Lippenlinie, grinY = Oberkante des offenen Grinsens),
@@ -176,6 +179,9 @@ function browsWith(ctx, mood, eyes, r, width, strokePath) {
         break;
       case 'reveal': // harte, flache Brauen knapp über dem Auge
         strokePath(ctx, [[outer(0.95), ey - 1.3 * r], [inner(0.9), ey - 1.15 * r]], width + 4);
+        break;
+      case 'muede': case 'schlaeft': // tief hängende, flache Brauen
+        strokePath(ctx, [[outer(0.9), ey - 1.25 * r], [ex, ey - 1.35 * r, inner(0.85), ey - 1.2 * r]], width);
         break;
       case 'erschrocken': // hoch gerissen
         strokePath(ctx, [[outer(0.9), ey - 1.85 * r], [ex, ey - 2.25 * r, inner(0.9), ey - 1.9 * r]], width);
@@ -252,6 +258,14 @@ function mouth(ctx, kind, mood, m, line) {
         const gw = m.grinW ?? w * 1.1;
         grin(ctx, x, m.grinY ?? y - 70, gw / 410, 16);
       }
+      break;
+    case 'muede': { // kleines Gähnen: schmales „o“ mit Hand-los, dazu hängende Mundwinkel
+      ctx.fillStyle = '#2a0f0f'; ctx.beginPath(); ctx.ellipse(x, y + 10, w * 0.16, w * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = INK; ctx.lineWidth = line - 2; ctx.beginPath(); ctx.ellipse(x, y + 10, w * 0.16, w * 0.2, 0, 0, Math.PI * 2); ctx.stroke();
+      break;
+    }
+    case 'schlaeft': // leise schnarchend: kleine Wellenlinie
+      strokePath(ctx, [[x - w * 0.3, y + 4], [x - w * 0.15, y - 10, x, y + 4], [x + w * 0.15, y + 18, x + w * 0.3, y + 4]], line - 2);
       break;
     default: // neutral: fast gerade, ein Hauch nach unten
       strokePath(ctx, [[x - w / 2, y], [x, y + 14, x + w / 2, y - 6]], line);

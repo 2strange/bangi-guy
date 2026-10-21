@@ -8,6 +8,7 @@ import { buildDorf } from './zone-dorf.js';
 import { buildHuegel } from './zone-huegel.js';
 import { buildMarkt } from './zone-markt.js';
 import { buildPier } from './zone-pier.js';
+import { lichterkette } from './licht.js';
 
 export const WATER_Y = 0.06;
 
@@ -164,6 +165,10 @@ export function buildWorld() {
   const bs = buildingScale('bar');
   bar.scale.setScalar(bs);
   g.add(bar);
+  // Lichterkette rundherum an der Dachkante (abends glühen die Birnchen, siehe licht.js); dreht mit der Bar mit
+  { const c = Math.cos(bar.rotation.y), sn = Math.sin(bar.rotation.y);
+    const V = (lx, ly, lz) => new THREE.Vector3(barPos.x + (lx * c + lz * sn) * bs, ly * bs, barPos.z + (-lx * sn + lz * c) * bs);
+    g.add(lichterkette([V(-2.5, 3.2, -1.3), V(-2.5, 3.2, 1.3), V(2.5, 3.2, 1.3), V(2.5, 3.2, -1.3), V(-2.5, 3.2, -1.3)])); }
   for (const f of buildingFootprints()) if (f.name === 'bar') rect(f.x, f.z, f.w, f.d); // Theke + Rückwand
   bCircle(barPos, bs, -2.1, -1.1, 0.25); bCircle(barPos, bs, 2.1, -1.1, 0.25); bCircle(barPos, bs, -1.9, 1.0, 0.25); bCircle(barPos, bs, 2.1, 1.0, 0.25);
   bCircle(barPos, bs, -1.1, 1.9, 0.4); bCircle(barPos, bs, 0.5, 1.9, 0.4); // Hocker
@@ -206,7 +211,7 @@ export function buildWorld() {
     const copies = mats.map((mat) => { if (mat.isShaderMaterial) return mat; const c = mat.clone(); c.fog = false; return c; });
     m.material = Array.isArray(m.material) ? copies : copies[0];
   });
-  const s = sun(); s.position.set(70, 48, -170); s.scale.setScalar(5); s.userData.noFade = true; noFog(s); g.add(s);
+  const sonne = sun(); sonne.position.set(70, 48, -170); sonne.scale.setScalar(5); sonne.userData.noFade = true; noFog(sonne); g.add(sonne); // wandert über licht.js
   for (const [x, y, z, k] of [[-120, 42, -180, 1], [-20, 50, -200, 2], [140, 38, -150, 3], [-200, 30, -60, 4], [220, 34, -20, 5]]) {
     const c = cloud(k); c.position.set(x, y, z); c.scale.setScalar(4); c.userData.noFade = true; noFog(c); g.add(c);
   }
@@ -246,5 +251,5 @@ export function buildWorld() {
     ost: { x: 58, z: -2, yaw: Math.PI / 2 },
     hecke: { x: 8, z: -17, yaw: 0.3 }, // Strandseite vor der Heckenlücke („nord“ gehört dem Dorf)
   };
-  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots, ...markt.spots, ...hafen.spots }, hideouts: [...dorf.hideouts, ...(markt.hideouts || []), ...(hafen.hideouts || [])], dorf, huegel, markt, pier: hafen };
+  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots, ...markt.spots, ...hafen.spots }, hideouts: [...dorf.hideouts, ...(markt.hideouts || []), ...(hafen.hideouts || [])], dorf, huegel, markt, pier: hafen, sonne };
 }

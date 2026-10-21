@@ -7,9 +7,10 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { toonMesh, toon, deform, rng, BLACK } from './toon.js';
 import { limb, hut } from './props.js';
-import { sandal } from './figures.js';
+import { sandal, pose } from './figures.js';
+import { coconut } from './props.js';
+import { BUILDING_POS, buildingScale } from './logic.js';
 import { face, faceDecal } from './faces.js';
-import { buildingScale } from './logic.js';
 import { plate, chicken, herbPot } from './zone-dorf.js';
 import { AREA, HUETTE, BEETE, ZAUN, PROPS, HUEGEL_SPOTS, H, huegelHeight, onRamp, huegelColliders } from './zone-huegel-layout.js';
 
@@ -248,9 +249,16 @@ export function mentor() {
   return root;
 }
 
+// Mentor abends an der Bangi Bar: rechter Hocker der Bar (props.beachBar: Hocker bei (0.5, 1.9) lokal,
+// Sitzhöhe 0.75), Bar-Skala aus logic. Rückgabe { x, y, z, yaw } (Blick zum Tresen, -z).
+export function mentorBarSpot() {
+  const b = BUILDING_POS.bar, s = buildingScale('bar');
+  return { x: b.x + 0.5 * s, y: 0.75 * s, z: b.z + 1.9 * s, yaw: Math.PI };
+}
+
 /**
  * Baut den Hügel in `parent` und schiebt die Collider in `colliders`.
- * Rückgabe: { spots, update(t), height(x, z) } — update(t) animiert Mentor und Rauch (t in Sekunden),
+ * Rückgabe: { spots, update(t), height(x, z), mentor, mentorAnBar(an), mentorBarSpot } — update(t) animiert Mentor und Rauch (t in Sekunden),
  * height(x, z) ist die Bodenhöhe für Spieler/Kamera (0 außerhalb der Zone).
  */
 export function buildHuegel(parent, colliders) {
@@ -342,5 +350,27 @@ export function buildHuegel(parent, colliders) {
     }
   }
   update(0);
-  return { spots: HUEGEL_SPOTS, update, height: huegelHeight, mentor: mentorObj };
+  // Mentor zwischen Garten (tagsüber, mit Hacke/Gießkanne) und Bar-Hocker (abends, sitzend mit Kokosnuss) umsetzen
+  const garten = { x: mentorObj.position.x, y: mentorObj.position.y, z: mentorObj.position.z, yaw: mentorObj.rotation.y };
+  let nut = null;
+  function mentorAnBar(an) {
+    if (!P) return;
+    if (an) {
+      const b = mentorBarSpot();
+      const { offsetY } = pose(mentorObj, 'sitzen');
+      mentorObj.position.set(b.x, b.y + offsetY, b.z); mentorObj.rotation.y = b.yaw;
+      P.hoe.visible = false; P.can.visible = false;
+      if (!nut) { nut = coconut(true); nut.scale.setScalar(0.8); nut.position.set(0.3, -0.95, 0.25); P.arms[1].add(nut); }
+      nut.visible = true;
+      P.arms[1].rotation.x = -1.2; P.arms[1].rotation.z = -0.3; // hält die Nuss hoch
+    } else {
+      pose(mentorObj, 'stehen');
+      mentorObj.position.set(garten.x, garten.y, garten.z); mentorObj.rotation.y = garten.yaw;
+      P.hoe.visible = true; P.can.visible = true;
+      if (nut) nut.visible = false;
+    }
+    mentorObj.userData.anBar = !!an;
+  }
+  const baseUpdate = update;
+  return { spots: HUEGEL_SPOTS, update: (t) => { if (mentorObj?.userData.anBar) { for (const r of smoke) r.visible = false; return; } baseUpdate(t); }, height: huegelHeight, mentor: mentorObj, mentorAnBar, mentorBarSpot };
 }

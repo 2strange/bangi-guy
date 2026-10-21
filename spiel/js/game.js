@@ -119,10 +119,13 @@ export function decline(state, kunde, lineIdx = 0) {
 export const isArrested = (state) => state.heat >= MAX_HEAT || state.verhaftet;
 
 // Verhaftung mild: Tag verloren, Ware weg, Geld bleibt, alle Kunden wieder neutral
-export function newDay(state) {
+export const NACHT_ABKUEHLUNG = { bar: 2, haengematte: 1 };
+export function newDay(state, { nacht = 'bar' } = {}) {
   // Tafel „Tage ohne Vorfall“: zählt hoch, springt bei einer Verhaftung auf 0
   const tageOhneVorfall = isArrested(state) ? 0 : (state.tageOhneVorfall || 0) + 1;
-  return { ...state, geld: state.geld, ware: START_WARE, heat: 0, tag: state.tag + 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, tageOhneVorfall };
+  // Über Nacht kühlt der Heat: Bar −2, Hängematte −1; nach einer Verhaftung ist er ohnehin abgegolten (0)
+  const heat = isArrested(state) ? 0 : Math.max(0, state.heat - (NACHT_ABKUEHLUNG[nacht] ?? NACHT_ABKUEHLUNG.bar));
+  return { ...state, geld: state.geld, ware: START_WARE, heat, tag: state.tag + 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, tageOhneVorfall };
 }
 
 // Heat als Text/Icons für das HUD
@@ -585,30 +588,49 @@ export const nachtBeginnt = (prev, next) => phaseFor(prev) !== 'nacht' && phaseF
 export const barBeendetTag = (t01) => phaseFor(t01) === 'abend' || phaseFor(t01) === 'nacht';
 export const inBar = (pos, bar, r = 4) => Math.hypot(pos.x - bar.x, pos.z - bar.z) <= r;
 export const DEFAULT_ABEND = {
-  hinweis: ['Sonne geht unter. Ab in die Bangi Bar, Mann.'],
-  haengematte: ['Zu spät für die Bar. Die Hängematte hat dich.'],
-  mentor_abend: {
+  sonnenuntergang: ['Sonne geht unter. Ab in die Bangi Bar, Mann.'],
+  barkeeper: { name: 'Nong', gruss: ['Das Übliche?'], zwischenruf: ['Chef, runter vom Tresen.'], letzte_runde: ['Letzte Runde.'], gute_nacht: ['Gute Nacht. Die Möwe schließt ab.'] },
+  mentor: {
     gut: ['Guter Tag. Du hast gelesen, nicht geredet. So geht das.'],
     heat: ['Pong hat nach dir gefragt. Dreimal. Morgen gießt du erst mal.'],
     nichts: ['Nichts verkauft? Auch eine Art, nicht verhaftet zu werden.'],
     verhaftet: ['Erwischt. Die Sandalen-Regel, Mann. Die SANDALEN-Regel.'],
   },
-  abschied: ['Morgen früh auf der Kuppe. Die Beete warten nicht.'],
+  einschlafen: ['Zu spät für die Bar. Die Hängematte hat dich.'],
 };
 export function normalizeAbend(json) {
-  const t = json && typeof json === 'object' && json.abend && typeof json.abend === 'object' ? json.abend : {};
+  const t = json && typeof json === 'object' && json.abend_bar && typeof json.abend_bar === 'object' ? json.abend_bar : {};
   const D = DEFAULT_ABEND;
-  const m = t.mentor_abend && typeof t.mentor_abend === 'object' ? t.mentor_abend : {};
-  const mentor_abend = {};
-  for (const l of LAGEN) mentor_abend[l] = strList(m[l], D.mentor_abend[l]);
-  return { hinweis: strList(t.hinweis, D.hinweis), haengematte: strList(t.haengematte, D.haengematte), mentor_abend, abschied: strList(t.abschied, D.abschied) };
+  const bk = t.barkeeper && typeof t.barkeeper === 'object' ? t.barkeeper : {};
+  const m = t.mentor && typeof t.mentor === 'object' ? t.mentor : {};
+  const mentor = {};
+  for (const l of LAGEN) mentor[l] = strList(m[l], D.mentor[l]);
+  const ein = t.einschlafen && typeof t.einschlafen === 'object' ? t.einschlafen : {};
+  return {
+    sonnenuntergang: strList(t.sonnenuntergang, D.sonnenuntergang),
+    barkeeper: {
+      name: str(bk.name, D.barkeeper.name), gruss: strList(bk.gruss, D.barkeeper.gruss), zwischenruf: strList(bk.zwischenruf, D.barkeeper.zwischenruf),
+      letzte_runde: strList(bk.letzte_runde, D.barkeeper.letzte_runde), gute_nacht: strList(bk.gute_nacht, D.barkeeper.gute_nacht),
+    },
+    mentor,
+    einschlafen: strList(Array.isArray(ein) ? ein : ein.text, D.einschlafen),
+  };
 }
-// Abendgespräch an der Bar: Rückblick nach Lage + Abschied — ohne Nachschub (der bleibt morgens am Hügel)
-export function mentorAbend(state, abend, lineIdx = 0) {
+// Abend in der Bar: Barkeeper-Gruß → Mentor-Rückblick nach Lage → letzte Runde; danach die Bilanz-Karte (gute Nacht als Fußzeile).
+// Nach einer Verhaftung sitzt der Spieler abends trotzdem an der Bar (Pong bringt ihn vorbei) und der Mentor kommentiert.
+export function barAbend(state, abend, lineIdx = 0) {
   const A = abend || DEFAULT_ABEND;
-  const lage = lageFor(dayReport(state));
+  const rep = dayReport(state);
+  const lage = lageFor(rep);
   return [
-    { id: 'rueckblick', text: fillText(pickLine(A.mentor_abend[lage], lineIdx), dayReport(state)), bark: 'lektion', lage },
-    { id: 'abschied', text: pickLine(A.abschied, lineIdx), bark: 'abschied' },
+    { id: 'gruss', wer: 'barkeeper', text: pickLine(A.barkeeper.gruss, lineIdx), bark: 'gruss' },
+    { id: 'rueckblick', wer: 'mentor', text: fillText(pickLine(A.mentor[lage], lineIdx), rep), bark: 'abend', lage },
+    { id: 'letzte_runde', wer: 'barkeeper', text: pickLine(A.barkeeper.letzte_runde, lineIdx), bark: 'letzte_runde' },
+    // Nach dem Gespräch fragt Nong „Feierabend?“ — Ja = Bilanz, sonst zurück an den Strand. Nach einer Verhaftung gibt es keine Wahl.
+    ...(lage === 'verhaftet' ? [] : [{ id: 'feierabend', wer: 'barkeeper', text: FEIERABEND_FRAGE, frage: true, optionen: ['Feierabend', 'Noch nicht'] }]),
   ];
 }
+export const FEIERABEND_FRAGE = 'Feierabend?';
+export const guteNacht = (abend, lineIdx = 0) => pickLine((abend || DEFAULT_ABEND).barkeeper.gute_nacht, lineIdx);
+export const sonnenuntergangLine = (abend, lineIdx = 0) => pickLine((abend || DEFAULT_ABEND).sonnenuntergang, lineIdx);
+export const einschlafenLine = (abend, lineIdx = 0) => pickLine((abend || DEFAULT_ABEND).einschlafen, lineIdx);
