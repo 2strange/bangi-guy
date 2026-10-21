@@ -165,7 +165,7 @@
       "weg": ["Zu teuer, Mann. Ich frag den Typ am Pier.", "Für den Preis geh ich selbst auf den Hügel.", "Nee. Dann lieber Mangos."]
     },
     "start": { "titel": "Bangi Beach", "stand": "Spielstand: Tag {tag} · {geld} Münzen · {ware} Beutel", "weiter": "Weiter", "neu": "Neues Spiel" },
-    "finale": { "weiterspielen": "Weiterspielen", "neue_woche": "Neue Woche" },
+    "finale": { "titel": "Die Woche ist rum.", "kasse": "Kasse: {geld} Münzen · Ziel: {muenzen}", "weiterspielen": "Weiterspielen", "neue_woche": "Neue Woche" },
     "heat_label": { "0": "kalt", "1": "lauwarm", "2": "heiß", "3": "FAHNDUNG" },
     "menue": { "titel": "Optionen", "sprache": "Textsprache", "beschlagnahme": "Zivi nimmt die Ware ab", "musik": "Musik", "ton": "Ton", "an": "an", "aus": "aus", "schliessen": "Schließen", "hinweis": "Die Stimmen bleiben Englisch. Die Möwe auch." },
     "hud": { "tag": "Tag", "heat": "Heat", "ware": "Ware", "geld": "Kasse", "mangos": "Mangos", "ziel": "Ziel", "uhr": { "morgen": "Morgen", "mittag": "Mittag", "nachmittag": "Nachmittag", "abend": "Abend", "nacht": "Nacht" } }
@@ -189,11 +189,11 @@
   },
 
   "woche": {
-    "_ablauf": "Mehrtagesziel über 7 Tage. ziel.muenzen = Betrag bis Ende Tag 7 (Kasse, nicht Tagesgewinn). tage[] = ein Eintrag je Tag: titel, ziel (Text für die Anzeige), zielwert (prüfbar: verkauft = Beutel am Tag, oma = 1 Verkauf an oma_1, mango = Mangos gekauft, zivi_abgelehnt = erkannte Zivis, ohne_verhaftung = true, kasse = Kassenstand), modifikator (optional: heat_start, kunden_faktor, nur_sandalen), mentor = Satz vom Mentor morgens auf dem Hügel, geschafft/verfehlt = Satz abends an der Bar. finale{} nach Kasse am Ende von Tag 7: gut (>= ziel), mittel (>= mittel_ab), fail (darunter); text[] als Sequenz an der Bar. zwischenstand = Anzeige mit {rest} und {tage_rest}. Tagesziele sind Bonus-Struktur, kein Zwang: das Spiel läuft auch, wenn man sie verfehlt, nur das Finale zählt.",
+    "_ablauf": "Mehrtagesziel über 7 Tage. ziel.muenzen = Betrag bis Ende Tag 7 (Kasse, nicht Tagesgewinn); der Code kalibriert ihn aus den Kundenpreisen und überschreibt den Wert hier, deshalb steht der Betrag in allen Texten als Platzhalter {muenzen}. tage[] = ein Eintrag je Tag: titel, ziel (Text für die Anzeige), zielwert (prüfbar: verkauft = Beutel am Tag, oma = 1 Verkauf an oma_1, mango = Mangos gekauft, zivi_abgelehnt = erkannte Zivis, ohne_verhaftung = true, kasse = Kassenstand), modifikator (optional: heat_start, kunden_faktor, nur_sandalen), mentor = Satz vom Mentor morgens auf dem Hügel, geschafft/verfehlt = Satz abends an der Bar. finale{} nach Kasse am Ende von Tag 7: gut (>= ziel), mittel (>= mittel_ab), fail (darunter); text[] als Sequenz an der Bar. zwischenstand = Anzeige mit {rest} und {tage_rest}. Tagesziele sind Bonus-Struktur, kein Zwang: das Spiel läuft auch, wenn man sie verfehlt, nur das Finale zählt.",
     "titel": "Die Hütte am Verleih",
-    "ziel": { "text": "Bis Sonntag 1000 Münzen: dann gehört dir die Hütte neben dem Surfverleih. Eigene Hängematte, eigene Möwe.", "muenzen": 1000, "mittel_ab": 600 },
+    "ziel": { "text": "Bis Sonntag {muenzen} Münzen: dann gehört dir die Hütte neben dem Surfverleih. Eigene Hängematte, eigene Möwe.", "muenzen": 650, "mittel_ab": 400 },
     "intro": [
-      "Der Mentor zeigt mit dem Daumen über die Schulter. „Die Hütte da. Neben dem Verleih. Der Besitzer will weg, 1000 Münzen, bis Sonntag. Sonst kauft sie der Typ mit den Fragen.“",
+      "Der Mentor zeigt mit dem Daumen über die Schulter. „Die Hütte da. Neben dem Verleih. Der Besitzer will weg, {muenzen} Münzen, bis Sonntag. Sonst kauft sie der Typ mit den Fragen.“",
       "„Du hast eine Woche. Sieben Tage, sieben Regeln, ein Dach. Mehr Plan hatte ich auch nie.“"
     ],
     "zwischenstand": ["Noch {rest} Münzen bis zur Hütte. {tage_rest} Tage.", "Hütte: {rest} fehlen. Sonntag ist in {tage_rest} Tagen."],
@@ -210,8 +210,8 @@
         "mentor": "Pong hat Besuch von oben. Heute pfeift er öfter. Verkauf trotzdem, aber mit Augen im Nacken. Mango bereit?", "geschafft": "Razzia überstanden. Pong hat niemanden erwischt, die Mango war gut.", "verfehlt": "Freitag bei Pong. Der Kaffee war okay, sagst du. Ich hab's gehört." },
       { "tag": 6, "titel": "Samstag: Großer Markt", "ziel": "8 Beutel verkaufen", "zielwert": { "verkauft": 8 }, "modifikator": { "kunden_faktor": 2 },
         "mentor": "Samstag. Doppelt so viele Leute, doppelt so viele Schuhe. Ich hab doppelt geerntet. Mach was draus.", "geschafft": "Acht Beutel. Der Strand hat heute dich gelesen, nicht umgekehrt.", "verfehlt": "Unter acht. Der Strand war voll, deine Tasche nicht leer. Morgen ist Sonntag, Mann." },
-      { "tag": 7, "titel": "Sonntag: Abrechnung", "ziel": "Bis Sonnenuntergang 1000 Münzen in der Kasse", "zielwert": { "kasse": 1000 },
-        "mentor": "Letzter Tag. Verkauf, was geht, an wen es geht. Nein, nicht an wen es geht. An wen es GEHT.", "geschafft": "Tausend. Die Hütte ist deine. Geh zur Bar, Nong hat den Schlüssel. Nong hat alle Schlüssel.", "verfehlt": "Nicht ganz. Komm trotzdem zur Bar. Ende ist Ende, und Ende ist an der Bar." }
+      { "tag": 7, "titel": "Sonntag: Abrechnung", "ziel": "Bis Sonnenuntergang {muenzen} Münzen in der Kasse", "zielwert": { "kasse": 650 },
+        "mentor": "Letzter Tag. Verkauf, was geht, an wen es geht. Nein, nicht an wen es geht. An wen es GEHT.", "geschafft": "{muenzen}. Die Hütte ist deine. Geh zur Bar, Nong hat den Schlüssel. Nong hat alle Schlüssel.", "verfehlt": "Nicht ganz. Komm trotzdem zur Bar. Ende ist Ende, und Ende ist an der Bar." }
     ],
     "finale": {
       "gut": { "text": [

@@ -43,7 +43,7 @@
       "weg": ["Too pricey, man. I'll ask the guy at the pier.", "For that price I'll walk up the hill myself.", "Nah. Mangoes it is."]
     },
     "start": { "titel": "Bangi Beach", "stand": "Save: day {tag} · {geld} coins · {ware} bags", "weiter": "Continue", "neu": "New game" },
-    "finale": { "weiterspielen": "Keep playing", "neue_woche": "New week" },
+    "finale": { "titel": "The week is over.", "kasse": "Cash: {geld} coins · Goal: {muenzen}", "weiterspielen": "Keep playing", "neue_woche": "New week" },
     "heat_label": { "0": "cold", "1": "warm-ish", "2": "hot", "3": "MANHUNT" },
     "menue": { "titel": "Options", "sprache": "Text language", "beschlagnahme": "Undercover takes the goods", "musik": "Music", "ton": "Sound", "an": "on", "aus": "off", "schliessen": "Close", "hinweis": "Voices stay English. So does the seagull." },
     "hud": { "tag": "Day", "heat": "Heat", "ware": "Stash", "geld": "Cash", "mangos": "Mangoes", "ziel": "Goal", "uhr": { "morgen": "Morning", "mittag": "Noon", "nachmittag": "Afternoon", "abend": "Evening", "nacht": "Night" } }
@@ -67,9 +67,9 @@
 
   "woche": {
     "titel": "The Shack by the Rental",
-    "ziel": { "text": "1000 coins by Sunday: then the shack next to the surf rental is yours. Your own hammock, your own seagull." },
+    "ziel": { "text": "{muenzen} coins by Sunday: then the shack next to the surf rental is yours. Your own hammock, your own seagull." },
     "intro": [
-      "The mentor points a thumb over his shoulder. 'That shack. Next to the rental. Owner wants out, 1000 coins, by Sunday. Otherwise the guy with the questions buys it.'",
+      "The mentor points a thumb over his shoulder. 'That shack. Next to the rental. Owner wants out, {muenzen} coins, by Sunday. Otherwise the guy with the questions buys it.'",
       "'You've got a week. Seven days, seven rules, one roof. I never had more of a plan than that either.'"
     ],
     "zwischenstand": ["{rest} coins to go for the shack. {tage_rest} days.", "Shack: {rest} short. Sunday is in {tage_rest} days."],
@@ -86,8 +86,8 @@
         "mentor": "Pong's got visitors from upstairs. He whistles more today. Sell anyway, but with eyes in the back of your head. Mango ready?", "geschafft": "Raid survived. Pong caught nobody, the mango was good.", "verfehlt": "Friday at Pong's. The coffee was okay, you say. I heard." },
       { "tag": 6, "titel": "Saturday: Big Market", "ziel": "Sell 8 bags",
         "mentor": "Saturday. Twice the people, twice the shoes. I harvested double. Make something of it.", "geschafft": "Eight bags. Today the beach read you, not the other way round.", "verfehlt": "Under eight. The beach was full, your bag wasn't empty. Tomorrow is Sunday, man." },
-      { "tag": 7, "titel": "Sunday: Reckoning", "ziel": "1000 coins in the cash box by sunset",
-        "mentor": "Last day. Sell what you can, to whoever's there. No, not whoever's there. To whoever's RIGHT.", "geschafft": "A thousand. The shack is yours. Go to the bar, Nong has the key. Nong has all the keys.", "verfehlt": "Not quite. Come to the bar anyway. An ending is an ending, and endings happen at the bar." }
+      { "tag": 7, "titel": "Sunday: Reckoning", "ziel": "{muenzen} coins in the cash box by sunset",
+        "mentor": "Last day. Sell what you can, to whoever's there. No, not whoever's there. To whoever's RIGHT.", "geschafft": "{muenzen}. The shack is yours. Go to the bar, Nong has the key. Nong has all the keys.", "verfehlt": "Not quite. Come to the bar anyway. An ending is an ending, and endings happen at the bar." }
     ],
     "finale": {
       "gut": { "text": [
