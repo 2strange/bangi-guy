@@ -53,7 +53,7 @@ Dann `http://localhost:8000/` öffnen.
   Falten und Start-Stimmung gehen in die gemalten Gesichter (`face(kind, mood, opts)` aus `faces.js`). Tempo und
   Spawn-Code (K1–K6) sind im Katalog erhalten, die Plätze kommen aber aus `ANCHORS` in `js/logic.js`: jeder Kunde
   bekommt einen festen Ankerplatz (Liege, Bar-Hocker, Steg, Palme, Dorfecke …) mit Tätigkeit (sitzt, telefoniert,
-  fotografiert, schaut aufs Meer, steht); `assignAnchors()` hält Zivis ≥ 8 Einheiten von allen anderen Kunden fern
+  fotografiert, schaut aufs Meer, steht — Posen aus `pose()` in `js/figures.js`, auf Liegen wird gelegen); `assignAnchors()` hält Zivis ≥ 8 Einheiten von allen anderen Kunden fern
   (getestet), damit Verkaufen vor dem Zivi nicht der Normalfall ist. Kein Kreisen mehr. Noch nicht dargestellt: Rollator, Pulsuhr, Notizblock,
   „nass“, „schwitzt“, die Mimik-Beschreibungen und Tells (nur Text). Sie schauen dem Spieler nach, wenn er nah ist.
 - **Ansprechen (E):** Sprechblase im Comic-Look über dem Kopf: Gruß → Wahl **Verkaufen / Lieber nicht** → Ergebnis.
@@ -70,6 +70,11 @@ Dann `http://localhost:8000/` öffnen.
 - **Outfits ohne Doppel:** Pro Tag bekommt jeder Kunde eine Hemd-Variante (Hawaii: Muster blumen/streifen/punkte/
   palmen × 6 Farben als Canvas; andere Hemden: 6 Farben), gleiche Hemd-Typen am selben Tag nie dieselbe Variante
   (`assignOutfits`, getestet). Orange bleibt dem Spieler.
+- **Mentor-Szene:** Auf der Kuppe (Heckenlücke bei x −54…−46, dann die Serpentine hoch) steht der Mentor im
+  Garten. E = zuhören: Ankunft → Lektion des Tages aus `texte.json → mentor[]` (drei Blasen: Einleitung, Regel,
+  Pointe; ab Tag 4 „ausgelernt“) → Nachschub (Ware wird auf 5 aufgefüllt) → Abschied (Heat −1). Einmal pro Tag;
+  nochmal: „schon geholt“, mit voller Tasche: „voll“. Logik rein in `js/game.js` (`mentorSzene`, `finishMentor`,
+  getestet), Texte aus `mentor_szene{}`. `?snap=1&scene=mentor` zeigt die Regel-Blase.
 - **Reveal-Gags:** `data/texte.json → reveal_gags[]` (id, wann = kauf | ablehnung | immer, mood, extra, dauer_s) werden
   von `js/gags.js` gespielt: nach Verkauf bzw. Ablehnung der passende Gag des Kunden (hält den Endzustand, bis man
   weitergeht), „immer“-Gags alle 6–10 s als Idle-Tick, wenn der Spieler in der Nähe ist — der Hinweis zum
@@ -97,6 +102,8 @@ Standbild (für die PNGs in `shots/`).
   Anlauf/Bremsen, Kollision (Kreise + Rechtecke, Rausdrücken in zwei Durchgängen), Uferlinie als Funktion,
   Welt-Grenzen, Folge-Kamera, Watschel-Pose, NPC-Kopfdrehung, Klick-Ziel.
 - `test/logic.test.js` – Tests dazu (`npm test` bzw. `node --test "test/**/*.test.js"`), kein Browser nötig.
+- `js/zone-huegel.js` + `js/zone-huegel-layout.js` – Zone „Kiffer-Kuppe“: Heightfield mit Serpentine, Mentor-Hütte,
+  Garten, Mentor (eingehängt aus `world.js` mit `buildHuegel()`; `height(x, z)` hebt Spieler und Kamera).
 - `js/zone-dorf.js` + `js/zone-dorf-layout.js` – Zone „Krummgassen“ nördlich der Hecke (eigenes Modul, wird aus
   `world.js` mit `buildDorf()` eingehängt; liefert Startpunkte, Bettlaken-Verstecke und die Rand-Collider).
 - `js/world.js` – die Zone: Sand, Sichelbucht (Wasser, nasser Sand, Schaum), Gras und Hügel im Norden, Promenade

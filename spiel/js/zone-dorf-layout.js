@@ -178,10 +178,9 @@ export function reachableWaypoints(start, lanes = LANES, eps = 0.6) {
   return [...seen].map((i) => nodes[i]);
 }
 
-// Hügel-Höhe der Nachbarzone (Spiegel der beiden Kulissen-Hügel aus world.js: Kugeln, skaliert, Mitte y = -2).
-// Dient nur der Prüfung, dass kein Haus im Hang steht; ändern sich die Hügel dort, hier nachziehen.
+// Höhe des Kokoshain-Hügels im Osten (Spiegel der Kulissen-Kugel aus world.js, skaliert, Mitte y = -2).
+// Dient nur der Prüfung, dass kein Haus im Hang steht; der Mentor-Hügel im Westen kommt aus zone-huegel-layout.
 const HILLS = [
-  { x: -45, z: -52, rx: 44, ry: 14, rz: 30 },
   { x: 60, z: -48, rx: 26.4, ry: 7, rz: 21 },
 ];
 export function hillHeight(x, z) {

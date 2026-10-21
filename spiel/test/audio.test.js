@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import {
   syllables, babblePlan, normalizeStimme, normalizeStimmen, STIL, DEFAULT_STIMME, slugFor, pickBark, bark,
   musicPattern, PROGRESSION, BARS, STEPS_PER_BAR, BPM, stepSeconds, nextGullDelay, rng, hashStr, midiToFreq, SFX_NAMES,
-  babble, sfx, setMuted, isMuted, ambience, music, stimmeFor, setStimmen,
+  babble, sfx, setMuted, isMuted, ambience, music, stimmeFor, setStimmen, normalizePan,
 } from '../js/audio.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -143,4 +143,12 @@ test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Daue
   const d = babble('zivi_polo', 'Nice shoes. Where did you get them?');
   assert.ok(d > 1 && d < 5, `Dauer ${d}`);
   assert.equal(babble({ tonhoehe: 1 }, ''), 0);
+  // Pan-Option: rückwärtskompatibel (ohne, leer, ungültig) und geclampt
+  assert.equal(babble('zivi_polo', 'Nice shoes.', { pan: -0.7 }), d0('Nice shoes.'));
+  assert.equal(babble('zivi_polo', 'Nice shoes.', {}), d0('Nice shoes.'));
+  assert.equal(babble('zivi_polo', 'Nice shoes.', null), d0('Nice shoes.'));
+  assert.ok(bark('zivi_1', 'gruss', { pan: 1 }).dauer > 0);
+  assert.equal(normalizePan(undefined), 0); assert.equal(normalizePan('x'), 0); assert.equal(normalizePan(NaN), 0);
+  assert.equal(normalizePan(-3), -1); assert.equal(normalizePan(2), 1); assert.equal(normalizePan(0.25), 0.25); assert.equal(normalizePan('-0.5'), -0.5);
 });
+const d0 = (t) => babble('zivi_polo', t);

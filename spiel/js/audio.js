@@ -9,8 +9,8 @@
 //   ambience.start() / .stop()      Brandung + Möwe
 //   music.start() / .stop() / .setVolume(0..1) / .setEnabled(bool)   Strand-Loop, ~75 BPM
 //   loadStimmen() → stimmeFor(id)   Stimmprofile + Barks aus data/stimmen.json
-//   babble(stimmeOderId, text) → Dauer in Sekunden; stopBabble()
-//   bark(id, situation) → { text, dauer } | null   zufälliger englischer Bark aus stimmen.json, gebrabbelt
+//   babble(stimmeOderId, text, { pan }) → Dauer in Sekunden; stopBabble()
+//   bark(id, situation, { pan }) → { text, dauer } | null   zufälliger englischer Bark aus stimmen.json, gebrabbelt
 //   setVoiceMode('babble' | 'tts') / getVoiceMode()   Gebrabbel (Standard) oder Browser-Sprachausgabe (Englisch)
 
 // ---------- Lautstärken (zentral) ----------
@@ -616,13 +616,15 @@ export const barkSituations = (id) => Object.keys(stimmen.barks[slugFor(stimmen,
  * brabbelt ihn. Gibt { text, dauer } zurück oder null, wenn es für die Situation keinen Bark gibt.
  * Situationen Kunden: gruss | kauf | ablehnung | zivi_verdaechtig; Mentor: gruss | lektion | nachschub | abschied.
  */
-export function bark(id, situation) {
+export function bark(id, situation, opts = {}) {
   const slug = slugFor(stimmen, id);
   const text = pickBark(stimmen, slug, situation, lastBark[slug]);
   if (!text) return null;
   lastBark[slug] = text;
-  return { text, dauer: babble(slug, text) };
+  return { text, dauer: babble(slug, text, opts) };
 }
+/** Pan-Option -1 (links) .. 1 (rechts) → geclampt, ungültig/fehlend → 0 (Mitte) */
+export const normalizePan = (p) => clamp(Number(p) || 0, -1, 1);
 
 let speaking = null; // { gain, nodes, until }
 export function stopBabble() {
@@ -642,10 +644,12 @@ export function setVoiceMode(mode) {
 export const getVoiceMode = () => voiceMode;
 export const ttsAvailable = () => typeof speechSynthesis !== 'undefined' && typeof SpeechSynthesisUtterance !== 'undefined';
 
-function playPlan(plan) {
+function playPlan(plan, panPos = 0) {
   const st = STIL[plan.stimme.stil];
   const t0 = now() + 0.02;
-  const g = ctx.createGain(); g.gain.value = plan.stimme.laut; g.connect(bus.voice);
+  const g = ctx.createGain(); g.gain.value = plan.stimme.laut;
+  // Position links/rechts (nur wenn gewünscht; Mitte spart den Panner)
+  if (panPos) { const p = pan(panPos); g.connect(p); p.connect(bus.voice); } else g.connect(bus.voice);
   const nodes = [];
   // leichter Hall-Ersatz: nichts; Stimmen bleiben trocken, damit sie über der Ambience sitzen
   for (const n of plan.notes) {
@@ -683,13 +687,14 @@ function speakTts(stimme, text) {
 /**
  * Lässt eine Figur „reden“. stimme = Profil-Objekt oder id aus stimmen.json. Gibt die Dauer in Sekunden zurück
  * (auch ohne laufendes Audio, damit Aufrufer Timing planen können). Ein neuer Aufruf unterbricht den vorigen.
+ * opts.pan: -1 (links) .. 1 (rechts), Standard Mitte; bei Browser-Sprachausgabe ohne Wirkung.
  */
-export function babble(stimme, text) {
+export function babble(stimme, text, opts = {}) {
   const profil = typeof stimme === 'string' ? stimmeFor(stimme) : normalizeStimme(stimme);
   const plan = babblePlan(profil, text);
   stopBabble();
   if (voiceMode === 'tts' && ttsAvailable()) return speakTts(profil, text);
   if (!ready() || !plan.notes.length) return plan.duration;
-  playPlan(plan);
+  playPlan(plan, normalizePan(opts && opts.pan));
   return plan.duration;
 }

@@ -77,6 +77,7 @@
       <label>tonhoehe <input id="p" type="range" min="0.5" max="2" step="0.05" value="1"></label>
       <label>tempo <input id="t" type="range" min="0.6" max="1.6" step="0.05" value="1"></label>
       <label>stil <select id="stil"></select></label>
+      <label>pan <input id="pan" type="range" min="-1" max="1" step="0.1" value="0"></label>
       <button id="sayfree">💬 Mit diesen Reglern</button>
     </div>
   </div>
@@ -118,17 +119,18 @@
   $('mode').value = A.getVoiceMode();
   $('mode').onchange = (e) => { A.setVoiceMode(e.target.value); $('mode').value = A.getVoiceMode(); };
   const show = (d, text) => { $('dur').textContent = `Dauer ≈ ${d.toFixed(2)} s` + (text ? ` · „${text}“` : ''); };
-  $('say').onclick = () => show(A.babble(sel.value, $('text').value));
+  const panOpt = () => ({ pan: +$('pan').value });
+  $('say').onclick = () => show(A.babble(sel.value, $('text').value, panOpt()));
   const renderBarks = () => {
     $('barks').innerHTML = '';
     for (const sit of A.barkSituations(sel.value)) {
       const b = document.createElement('button'); b.textContent = sit;
-      b.onclick = () => { const r = A.bark(sel.value, sit); if (r) show(r.dauer, r.text); };
+      b.onclick = () => { const r = A.bark(sel.value, sit, panOpt()); if (r) show(r.dauer, r.text); };
       $('barks').appendChild(b);
     }
   };
   sel.onchange = renderBarks; renderBarks();
-  $('sayfree').onclick = () => show(A.babble({ tonhoehe: +$('p').value, tempo: +$('t').value, stil: $('stil').value }, $('text').value));
+  $('sayfree').onclick = () => show(A.babble({ tonhoehe: +$('p').value, tempo: +$('t').value, stil: $('stil').value }, $('text').value, panOpt()));
   $('hush').onclick = () => A.stopBabble();
 </script>
 </body>

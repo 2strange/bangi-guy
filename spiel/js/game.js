@@ -382,3 +382,89 @@ export function pickBark(list, prev = -1, seed = 0) {
   if (idx === prev) idx = (idx + 1) % list.length;
   return { text: list[idx], idx };
 }
+
+// ---------- Mentor-Szene (data/texte.json → mentor_szene + mentor[]): einmal pro Tag auf der Kuppe ----------
+export const DEFAULT_MENTOR_SZENE = {
+  ankunft: ['Setz dich. Nein, nicht auf die Beete.'],
+  schritte: [
+    { id: 'ankunft', wer: 'mentor', text: '@ankunft', weiter: 'lektion' },
+    { id: 'lektion', wer: 'mentor', quelle: 'mentor[tag]', blasen: ['einleitung', 'regel', 'pointe'], weiter: 'nachschub' },
+    { id: 'nachschub', wer: 'mentor', text: ['Hier. Frisch aus dem Garten.'], aktion: 'ware_auffuellen', menge: START_WARE, weiter: 'abschied' },
+    { id: 'abschied', wer: 'mentor', text: ['Geh verkaufen, Mann.'], aktion: 'heat_minus', wert: 1, weiter: null },
+  ],
+  schon_geholt: ['Den Beutel für heute hast du schon, Mann.'],
+  voll: ['Deine Taschen sind voll. Geh runter und leer sie.'],
+  ausgelernt: ['Heute keine Weisheit. Nur Gras und Schweigen.'],
+  giessen: ['Gieß ordentlich.'],
+};
+export const MENTOR_AKTIONEN = ['ware_auffuellen', 'heat_minus'];
+export function normalizeMentorSzene(json) {
+  const t = json && typeof json === 'object' ? json : {};
+  const m = t.mentor_szene && typeof t.mentor_szene === 'object' ? t.mentor_szene : {};
+  const D = DEFAULT_MENTOR_SZENE;
+  const schritte = Array.isArray(m.schritte) && m.schritte.length ? m.schritte : D.schritte;
+  const out = {
+    ankunft: strList(m.ankunft, D.ankunft),
+    schon_geholt: strList(m.schon_geholt, D.schon_geholt),
+    voll: strList(m.voll, D.voll),
+    ausgelernt: strList(m.ausgelernt, D.ausgelernt),
+    giessen: strList(m.giessen, D.giessen),
+    schritte: schritte.filter((st) => st && typeof st === 'object' && typeof st.id === 'string').map((st) => ({
+      id: st.id,
+      text: typeof st.text === 'string' ? st.text : strList(st.text, []),
+      quelle: typeof st.quelle === 'string' ? st.quelle : null,
+      blasen: strList(st.blasen, []),
+      aktion: MENTOR_AKTIONEN.includes(st.aktion) ? st.aktion : null,
+      menge: Number.isFinite(st.menge) ? st.menge : START_WARE,
+      wert: Number.isFinite(st.wert) ? st.wert : 1,
+      weiter: typeof st.weiter === 'string' ? st.weiter : null,
+    })),
+    // Weisheiten des Tages (mentor[]): Tag 1 → erste, …; danach ausgelernt
+    weisheiten: (Array.isArray(t.mentor) ? t.mentor : []).filter((w) => w && typeof w === 'object').map((w) => ({
+      id: str(w.id, ''), titel: str(w.titel, ''), einleitung: str(w.einleitung, ''), regel: str(w.regel, ''), pointe: str(w.pointe, ''),
+    })),
+  };
+  return out;
+}
+// Aktion anwenden: ware_auffuellen = auf `menge` auffüllen (nicht darüber), heat_minus = Heat um `wert` kühlen
+export function applyMentorAktion(state, aktion, value) {
+  if (aktion === 'ware_auffuellen') return { ...state, ware: Math.max(state.ware, value) };
+  if (aktion === 'heat_minus') return { ...state, heat: Math.max(0, state.heat - value), verhaftet: false };
+  return state;
+}
+export const mentorBesucht = (state) => state.mentorTag === state.tag;
+/**
+ * Blasenfolge für den Besuch beim Mentor: [{ id, text, aktion?, value?, bark }]. Einmal pro Tag die volle Szene
+ * (Ankunft → Lektion → Nachschub → Abschied); nochmal am selben Tag: schon_geholt; mit voller Tasche: voll.
+ */
+export function mentorSzene(state, sz, lineIdx = 0) {
+  const S = sz || normalizeMentorSzene(null);
+  if (mentorBesucht(state)) return [{ id: 'schon_geholt', text: pickLine(S.schon_geholt, lineIdx), bark: 'gruss' }];
+  const menge = S.schritte.find((st) => st.aktion === 'ware_auffuellen')?.menge ?? START_WARE;
+  if (state.ware >= menge) return [{ id: 'voll', text: pickLine(S.voll, lineIdx), bark: 'gruss' }];
+  const out = [];
+  let step = S.schritte[0];
+  const byId = Object.fromEntries(S.schritte.map((st) => [st.id, st]));
+  let guard = 0;
+  while (step && guard++ < 20) {
+    const bark = { ankunft: 'gruss', lektion: 'lektion', nachschub: 'nachschub', abschied: 'abschied' }[step.id] || 'gruss';
+    if (step.quelle === 'mentor[tag]') {
+      const w = S.weisheiten[state.tag - 1];
+      if (w) for (const key of step.blasen) { if (w[key]) out.push({ id: `${step.id}:${key}`, text: w[key], titel: w.titel, bark }); }
+      else out.push({ id: 'ausgelernt', text: pickLine(S.ausgelernt, lineIdx), bark });
+    } else {
+      const list = step.text === '@ankunft' ? S.ankunft : Array.isArray(step.text) ? step.text : [step.text];
+      const entry = { id: step.id, text: pickLine(list, lineIdx), bark };
+      if (step.aktion) { entry.aktion = step.aktion; entry.value = step.aktion === 'ware_auffuellen' ? step.menge : step.wert; }
+      out.push(entry);
+    }
+    step = step.weiter ? byId[step.weiter] : null;
+  }
+  return out;
+}
+// Besuch abschließen: Aktionen der Folge anwenden und den Tag als besucht markieren
+export function finishMentor(state, folge) {
+  let next = state;
+  for (const e of folge) if (e.aktion) next = applyMentorAktion(next, e.aktion, e.value);
+  return { ...next, mentorTag: state.tag };
+}

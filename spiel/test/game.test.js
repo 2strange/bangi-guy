@@ -7,6 +7,7 @@ import {
   START_WARE, MAX_HEAT, pickKunden, idSeed,
   DEFAULT_TEXTE, normalizeTexte, fillText, dayReport, soldOutDialog, isSoldOut, assignOutfits, outfitKey, variantCount, lageFor, dayEndCard, normalizeGags, gagFor, nextIdleGagDelay, ZIVI_BESCHLAGNAHMT,
   normalizeStimmen, stimmeSlug, barksFor, pickBark,
+  normalizeMentorSzene, mentorSzene, finishMentor, applyMentorAktion, mentorBesucht,
 } from '../js/game.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -415,4 +416,55 @@ test('pickBark: nie zweimal hintereinander dieselbe Zeile, eine Zeile darf wiede
   assert.deepEqual(pickBark(['solo'], 0, 5), { text: 'solo', idx: 0 });
   assert.equal(pickBark([], 0), null);
   assert.equal(pickBark(undefined, 0), null);
+});
+
+// ---------- Mentor ----------
+const SZ = normalizeMentorSzene({
+  mentor_szene: {
+    ankunft: ['Setz dich.'],
+    schritte: [
+      { id: 'ankunft', wer: 'mentor', text: '@ankunft', weiter: 'lektion' },
+      { id: 'lektion', wer: 'mentor', quelle: 'mentor[tag]', blasen: ['einleitung', 'regel', 'pointe'], weiter: 'nachschub' },
+      { id: 'nachschub', wer: 'mentor', text: ['Hier.'], aktion: 'ware_auffuellen', menge: 5, weiter: 'abschied' },
+      { id: 'abschied', wer: 'mentor', text: ['Geh.'], aktion: 'heat_minus', wert: 1, weiter: null },
+    ],
+    schon_geholt: ['Schon geholt.'], voll: ['Voll.'], ausgelernt: ['Ausgelernt.'],
+  },
+  mentor: [{ id: 'w1', titel: 'Sandalen', einleitung: 'E1', regel: 'R1', pointe: 'P1' }, { id: 'w2', titel: 'Hund', einleitung: 'E2', regel: 'R2', pointe: 'P2' }],
+});
+
+test('mentorSzene: volle Folge am ersten Besuch — Ankunft, drei Lektionsblasen, Nachschub (+Ware), Abschied (−Heat)', () => {
+  const s = { ...initialState(), ware: 1, heat: 2 };
+  const f = mentorSzene(s, SZ);
+  assert.deepEqual(f.map((e) => e.id), ['ankunft', 'lektion:einleitung', 'lektion:regel', 'lektion:pointe', 'nachschub', 'abschied']);
+  assert.equal(f[0].text, 'Setz dich.'); assert.equal(f[2].text, 'R1'); assert.equal(f[2].titel, 'Sandalen');
+  assert.deepEqual(f.map((e) => e.bark), ['gruss', 'lektion', 'lektion', 'lektion', 'nachschub', 'abschied']);
+  const n = finishMentor(s, f);
+  assert.equal(n.ware, 5, 'auf 5 aufgefüllt'); assert.equal(n.heat, 1, 'Heat −1'); assert.equal(n.mentorTag, 1);
+  assert.ok(mentorBesucht(n));
+  // zweiter Besuch am selben Tag: nur schon_geholt, keine Aktion
+  const f2 = mentorSzene(n, SZ);
+  assert.deepEqual(f2.map((e) => e.id), ['schon_geholt']);
+  assert.equal(finishMentor(n, f2).ware, 5);
+  // neuer Tag: wieder besuchbar, Lektion 2; Tag 3 ohne Weisheit → ausgelernt
+  const d2 = { ...newDay(n), ware: 0 };
+  assert.equal(mentorBesucht(d2), false);
+  assert.equal(mentorSzene(d2, SZ)[2].text, 'R2');
+  const d3 = { ...newDay(d2), ware: 0 };
+  assert.deepEqual(mentorSzene(d3, SZ).map((e) => e.id), ['ankunft', 'ausgelernt', 'nachschub', 'abschied']);
+});
+
+test('mentorSzene: volle Tasche → nur „voll“; Aktionen füllen nur auf, Heat nicht unter 0; Defaults bei fehlender Datei', () => {
+  const s = { ...initialState(), ware: START_WARE };
+  assert.deepEqual(mentorSzene(s, SZ).map((e) => e.id), ['voll']);
+  assert.equal(applyMentorAktion({ ...s, ware: 3 }, 'ware_auffuellen', 5).ware, 5);
+  assert.equal(applyMentorAktion({ ...s, ware: 7 }, 'ware_auffuellen', 5).ware, 7, 'nicht kürzen');
+  assert.equal(applyMentorAktion({ ...s, heat: 0 }, 'heat_minus', 1).heat, 0);
+  assert.equal(applyMentorAktion(s, 'quatsch', 9), s);
+  const D = normalizeMentorSzene(undefined);
+  assert.equal(D.schritte.length, 4); assert.deepEqual(D.weisheiten, []);
+  assert.deepEqual(mentorSzene({ ...initialState(), ware: 0 }, D).map((e) => e.id), ['ankunft', 'ausgelernt', 'nachschub', 'abschied']);
+  // Content-Datei: Zahlen als Strings oder fehlend → Defaults
+  const X = normalizeMentorSzene({ mentor_szene: { schritte: [{ id: 'nachschub', text: ['x'], aktion: 'ware_auffuellen', menge: '5', weiter: null }] } });
+  assert.equal(X.schritte[0].menge, START_WARE);
 });

@@ -7,6 +7,7 @@ import {
   dorfColliders, laneClearance, laneLength, reachableWaypoints, hillHeight,
 } from '../js/zone-dorf-layout.js';
 import { resolveCollisions, PLAYER_RADIUS } from '../js/logic.js';
+import { huegelHeight } from '../js/zone-huegel-layout.js';
 
 test('footprintAABB: ungedreht = Grundriss + Rand, um 90° gedreht tauschen Breite und Tiefe', () => {
   const a = footprintAABB({ x: 0, z: 0, rot: 0 }, { w: 6, d: 4, margin: 0 });
@@ -41,9 +42,10 @@ test('Häuser und Kleinkram liegen im Dorf-Rechteck und nicht im Hügel', () => 
     for (const [x, z] of footprintCorners(h)) {
       assert.ok(x >= DORF.minX - 0.6 && x <= DORF.maxX && z >= DORF.minZ && z <= DORF.maxZ, `${h.id} ragt aus dem Dorf (${x}, ${z})`);
       assert.ok(hillHeight(x, z) < 1.2, `${h.id} steht im Hang bei (${x.toFixed(1)}, ${z.toFixed(1)}): ${hillHeight(x, z).toFixed(2)}`);
+      assert.ok(huegelHeight(x, z) < 0.3, `${h.id} steht am Mentor-Hügel bei (${x.toFixed(1)}, ${z.toFixed(1)}): ${huegelHeight(x, z).toFixed(2)}`);
     }
   }
-  for (const p of PROPS) assert.ok(hillHeight(p.x, p.z) < 0.6, `${p.kind} bei (${p.x}, ${p.z}) steht im Hang`);
+  for (const p of PROPS) assert.ok(hillHeight(p.x, p.z) < 0.6 && huegelHeight(p.x, p.z) < 0.3, `${p.kind} bei (${p.x}, ${p.z}) steht im Hang`);
   for (const e of Object.values(EXITS)) assert.ok(hillHeight(e.x, e.z) < 0.6, `Absperrung ${e.text} steht im Hang`);
 });
 

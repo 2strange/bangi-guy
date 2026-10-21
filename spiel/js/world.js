@@ -5,6 +5,7 @@ import { toonMesh, toon, basicMat, deform, rng } from './toon.js';
 import { palm, beachBar, pier, boat, signpost, hammock, parasol, beachBall, coconut, crab, cloud, sun, footprints, limb, hut, mailbox, hotel, lounger, rental, sleepingSurfer, barrier, lamp, hedge, shell, starfish, sandcastle, driftwood } from './props.js';
 import { shoreZ, WORLD, buildingScale, scaledRect, scaledCircle, BUILDING_POS, buildingFootprints, poolLadderCollider } from './logic.js';
 import { buildDorf } from './zone-dorf.js';
+import { buildHuegel } from './zone-huegel.js';
 
 export const WATER_Y = 0.06;
 
@@ -54,12 +55,9 @@ export function buildWorld() {
   }
 
   // Hügel im Nordwesten (Kiffer-Kuppe, nur Kulisse) + Kokoshain-Hügel im Nordosten
+  // Hügel im Nordwesten = Mentor-Hügel (eigenes Modul, siehe unten); Kokoshain-Hügel im Nordosten bleibt Kulisse
   const hillGeo = new THREE.SphereGeometry(1, 28, 16);
   hillGeo.scale(44, 14, 30);
-  const hill = toonMesh(hillGeo, 0x3f9d37, { outline: 0.12 });
-  hill.position.set(-45, -2, -52);
-  hill.userData.noFade = true;
-  g.add(hill);
   const hill2Geo = hillGeo.clone();
   hill2Geo.scale(0.6, 0.5, 0.7); // vor toonMesh skalieren, sonst passt die Kontur-Hülle nicht
   const hill2 = toonMesh(hill2Geo, 0x4cae3c, { outline: 0.12 });
@@ -67,14 +65,11 @@ export function buildWorld() {
   hill2.userData.noFade = true;
   g.add(hill2);
   // Mentor-Hütte oben auf dem Hügel
-  const mentor = hut({ w: 3, h: 2.4, d: 2.6, lean: 0.35, wall: 0x8b5a2b, straw: true, seed: 8 });
-  mentor.position.set(-45, 11.5, -52);
-  mentor.rotation.y = 0.4;
-  mentor.scale.setScalar(buildingScale('mentor'));
-  g.add(mentor);
 
   // Dorf „Krummgassen“ nördlich der Hecke (eigenes Modul): Häuser, Gassen, Wäscheleinen, Collider inkl. Heckenrand
   const dorf = buildDorf(g, colliders);
+  // Mentor-Hügel „Kiffer-Kuppe“ (eigenes Modul): Heightfield, Serpentine, Hütte, Garten, Mentor; liefert height(x, z)
+  const huegel = buildHuegel(g, colliders);
 
   // Promenade: gepflasterter Weg am Nordrand des Strands, mit Laternen
   g.add(stripMesh((x) => -12.2 + 0.4 * Math.sin(x / 5), (x) => -9.4 + 0.4 * Math.sin(x / 5 + 1), 0xd9c4a3, 0.03, { x0: -64, x1: 66, step: 2 }));
@@ -82,7 +77,9 @@ export function buildWorld() {
     const l = lamp(); l.position.set(x, 0, -12.6); l.rotation.y = rand() * 0.4; l.scale.setScalar(1.4); g.add(l); circle(x, -12.6, 0.28);
   }
   // Hecke als Nordrand (mit Lücke für die Wäschegasse)
-  g.add(hedge(-66, 66, -25.5, { gapFrom: -4, gapTo: 4, seed: 3 }));
+  // Hecke in zwei Teilen: Lücke zur Serpentine (x −54…−46) und zur Wäschegasse (x −4…4)
+  g.add(hedge(-66, -8, -25.5, { gapFrom: -54, gapTo: -46, seed: 3 }));
+  g.add(hedge(-6, 66, -25.5, { gapFrom: -4, gapTo: 4, seed: 4 }));
   // Absperrungen an den drei Ausgängen (Wege enden hier erstmal)
   const bW = barrier('SURFER-BUCHT – bald'); bW.position.set(-64.5, 0, -2); bW.rotation.y = Math.PI / 2; bW.scale.setScalar(1.3); g.add(bW); rect(-64.5, -2, 1.5, 6.5);
   const bE = barrier('PROMENADE – im Bau'); bE.position.set(64.5, 0, -10.8); bE.rotation.y = -Math.PI / 2; bE.scale.setScalar(1.3); g.add(bE); rect(64.5, -10.8, 1.5, 6.5);
@@ -251,5 +248,5 @@ export function buildWorld() {
     ost: { x: 58, z: -2, yaw: Math.PI / 2 },
     hecke: { x: 8, z: -17, yaw: 0.3 }, // Strandseite vor der Heckenlücke („nord“ gehört dem Dorf)
   };
-  return { group: g, colliders, spots: { ...spots, ...dorf.spots }, hideouts: dorf.hideouts, dorf };
+  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots }, hideouts: dorf.hideouts, dorf, huegel };
 }

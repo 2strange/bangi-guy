@@ -24,11 +24,10 @@ function terrain() {
   const pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3);
   const green = new THREE.Color(0x5fc74a), dark = new THREE.Color(0x4cae3c), sand = new THREE.Color(0xd6bd92);
-  const rand = rng(41);
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), z = pos.getZ(i);
     const h = huegelHeight(x, z);
-    pos.setY(i, h + 0.03 + (h > 0.05 ? (rand() - 0.5) * 0.08 : 0));
+    pos.setY(i, h + 0.03); // kein Rauschen: Mini-Facetten am Hang fangen sonst Schatten-Acne
     const c = onRamp(x, z) ? sand : (h > H - 0.2 ? green : dark.clone().lerp(green, h / H));
     colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
   }
