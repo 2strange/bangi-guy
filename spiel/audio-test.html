@@ -44,8 +44,15 @@
   <div class="box">
     <h2>Ambience</h2>
     <div class="row">
-      <button id="amb">🌊 Brandung + Möwe</button>
-      <span class="small">Möwe kommt alle 8–22 s von selbst.</span>
+      <button id="amb">🌊 Ambience an/aus</button>
+      <span class="small">Möwe alle 8–22 s, Händlerruf 6–15 s, Funkspruch 10–25 s, je nach Zonengewicht.</span>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <label>strand <input class="zone" data-z="strand" type="range" min="0" max="1" step="0.05" value="1"></label>
+      <label>markt <input class="zone" data-z="markt" type="range" min="0" max="1" step="0.05" value="0"></label>
+      <label>posten <input class="zone" data-z="posten" type="range" min="0" max="1" step="0.05" value="0"></label>
+      <button id="ruf">📣 Händlerruf jetzt</button>
+      <button id="funk">📻 Funkspruch jetzt</button>
     </div>
   </div>
 
@@ -103,6 +110,10 @@
   }
   $('mute').onclick = () => A.setMuted(!A.isMuted());
   $('amb').onclick = () => (A.ambience.isPlaying() ? A.ambience.stop() : A.ambience.start());
+  const zones = () => { const g = {}; for (const el of document.querySelectorAll('.zone')) g[el.dataset.z] = +el.value; return g; };
+  for (const el of document.querySelectorAll('.zone')) el.oninput = () => A.ambience.setZone(zones());
+  $('ruf').onclick = () => A.ambience.ruf();
+  $('funk').onclick = () => A.ambience.funk();
   $('mus').onclick = () => (A.music.isPlaying() ? A.music.stop() : A.music.start());
   $('musvol').value = A.music.getVolume();
   $('musvol').oninput = (e) => A.music.setVolume(e.target.value);

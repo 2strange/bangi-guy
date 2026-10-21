@@ -6,6 +6,7 @@ import {
   syllables, babblePlan, normalizeStimme, normalizeStimmen, STIL, DEFAULT_STIMME, slugFor, pickBark, bark,
   musicPattern, PROGRESSION, BARS, STEPS_PER_BAR, BPM, stepSeconds, nextGullDelay, rng, hashStr, midiToFreq, SFX_NAMES,
   babble, sfx, setMuted, isMuted, ambience, music, stimmeFor, setStimmen, normalizePan,
+  ZONES, normalizeZones, pseudoWords, nextRufDelay, nextFunkDelay,
 } from '../js/audio.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -124,6 +125,28 @@ test('musicPattern: 16 Takte, Skank nur auf Offbeats, One-Drop, Bass im Keller, 
   const ev = musicPattern(5).events; for (let i = 1; i < ev.length; i++) assert.ok(ev[i].step >= ev[i - 1].step);
 });
 
+test('Zonen: normalizeZones clampt, ignoriert Unbekanntes, null = Strand; Pseudo-Wörter brabbelbar', () => {
+  assert.deepEqual(ZONES, ['strand', 'markt', 'posten']);
+  assert.deepEqual(normalizeZones(null), { strand: 1, markt: 0, posten: 0 });
+  assert.deepEqual(normalizeZones({}), { strand: 0, markt: 0, posten: 0 });
+  assert.deepEqual(normalizeZones({ strand: 1, markt: 0.3 }), { strand: 1, markt: 0.3, posten: 0 });
+  assert.deepEqual(normalizeZones({ strand: 7, markt: -1, posten: 'x', bar: 1 }), { strand: 1, markt: 0, posten: 0 });
+  assert.deepEqual(normalizeZones({ posten: '0.4' }), { strand: 0, markt: 0, posten: 0.4 });
+  const r = rng(3);
+  const t = pseudoWords(r, 5);
+  assert.equal(t.split(' ').length, 5);
+  assert.match(t, /^[a-z ]+$/);
+  assert.equal(pseudoWords(rng(3), 5), t, 'deterministisch');
+  const p = babblePlan(DEFAULT_STIMME, t);
+  assert.ok(p.notes.length >= 5 && p.duration > 0.3, 'jedes Wort mindestens eine Silbe');
+  assert.equal(pseudoWords(r, 0), '');
+  assert.equal(nextRufDelay(() => 0), 6); assert.equal(nextRufDelay(() => 1), 15);
+  assert.equal(nextFunkDelay(() => 0), 10); assert.equal(nextFunkDelay(() => 1), 25);
+  // stimmeFor mit Fallback: unbekannter Slug → Fallback-Profil, bekannter → aus stimmen.json
+  assert.equal(stimmeFor('haendler_gibtsnicht', { stil: 'knarzig', tonhoehe: 0.9 }).stil, 'knarzig');
+  assert.equal(stimmeFor('mentor', { stil: 'piepsig' }).stil, 'knarzig', 'Datei gewinnt');
+});
+
 test('Helfer: rng deterministisch im Bereich, hash stabil, Möwenpause 8–22 s, midi', () => {
   const r1 = rng(42), r2 = rng(42);
   for (let i = 0; i < 100; i++) { const v = r1(); assert.equal(v, r2()); assert.ok(v >= 0 && v < 1); }
@@ -134,11 +157,16 @@ test('Helfer: rng deterministisch im Bereich, hash stabil, Möwenpause 8–22 s,
 });
 
 test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Dauer', () => {
-  assert.ok(SFX_NAMES.includes('kasse') && SFX_NAMES.length === 8);
+  for (const n of ['kasse', 'ablehnen', 'heat', 'verhaftet', 'ausverkauft', 'schritt_sand', 'ui_klick', 'hinschauen', 'pfeife', 'mango', 'funk']) assert.ok(SFX_NAMES.includes(n), n);
+  assert.equal(SFX_NAMES.length, 11);
   for (const n of SFX_NAMES) assert.equal(sfx(n), 0);
   assert.equal(sfx('gibtsnicht'), 0);
   ambience.start(); ambience.stop(); music.start(); music.stop();
   assert.equal(ambience.isPlaying(), false); assert.equal(music.isPlaying(), false);
+  assert.equal(ambience.ruf(), 0); assert.equal(ambience.funk(), 0);
+  assert.deepEqual(ambience.setZone({ markt: 0.5 }), { strand: 0, markt: 0.5, posten: 0 });
+  assert.deepEqual(ambience.getZone(), { strand: 0, markt: 0.5, posten: 0 });
+  ambience.setZone(null);
   setMuted(true); assert.equal(isMuted(), true); setMuted(false); assert.equal(isMuted(), false);
   const d = babble('zivi_polo', 'Nice shoes. Where did you get them?');
   assert.ok(d > 1 && d < 5, `Dauer ${d}`);

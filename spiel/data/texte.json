@@ -1,5 +1,5 @@
 {
-  "_schema": "Spieltexte für Bangi Beach (Sprechblasen, HUD, Tagesende). Eigentümer: Content. Alles kurz, Deutsch, Lebowski-Ton. Struktur: ausverkauft[] = Sprüche, wenn die Ware alle ist (zufällig wählen; zeigen auf Mentor/Kuppe tagsüber oder Bar abends). tagesende{lage: []} = Bilanz-Sprüche nach Lage, Schlüssel: gut (viel verkauft, Heat ≤ 1), heat (Heat 2+, Tag überstanden), nichts (kein Verkauf), verhaftet (Heat 3, Tag verloren, Geld bleibt); je Lage zufällig einen wählen. reveal_gags[] = pro Zivi bzw. Falle ein Eintrag: id (Kunde aus kunden.json), wann (kauf = beim Verkauf, ablehnung = bei Ablehnung, immer = Idle-Tick), gag (was man sieht, 1 Satz), mood (Grundgesicht der Mimik-API: neutral|misstrauisch|erschrocken|zufrieden|selig), extra (Requisit, das erscheint, als Kennwort für die Figuren-Bauer: dienstmarke|polizistenaugen|handschellen|funkgeraet|notizblock|pfeife|halstuch_marke|taschenlampe|pulsuhr|null), dauer_s (ungefähre Länge der Kleinanimation). mentor_szene{} = Ablauf der Kuppe-Szene (siehe _ablauf darin; schritte[] mit id, wer, text[] oder @-Verweis, quelle, blasen[], aktion ware_auffuellen|heat_minus, menge/wert, weiter). mentor[] = Weisheiten für die Kuppe: id, titel, mechanik (welche Regel sie freischaltet), einleitung (Mentor-Gerede, 1–2 Sätze), regel (der eigentliche Merksatz, so steht er später im Hilfe-Menü), pointe (Schluss-Gag), kunden_beispiel (ids aus kunden.json, an denen man die Regel übt).",
+  "_schema": "Spieltexte für Bangi Beach (Sprechblasen, HUD, Tagesende). Eigentümer: Content. Alles kurz, Deutsch, Lebowski-Ton. Struktur: ausverkauft[] = Sprüche, wenn die Ware alle ist (zufällig wählen; zeigen auf Mentor/Kuppe tagsüber oder Bar abends). tagesende{lage: []} = Bilanz-Sprüche nach Lage, Schlüssel: gut (viel verkauft, Heat ≤ 1), heat (Heat 2+, Tag überstanden), nichts (kein Verkauf), verhaftet (Heat 3, Tag verloren, Geld bleibt); je Lage zufällig einen wählen. reveal_gags[] = pro Zivi bzw. Falle ein Eintrag: id (Kunde aus kunden.json), wann (kauf = beim Verkauf, ablehnung = bei Ablehnung, immer = Idle-Tick), gag (was man sieht, 1 Satz), mood (Grundgesicht der Mimik-API: neutral|misstrauisch|erschrocken|zufrieden|selig), extra (Requisit, das erscheint, als Kennwort für die Figuren-Bauer: dienstmarke|polizistenaugen|handschellen|funkgeraet|notizblock|pfeife|halstuch_marke|taschenlampe|pulsuhr|null), dauer_s (ungefähre Länge der Kleinanimation). posten7{} = Polizeiposten: mango{gnaedig[], schon_gehabt[], keine_mango[], kein_heat[]}, tafel{zeile1 mit {tage}, zeile2 je Heat 0–3, nachts[]}, pong{heat_0..heat_3[]} (Details in posten7._ablauf). mentor_szene{} = Ablauf der Kuppe-Szene (siehe _ablauf darin; schritte[] mit id, wer, text[] oder @-Verweis, quelle, blasen[], aktion ware_auffuellen|heat_minus, menge/wert, weiter). mentor[] = Weisheiten für die Kuppe: id, titel, mechanik (welche Regel sie freischaltet), einleitung (Mentor-Gerede, 1–2 Sätze), regel (der eigentliche Merksatz, so steht er später im Hilfe-Menü), pointe (Schluss-Gag), kunden_beispiel (ids aus kunden.json, an denen man die Regel übt).",
 
   "ausverkauft": [
     "Alles weg. Der Mentor hockt auf der Kuppe und gießt. Hoch mit dir.",
@@ -98,6 +98,59 @@
       "mood": "zufrieden", "extra": null, "dauer_s": 1.5
     }
   ],
+
+  "posten7": {
+    "_ablauf": "Polizeiposten (Heat-Zone). mango{} = Spieler gibt Pong eine Mango (Aktion am Posten): gnaedig[] wenn heute noch keine abgegeben und Heat > 0 (Aktion heat_minus 1), schon_gehabt[] wenn heute schon eine abgegeben, keine_mango[] wenn keine im Inventar, kein_heat[] wenn Heat schon 0 (Mango bleibt). tafel{} = Heat-Tafel am Eingang: zeile1 mit {tage} (Tage ohne Vorfall, zählt ab letzter Verhaftung), zeile2 nach Heat-Stufe 0–3; nachts[] optional. pong{} = Sprechblasen DE, wenn der Spieler Pong anspricht (nach Heat-Stufe). Englische Barks (Pfiff, Verfolgung) stehen in stimmen.json unter pong.",
+    "mango": {
+      "gnaedig": [
+        "Pong nimmt die Mango, riecht dran, nickt. „Ich hab dich heute nicht gesehen. Und gestern auch nicht.“",
+        "„Eine Mango, eine Gnade. So steht's nicht im Gesetz, aber im Gesetz steht vieles nicht.“",
+        "Pong steckt die Mango in die Mütze. „Für die Mittagspause. Verschwinde, bevor ich hungrig werde.“"
+      ],
+      "schon_gehabt": [
+        "„Ich hatte heute schon eine. Zwei Mangos wären Bestechung. Eine ist Obst.“",
+        "Pong klopft auf den Bauch. „Voll. Komm morgen wieder, mit Hunger und ohne Vorstrafen.“",
+        "„Regeln sind Regeln. Eine Mango pro Tag. Die Diät macht mich streng.“"
+      ],
+      "keine_mango": [
+        "Pong schaut auf deine leeren Hände. „Keine Mango, keine Gnade. Der Markt ist da drüben.“",
+        "„Du willst reden? Ohne Obst? Mutig.“",
+        "Pong zeigt auf das Schild: „1 Mango = 1 Gnade“. Darunter kleiner: „Keine Mango = keine Gnade.“"
+      ],
+      "kein_heat": [
+        "„Du bist sauber. Die Mango nehm ich trotzdem.“ Pong grinst. Du behältst sie.",
+        "„Keine Vorwürfe, keine Mango nötig. Iss sie selbst, du siehst dünn aus.“"
+      ]
+    },
+    "tafel": {
+      "zeile1": "Tage ohne Vorfall: {tage}",
+      "zeile2": {
+        "0": "Heute alles ruhig. Pong schläft.",
+        "1": "Jemand hat was gesehen. Pong schnürt die Sandalen.",
+        "2": "Streife verstärkt. Pong hat Namen.",
+        "3": "FAHNDUNG. Pong hat Kaffee gekocht."
+      },
+      "nachts": ["Posten geschlossen. Klingel kaputt. Mango in den Briefkasten."]
+    },
+    "pong": {
+      "heat_0": [
+        "„Schöner Tag. Nichts passiert. Du hast nichts getan, ich hab nichts gesehen. So mag ich das.“",
+        "Pong putzt seine Pfeife. „Die ist wichtiger als die Pistole. Die Pistole hab ich verlegt.“"
+      ],
+      "heat_1": [
+        "„Da war was am Strand. Sandalen, Hawaiihemd. Beschreibt die halbe Insel. Und dich.“",
+        "„Ich hab deinen Namen gehört. Nur einmal. Beim zweiten Mal schreib ich ihn auf.“"
+      ],
+      "heat_2": [
+        "„Ich hab deinen Namen jetzt aufgeschrieben. Mit Bleistift. Noch.“",
+        "Pong schaut auf die Tafel, dann auf dich. „Du weißt, was eine Mango kostet, oder?“"
+      ],
+      "heat_3": [
+        "„Hände hoch. Oder runter. Wie du willst, ich krieg dich eh nicht, aber die Fähre bringt morgen Leute mit Turnschuhen.“",
+        "„Kaffee ist fertig. Du bleibst heute hier. Der Kaffee ist okay, versprochen.“"
+      ]
+    }
+  },
 
   "mentor_szene": {
     "_ablauf": "Szene auf der Kuppe, einmal pro Tag. Trigger: Spieler kommt an die Hütte (Mentor gärtnert). Schritte in Reihenfolge, je Schritt eine Sprechblase (bei text[] zufällig eine Zeile). Schritt lektion zeigt die Weisheit des Tages aus mentor[] als drei Blasen: einleitung, regel, pointe (Tag 1 → weisheit_1, Tag 2 → weisheit_2, Tag 3 → weisheit_3, danach ausgelernt[] statt lektion). Schritt nachschub füllt die Ware (menge) und Schritt abschied kühlt Heat um 1. Kommt der Spieler am selben Tag noch einmal: nur schon_geholt[]. Kommt er mit voller Tasche: voll[]. Optionale Vertiefung: gieß-Minispiel (giessen[]) gibt +1 Beutel für morgen.",

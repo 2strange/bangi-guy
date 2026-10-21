@@ -8,6 +8,8 @@ import {
   DEFAULT_TEXTE, normalizeTexte, fillText, dayReport, soldOutDialog, isSoldOut, assignOutfits, outfitKey, variantCount, lageFor, dayEndCard, normalizeGags, gagFor, nextIdleGagDelay, ZIVI_BESCHLAGNAHMT,
   normalizeStimmen, stimmeSlug, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, applyMentorAktion, mentorBesucht,
+  POSTEN_DEFAULT, inPostenSicht, buyMango, giveMango, mangoAbgegeben, tafelText, MANGO_PREIS,
+  normalizePosten7, mangoText, pongText, tafelLines, DEFAULT_POSTEN7,
 } from '../js/game.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -467,4 +469,78 @@ test('mentorSzene: volle Tasche → nur „voll“; Aktionen füllen nur auf, He
   // Content-Datei: Zahlen als Strings oder fehlend → Defaults
   const X = normalizeMentorSzene({ mentor_szene: { schritte: [{ id: 'nachschub', text: ['x'], aktion: 'ware_auffuellen', menge: '5', weiter: null }] } });
   assert.equal(X.schritte[0].menge, START_WARE);
+});
+
+// ---------- Posten 7 ----------
+test('Heat-Zone: Verkauf an einen Zivi in Sichtweite des Postens gibt doppelt Heat (gedeckelt), außerhalb normal', () => {
+  const posten = { x: 0, z: 0, r: 15 };
+  assert.equal(inPostenSicht({ x: 10, z: 10 }, posten), true);
+  assert.equal(inPostenSicht({ x: 11, z: 11 }, posten), false);
+  const z1 = { ...zivi, heat: 1 };
+  const near = sell(initialState(), z1, 0, { posten, pos: { x: 5, z: 5 } });
+  assert.equal(near.state.heat, 2, 'in Sicht: 1 × 2');
+  const far = sell(initialState(), z1, 0, { posten, pos: { x: 40, z: 40 } });
+  assert.equal(far.state.heat, 1);
+  const cap = sell(initialState(), zivi, 0, { posten, pos: { x: 0, z: 0 } }); // 2 × 2 = 4 → 3
+  assert.equal(cap.state.heat, MAX_HEAT); assert.ok(isArrested(cap.state));
+  // ohne Posten/Position wie bisher
+  assert.equal(sell(initialState(), z1).state.heat, 1);
+  // Unbedenkliche bleiben Heat-frei, auch in Sicht
+  assert.equal(sell(initialState(), schluffi, 0, { posten, pos: { x: 0, z: 0 } }).state.heat, 0);
+  assert.equal(inPostenSicht({ x: POSTEN_DEFAULT.x, z: POSTEN_DEFAULT.z }), true);
+});
+
+test('Mangos: kaufen kostet Geld, abgeben senkt Heat um 1 — einmal pro Tag, nur mit Mango und Heat', () => {
+  let s = { ...initialState(), geld: 25, heat: 2 };
+  assert.equal(buyMango({ ...s, geld: 5 }).result, 'kein_geld');
+  s = buyMango(s).state;
+  assert.equal(s.geld, 25 - MANGO_PREIS); assert.equal(s.mangos, 1);
+  s = buyMango(s).state;
+  assert.equal(s.mangos, 2); assert.equal(s.geld, 5);
+  const g = giveMango(s);
+  assert.equal(g.result, 'gnade'); assert.equal(g.state.heat, 1); assert.equal(g.state.mangos, 1);
+  assert.ok(mangoAbgegeben(g.state));
+  assert.equal(giveMango(g.state).result, 'schon_heute');
+  assert.equal(giveMango({ ...g.state, mangos: 0, mangoTag: 0 }).result, 'keine_mango');
+  assert.equal(giveMango({ ...g.state, heat: 0, mangoTag: 0 }).result, 'kein_heat');
+  // neuer Tag: wieder möglich, Mangos bleiben
+  const n = newDay({ ...g.state, heat: 1 });
+  assert.equal(n.mangos, 1); assert.equal(giveMango({ ...n, heat: 1 }).result, 'gnade');
+});
+
+test('Tafel „Tage ohne Vorfall“: zählt pro Tag hoch, springt bei Verhaftung auf 0', () => {
+  let s = initialState();
+  assert.equal(tafelText(s), 'TAGE OHNE VORFALL: 0');
+  s = newDay(s); s = newDay(s);
+  assert.equal(s.tageOhneVorfall, 2); assert.equal(tafelText(s), 'TAGE OHNE VORFALL: 2');
+  const arrested = { ...s, heat: MAX_HEAT, verhaftet: true };
+  assert.equal(tafelText(arrested), 'TAGE OHNE VORFALL: 0', 'am Tag der Verhaftung sofort 0');
+  const after = newDay(arrested);
+  assert.equal(after.tageOhneVorfall, 0);
+  assert.equal(newDay(after).tageOhneVorfall, 1);
+});
+
+test('posten7-Texte: Normalisierung mit Defaults, Mango-Ergebnis → Text, Pong nach Heat, Tafel zweizeilig', () => {
+  const p7 = normalizePosten7({ posten7: { mango: { gnaedig: ['G!'], kein_heat: 7 }, tafel: { zeile1: 'Ruhig seit {tage} Tagen', zeile2: { '2': 'Streife!' } }, pong: { heat_3: ['Mitkommen.'] } } });
+  assert.equal(mangoText(p7, 'gnade'), 'G!');
+  assert.equal(mangoText(p7, 'kein_heat'), DEFAULT_POSTEN7.mango.kein_heat[0], 'kaputt → Default');
+  assert.equal(mangoText(p7, 'quatsch'), '');
+  assert.equal(pongText(p7, { heat: 3 }), 'Mitkommen.');
+  assert.equal(pongText(p7, { heat: 9 }), 'Mitkommen.', 'geklemmt');
+  assert.equal(pongText(p7, { heat: 0 }), DEFAULT_POSTEN7.pong.heat_0[0]);
+  const s = { ...initialState(), tageOhneVorfall: 4, heat: 2 };
+  assert.deepEqual(tafelLines(p7, s), ['Ruhig seit 4 Tagen', 'Streife!']);
+  assert.equal(tafelLines(p7, { ...s, heat: 3, verhaftet: true })[0], 'Ruhig seit 0 Tagen');
+  assert.deepEqual(normalizePosten7(undefined), normalizePosten7({}));
+  // giveMango-Ergebnisse haben alle einen Text
+  for (const r of ['gnade', 'schon_heute', 'keine_mango', 'kein_heat']) assert.ok(mangoText(normalizePosten7(null), r).length > 3, r);
+});
+
+test('neue Enums (Fischer, lauter Typ, Touristin, Fragesteller): Accessoires und Extras bleiben erhalten', () => {
+  const f = normalizeKunde({ schuhe: 'gummistiefel', accessoire: 'fischkiste', extras: ['schuerze', 'fischgeruch', 'quatsch'] });
+  assert.equal(f.schuhe, 'gummistiefel'); assert.equal(f.accessoire, 'fischkiste'); assert.deepEqual(f.extras, ['schuerze', 'fischgeruch']);
+  assert.equal(normalizeKunde({ accessoire: 'bierdose' }).accessoire, 'bierdose');
+  const t = normalizeKunde({ extras: ['riesenhut', 'faecher', 'kreuzfahrt_baendchen'] });
+  assert.deepEqual(t.extras, ['riesenhut', 'faecher', 'kreuzfahrt_baendchen']);
+  assert.deepEqual(normalizeKunde({ extras: ['rucksack_leer', 'faehrenticket', 'handschellen_umriss'] }).extras, ['rucksack_leer', 'faehrenticket', 'handschellen_umriss']);
 });

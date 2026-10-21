@@ -272,19 +272,28 @@ export function rotateDir(dir, camYaw = 0) {
 
 // ---------- Ankerplätze für die Kundschaft: fester Ort + Tätigkeit, kein Kreisen ----------
 // Tätigkeiten: sitzt | telefoniert | fotografiert | schaut | steht. `blick` = Blickrichtung (yaw), sonst zum Meer (+z).
+// Zonen der Ankerplätze; Mischung pro Tag über ZONE_MIX (Anteile, nur Zonen mit vorhandenen Plätzen zählen)
+export const ZONES = ['strand', 'dorf', 'markt'];
+export const ZONE_MIX = { strand: 4, dorf: 2, markt: 2 };
 export const ANCHORS = [
-  { id: 'liege_1', x: 28, z: -3.2, r: 0.4, activity: 'sitzt', blick: 0 },
-  { id: 'liege_2', x: 31.8, z: -1.8, r: 0.4, activity: 'sitzt', blick: 0 },
-  { id: 'liege_3', x: 39.4, z: -1.8, r: 0.4, activity: 'sitzt', blick: 0 },
-  { id: 'hocker_bar', x: -29.6, z: -1.2, r: 0.5, activity: 'sitzt', blick: Math.PI },
-  { id: 'bar_vorn', x: -25.5, z: 1.5, r: 1.0, activity: 'telefoniert', blick: 2.6 },
-  { id: 'steg', x: -33, z: 10.5, r: 1.0, activity: 'fotografiert', blick: 0.3 },
-  { id: 'palme_mitte', x: 4, z: 7, r: 1.2, activity: 'schaut', blick: 0 },
-  { id: 'palme_west', x: -17, z: 9.5, r: 1.2, activity: 'steht', blick: 0.5 }, // vor den Hängematten-Palmen, nicht darunter
-  { id: 'ufer_ost', x: 50, z: 10, r: 1.2, activity: 'schaut', blick: 0 },
-  { id: 'dorfecke', x: -3, z: -20, r: 1.2, activity: 'telefoniert', blick: 0.2 },
-  { id: 'verleih', x: -46, z: 6, r: 1.2, activity: 'steht', blick: -0.4 },
-  { id: 'ufer_mitte', x: 16, z: 11, r: 1.2, activity: 'fotografiert', blick: 0 },
+  { zone: 'strand', id: 'liege_1', x: 28, z: -3.2, r: 0.4, activity: 'sitzt', blick: 0 },
+  { zone: 'strand', id: 'liege_2', x: 31.8, z: -1.8, r: 0.4, activity: 'sitzt', blick: 0 },
+  { zone: 'strand', id: 'liege_3', x: 39.4, z: -1.8, r: 0.4, activity: 'sitzt', blick: 0 },
+  { zone: 'strand', id: 'hocker_bar', x: -29.6, z: -1.2, r: 0.5, activity: 'sitzt', blick: Math.PI },
+  { zone: 'strand', id: 'bar_vorn', x: -25.5, z: 1.5, r: 1.0, activity: 'telefoniert', blick: 2.6 },
+  { zone: 'strand', id: 'steg', x: -33, z: 10.5, r: 1.0, activity: 'fotografiert', blick: 0.3 },
+  { zone: 'strand', id: 'palme_mitte', x: 4, z: 7, r: 1.2, activity: 'schaut', blick: 0 },
+  { zone: 'strand', id: 'palme_west', x: -17, z: 9.5, r: 1.2, activity: 'steht', blick: 0.5 }, // vor den Hängematten-Palmen, nicht darunter
+  { zone: 'strand', id: 'ufer_ost', x: 50, z: 10, r: 1.2, activity: 'schaut', blick: 0 },
+  { zone: 'strand', id: 'dorfecke', x: -3, z: -20, r: 1.2, activity: 'telefoniert', blick: 0.2 },
+  { zone: 'strand', id: 'verleih', x: -46, z: 6, r: 1.2, activity: 'steht', blick: -0.4 },
+  { zone: 'strand', id: 'ufer_mitte', x: 16, z: 11, r: 1.2, activity: 'fotografiert', blick: 0 },
+  // Dorf Krummgassen (Plätze auf Gassen/Platz, frei von Wäscheleinen-Verstecken)
+  { zone: 'dorf', id: 'dorf_platz', x: 6, z: -43, r: 1.2, activity: 'steht', blick: Math.PI },
+  { zone: 'dorf', id: 'dorf_brunnen', x: 3.5, z: -40, r: 1.0, activity: 'telefoniert', blick: 0.4 },
+  { zone: 'dorf', id: 'dorf_hunde', x: 7.5, z: -50, r: 1.2, activity: 'fotografiert', blick: Math.PI },
+  { zone: 'dorf', id: 'dorf_ost', x: 26, z: -35.5, r: 1.2, activity: 'schaut', blick: -Math.PI / 2 },
+  { zone: 'dorf', id: 'dorf_nord', x: 8, z: -62, r: 1.2, activity: 'steht', blick: Math.PI },
 ];
 export const ZIVI_MIN_DIST = 8;
 const dist2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -293,24 +302,51 @@ const dist2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
  * anderen Kunden (damit Verkaufen „vor dem Zivi“ nicht der Normalfall ist). Reihenfolge deterministisch über day.
  * Gibt { [kundeId]: anchor } zurück; sind mehr Kunden als Plätze, teilen sich die letzten einen Platz versetzt.
  */
-export function assignAnchors(kunden, anchors = ANCHORS, { minDist = ZIVI_MIN_DIST, day = 1 } = {}) {
+// Zonen-Reihenfolge für einen Tag: gewichtete Rundumverteilung (strand 4 : dorf 2 : markt 2), pro Tag rotiert,
+// nur Zonen mit Plätzen. Ergebnis: Liste von Zonen-Namen in Vergabereihenfolge (Länge n).
+export function zoneSequence(n, anchors = ANCHORS, { day = 1, mix = ZONE_MIX } = {}) {
+  const zones = ZONES.filter((z) => anchors.some((a) => a.zone === z) && (mix[z] || 0) > 0);
+  if (!zones.length) return Array(n).fill(null);
+  const total = zones.reduce((acc, z) => acc + mix[z], 0);
+  const seq = [];
+  const credit = Object.fromEntries(zones.map((z) => [z, 0]));
+  for (let i = 0; i < n; i++) {
+    for (const z of zones) credit[z] += mix[z] / total;
+    let best = zones[0];
+    for (const z of zones) if (credit[z] > credit[best] + 1e-9) best = z;
+    credit[best] -= 1;
+    seq.push(best);
+  }
+  // pro Tag rotieren, damit andere Kunden in die Nebenzonen kommen (Anteile bleiben gleich)
+  const k = n ? (day - 1) % n : 0;
+  return seq.slice(k).concat(seq.slice(0, k));
+}
+export function assignAnchors(kunden, anchors = ANCHORS, { minDist = ZIVI_MIN_DIST, day = 1, mix = ZONE_MIX } = {}) {
   const out = {};
   const taken = [];
-  const free = () => anchors.filter((a) => !taken.includes(a));
+  const free = (zone) => anchors.filter((a) => !taken.includes(a) && (!zone || a.zone === zone));
   const rot = (list, n) => list.slice(n % Math.max(1, list.length)).concat(list.slice(0, n % Math.max(1, list.length)));
-  // Unbedenkliche zuerst (bevorzugt „ihre“ Plätze, sonst reihum), dann Zivis mit Abstand
-  const others = kunden.filter((k) => !k.zivi), zivis = kunden.filter((k) => k.zivi);
   const pick = (k, cands) => {
     const a = cands[0] || anchors[(taken.length + day) % anchors.length];
     taken.push(a);
     out[k.id] = a;
   };
-  others.forEach((k, i) => pick(k, rot(free(), day + i)));
-  for (const z of zivis) {
-    const ok = free().filter((a) => taken.every((t) => dist2(a, t) >= minDist));
+  // Unbedenkliche zuerst: Zone aus der Tagesmischung, darin reihum; dann Zivis mit Abstand (zonenübergreifend)
+  const others = kunden.filter((k) => !k.zivi), zivis = kunden.filter((k) => k.zivi);
+  const seq = zoneSequence(kunden.length, anchors, { day, mix });
+  others.forEach((k, i) => {
+    const zone = seq[i];
+    const cands = free(zone).length ? free(zone) : free();
+    pick(k, rot(cands, day + i));
+  });
+  zivis.forEach((z, j) => {
+    const zone = seq[others.length + j];
+    const inZone = free(zone).length ? free(zone) : free();
+    const ok = inZone.filter((a) => taken.every((t) => dist2(a, t) >= minDist));
+    const okAny = ok.length ? ok : free().filter((a) => taken.every((t) => dist2(a, t) >= minDist));
     // Notnagel: der Platz mit dem größten Mindestabstand
-    const best = ok.length ? rot(ok, day) : free().sort((a, b) => Math.min(...taken.map((t) => dist2(b, t))) - Math.min(...taken.map((t) => dist2(a, t))));
+    const best = okAny.length ? rot(okAny, day) : free().sort((a, b) => Math.min(...taken.map((t) => dist2(b, t))) - Math.min(...taken.map((t) => dist2(a, t))));
     pick(z, best);
-  }
+  });
   return out;
 }

@@ -295,7 +295,7 @@ test('Pool-Leiter (außen am Ostrand des Beckens) liegt in einem Collider, aber 
 });
 
 // ---------- Ankerplätze ----------
-import { ANCHORS, assignAnchors, ZIVI_MIN_DIST } from '../js/logic.js';
+import { ANCHORS, assignAnchors, ZIVI_MIN_DIST, zoneSequence, ZONES, ZONE_MIX } from '../js/logic.js';
 test('assignAnchors: jeder Platz einmal, Zivis halten ≥ 8 Abstand zu allen anderen Kunden, deterministisch', () => {
   const ks = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }, { id: 'e' }, { id: 'z1', zivi: true }, { id: 'z2', zivi: true }];
   for (let day = 1; day <= 4; day++) {
@@ -318,4 +318,36 @@ test('assignAnchors: zu wenig Plätze → Notnagel mit größtem Abstand, nichts
   const m = assignAnchors([{ id: 'a' }, { id: 'b' }, { id: 'z', zivi: true }, { id: 'c' }], few, { day: 1 });
   assert.equal(Object.keys(m).length, 4);
   assert.ok(few.includes(m.z));
+});
+
+test('Anker tragen eine Zone; zoneSequence mischt nach Gewichten und rotiert pro Tag', () => {
+  for (const a of ANCHORS) assert.ok(ZONES.includes(a.zone), `${a.id} ohne Zone`);
+  const seq = zoneSequence(7, ANCHORS, { day: 1 });
+  const count = (z) => seq.filter((x) => x === z).length;
+  // ohne Markt-Plätze: strand 4 : dorf 2 → bei 7 Kunden 4–5 Strand, 2–3 Dorf
+  assert.ok(count('strand') >= 4 && count('strand') <= 5, `strand ${count('strand')}`);
+  assert.ok(count('dorf') >= 2 && count('dorf') <= 3, `dorf ${count('dorf')}`);
+  assert.equal(count('markt'), 0, 'noch keine Markt-Plätze');
+  assert.notDeepEqual(zoneSequence(7, ANCHORS, { day: 2 }), seq, 'anderer Tag, andere Reihenfolge');
+  // mit Markt-Plätzen taucht der Markt auf
+  const withMarkt = ANCHORS.concat([{ zone: 'markt', id: 'm1', x: 100, z: -100, r: 1, activity: 'steht' }, { zone: 'markt', id: 'm2', x: 110, z: -100, r: 1, activity: 'steht' }]);
+  assert.ok(zoneSequence(8, withMarkt, { day: 1 }).includes('markt'));
+  assert.deepEqual(zoneSequence(3, [], { day: 1 }), [null, null, null]);
+});
+
+test('assignAnchors: pro Tag eine Mischung über Strand und Dorf, Zivi-Abstand gilt zonenübergreifend', () => {
+  const ks = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }, { id: 'e' }, { id: 'z1', zivi: true }, { id: 'z2', zivi: true }];
+  for (let day = 1; day <= 5; day++) {
+    const m = assignAnchors(ks, ANCHORS, { day });
+    const zones = new Set(Object.values(m).map((a) => a.zone));
+    assert.ok(zones.has('strand') && zones.has('dorf'), `Tag ${day}: beide Zonen besetzt (${[...zones]})`);
+    assert.equal(new Set(Object.values(m).map((a) => a.id)).size, ks.length, 'Plätze eindeutig');
+    for (const z of ['z1', 'z2']) for (const k of ks) {
+      if (k.id === z) continue;
+      assert.ok(Math.hypot(m[z].x - m[k.id].x, m[z].z - m[k.id].z) >= ZIVI_MIN_DIST, `Tag ${day}: ${z} zu nah an ${k.id}`);
+    }
+  }
+  // Mischung ändert sich über die Tage (nicht immer dieselben Kunden im Dorf)
+  const dorfIds = (day) => Object.entries(assignAnchors(ks, ANCHORS, { day })).filter(([, a]) => a.zone === 'dorf').map(([id]) => id).sort().join();
+  assert.notEqual(dorfIds(1), dorfIds(2));
 });

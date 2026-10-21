@@ -6,7 +6,8 @@
 //   initAudio()                     einmal beim Start; wartet selbst auf die erste Geste (iOS: resume)
 //   setMuted(bool) / isMuted()      Mute mit localStorage
 //   sfx('kasse' | 'ablehnen' | 'heat' | 'verhaftet' | 'ausverkauft' | 'schritt_sand' | 'ui_klick' | 'hinschauen')
-//   ambience.start() / .stop()      Brandung + Möwe
+//   ambience.start() / .stop()      Zonen-Ambience: strand (Brandung + Möwe), markt (Gewirr + Händlerrufe), posten (Funk)
+//   ambience.setZone({ strand: 1, markt: 0.3 })   Mischung 0..1 je Zone, weich; .ruf() / .funk() sofort
 //   music.start() / .stop() / .setVolume(0..1) / .setEnabled(bool)   Strand-Loop, ~75 BPM
 //   loadStimmen() → stimmeFor(id)   Stimmprofile + Barks aus data/stimmen.json
 //   babble(stimmeOderId, text, { pan }) → Dauer in Sekunden; stopBabble()
@@ -22,7 +23,9 @@ export const VOL = {
   voice: 0.55,
   // einzelne Effekte relativ zum SFX-Bus
   kasse: 0.8, ablehnen: 0.6, heat: 0.55, verhaftet: 0.5, ausverkauft: 0.6, schritt_sand: 0.18, ui_klick: 0.35, hinschauen: 0.4,
-  moewe: 0.35,
+  pfeife: 0.45, mango: 0.6, funk: 0.4,
+  // Ambience-Details (relativ zum Ambience-Bus)
+  moewe: 0.35, walla: 0.16, ruf: 0.3, funkspruch: 0.45,
 };
 const STORE_MUTE = 'bangi_audio_muted';
 const STORE_MUSIC = 'bangi_audio_music';
@@ -224,6 +227,32 @@ export const stepSeconds = () => 60 / BPM / 4;
 
 /** Möwen-Abstand in Sekunden (8–22 s), rng = Funktion 0..1 */
 export const nextGullDelay = (r) => 8 + r() * 14;
+/** Händlerruf 6–15 s, Funkspruch 10–25 s */
+export const nextRufDelay = (r) => 6 + r() * 9;
+export const nextFunkDelay = (r) => 10 + r() * 15;
+
+// ---------- Zonen (rein) ----------
+export const ZONES = ['strand', 'markt', 'posten'];
+/** Gewichte 0..1 je Zone; unbekannte Schlüssel ignoriert, fehlende = 0; null/undefined = nur Strand */
+export function normalizeZones(g) {
+  if (!g || typeof g !== 'object') return { strand: 1, markt: 0, posten: 0 };
+  const out = {};
+  for (const z of ZONES) out[z] = clamp(Number(g[z]) || 0, 0, 1);
+  return out;
+}
+/** Pseudo-Wörter fürs Stimmengewirr (nur Buchstaben, 1–3 Silben je Wort), r = Zufall 0..1 */
+const PSEUDO_ON = ['b', 'd', 'g', 'k', 'l', 'm', 'n', 'p', 'r', 's', 't', 'w', 'h', 'j', 'ch', 'st'];
+const PSEUDO_VOW = ['a', 'e', 'i', 'o', 'u', 'ai', 'ou', 'ee'];
+export function pseudoWords(r, n) {
+  const words = [];
+  for (let i = 0; i < n; i++) {
+    let w = '';
+    const syl = 1 + Math.floor(r() * 3);
+    for (let s = 0; s < syl; s++) w += PSEUDO_ON[Math.floor(r() * PSEUDO_ON.length)] + PSEUDO_VOW[Math.floor(r() * PSEUDO_VOW.length)];
+    words.push(w);
+  }
+  return words.join(' ');
+}
 
 // ---------- WebAudio ----------
 let ctx = null;
@@ -414,6 +443,32 @@ const SFX = {
     n.connect(bp); bp.connect(ng); ng.connect(out); n.start(t); n.stop(t + 0.03);
     return 0.06;
   },
+  // Trillerpfeife: hoher Rechteck-Ton mit schnellem Tremolo (die Kugel in der Pfeife)
+  pfeife(t, out) {
+    const o = osc('square', 2500, t); o.frequency.linearRampToValueAtTime(2750, t + 0.06);
+    const o2 = osc('sine', 2500 * 1.5, t); const o2g = ctx.createGain(); o2g.gain.value = 0.2;
+    const trem = ctx.createGain(); trem.gain.value = 0.55;
+    const lfo = osc('sine', 38, t); const lg = ctx.createGain(); lg.gain.value = 0.45; lfo.connect(lg); lg.connect(trem.gain);
+    const bp = filt('bandpass', 2700, 2.5);
+    const g = gainEnv(t, { a: 0.01, peak: 0.5, d: 0.12, hold: 0.42 });
+    o.connect(trem); o2.connect(o2g); o2g.connect(trem); trem.connect(bp); bp.connect(g); g.connect(out);
+    o.start(t); o2.start(t); lfo.start(t); stopAt([o, o2, lfo], t + 0.6);
+    return 0.6;
+  },
+  // Mango: saftiges „plopp“ — Sinus fällt schnell, dazu ein nasser Rauschklecks und ein kleines Nach-Glucksen
+  mango(t, out) {
+    const o = osc('sine', 560, t); o.frequency.exponentialRampToValueAtTime(130, t + 0.08);
+    const g = gainEnv(t, { a: 0.003, peak: 0.8, d: 0.14 });
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.2);
+    const n = noise(); const bp = filt('bandpass', 750, 1.5); const ng = gainEnv(t + 0.01, { a: 0.005, peak: 0.35, d: 0.05 });
+    n.connect(bp); bp.connect(ng); ng.connect(out); n.start(t); n.stop(t + 0.1);
+    const o2 = osc('sine', 320, t + 0.11); o2.frequency.exponentialRampToValueAtTime(190, t + 0.17);
+    const g2 = gainEnv(t + 0.11, { a: 0.003, peak: 0.35, d: 0.08 });
+    o2.connect(g2); g2.connect(out); o2.start(t + 0.11); o2.stop(t + 0.25);
+    return 0.3;
+  },
+  // Funk-Knacken (Squelch), einzeln als SFX
+  funk(t, out) { radioCrackle(t, out, 1, 2 + Math.floor(Math.random() * 3)); return 0.35; },
   // Zoom-Swoosh: Bandpass-Rauschen fegt hoch
   hinschauen(t, out) {
     const n = noise(); const bp = filt('bandpass', 300, 1.5);
@@ -454,29 +509,124 @@ function gull(t, out) {
     o.start(tt); v.start(tt); stopAt([o, v], tt + 0.5);
   }
 }
+// --- Zonen-Layer: jede Zone hat einen eigenen Gain, setZone blendet weich (≈ 1 s) ---
+// Strand: Brandung + Gischt + Möwe
+function layerStrand(out) {
+  const n = noise();
+  const lp = filt('lowpass', 700, 0.5);
+  const swell = ctx.createGain(); swell.gain.value = 0.55;
+  const lfo = osc('sine', 1 / 9, now());
+  const lfoG = ctx.createGain(); lfoG.gain.value = 0.35; lfo.connect(lfoG); lfoG.connect(swell.gain);
+  const lfoF = ctx.createGain(); lfoF.gain.value = 450; lfo.connect(lfoF); lfoF.connect(lp.frequency);
+  // Gischt: Hochpass-Zischen, das kurz nach dem Schwall kommt (zweiter LFO, versetzt)
+  const n2 = noise(); const hp = filt('highpass', 2500, 0.5);
+  const foam = ctx.createGain(); foam.gain.value = 0.08;
+  const lfo2 = osc('sine', 1 / 9, now() + 2.2); const l2g = ctx.createGain(); l2g.gain.value = 0.07; lfo2.connect(l2g); l2g.connect(foam.gain);
+  n.connect(lp); lp.connect(swell); swell.connect(out);
+  n2.connect(hp); hp.connect(foam); foam.connect(out);
+  n.start(); n2.start(); lfo.start(); lfo2.start(now() + 2.2);
+  return { nodes: [n, n2, lfo, lfo2], timers: [], tick: null };
+}
+// Markt: Gemurmel-Teppich (zwei Bandpass-Rauschen, die unregelmäßig wabern) + Stimmengewirr + Händlerrufe
+const WALLA_VOICES = 4;
+function layerMarkt(out) {
+  const nodes = [], timers = [];
+  const bed = ctx.createGain(); bed.gain.value = 0.5; bed.connect(out);
+  [[420, 0.9, 0.37], [1100, 1.2, 0.61]].forEach(([f, q, lf]) => {
+    const n = noise(); const bp = filt('bandpass', f, q);
+    const g = ctx.createGain(); g.gain.value = 0.12;
+    const l = osc('sine', lf, now()); const lg = ctx.createGain(); lg.gain.value = 0.05; l.connect(lg); lg.connect(g.gain);
+    n.connect(bp); bp.connect(g); g.connect(bed); n.start(); l.start(); nodes.push(n, l);
+  });
+  // Stimmengewirr: ein paar leise, gefilterte Brabbel-Stimmen mit Pseudo-Wörtern, jede in eigener Schleife
+  const walla = ctx.createGain(); walla.gain.value = VOL.walla; const wlp = filt('lowpass', 1600, 0.7); walla.connect(wlp); wlp.connect(out);
+  const layer = { nodes, timers, weight: 0 };
+  for (let v = 0; v < WALLA_VOICES; v++) {
+    const r = rng(500 + v);
+    const p = pan((v / (WALLA_VOICES - 1)) * 1.4 - 0.7); p.connect(walla);
+    const loop = () => {
+      if (!amb) return;
+      let wait = 0.4 + r() * 1.2;
+      if (layer.weight > 0.02 && ready() && !muted) {
+        const stil = ['schluffig', 'cool', 'brummig', 'quietschig'][Math.floor(r() * 4)];
+        const plan = babblePlan({ tonhoehe: 0.7 + r() * 0.8, tempo: 0.8 + r() * 0.5, stil, vibrato: 0.1, laut: 0.5 + r() * 0.3 }, pseudoWords(r, 2 + Math.floor(r() * 4)), Math.floor(r() * 1e9));
+        renderPlan(plan, p, now() + 0.02);
+        wait += plan.duration;
+      }
+      timers[v] = setTimeout(loop, wait * 1000);
+    };
+    timers[v] = setTimeout(loop, 300 + v * 700);
+  }
+  // Händlerrufe: alle 6–15 s, aus der Ferne (Lowpass), zufällig gepannt
+  const rufOut = ctx.createGain(); rufOut.gain.value = VOL.ruf; const rlp = filt('lowpass', 1900, 0.8); rufOut.connect(rlp); rlp.connect(out);
+  layer.ruf = () => { const plan = babblePlan(stimmeFor('haendler', HAENDLER_FALLBACK), pickText('haendler', 'ruf', HAENDLER_RUFE)); const p = pan(Math.random() * 1.6 - 0.8); p.connect(rufOut); renderPlan(plan, p, now() + 0.02); return plan.duration; };
+  const rufLoop = () => { if (!amb) return; if (layer.weight > 0.05 && ready() && !muted) layer.ruf(); timers[WALLA_VOICES] = setTimeout(rufLoop, nextRufDelay(Math.random) * 1000); };
+  timers[WALLA_VOICES] = setTimeout(rufLoop, 4000);
+  return layer;
+}
+// Posten: Funk-Rauschen mit Knacken + gelegentliche Funksprüche durch den Telefon-Filter
+function layerPosten(out) {
+  const nodes = [], timers = [];
+  const n = noise(); const bp = filt('bandpass', 2200, 0.6); const g = ctx.createGain(); g.gain.value = 0.035;
+  n.connect(bp); bp.connect(g); g.connect(out); n.start(); nodes.push(n);
+  const layer = { nodes, timers, weight: 0 };
+  // Knacken: kurze Hochpass-Bursts in unregelmäßigen Abständen
+  const crackle = () => { if (!amb) return; if (layer.weight > 0.02 && ready() && !muted) radioCrackle(now() + 0.01, out, 0.5 + Math.random() * 0.5, 1 + Math.floor(Math.random() * 3)); timers[0] = setTimeout(crackle, (0.3 + Math.random() * 1.6) * 1000); };
+  timers[0] = setTimeout(crackle, 800);
+  // Funkspruch: Squelch auf, Gebrabbel durch 400–2800 Hz, Squelch zu
+  const tel = ctx.createGain(); tel.gain.value = VOL.funkspruch;
+  const hp = filt('highpass', 420, 0.9); const lp = filt('lowpass', 2700, 0.9); const mid = filt('peaking', 1400, 1.2); mid.gain.value = 6;
+  tel.connect(hp); hp.connect(mid); mid.connect(lp); lp.connect(out);
+  layer.funk = () => {
+    const t = now() + 0.02;
+    radioCrackle(t, out, 1, 1);
+    const plan = babblePlan(stimmeFor('funk', FUNK_FALLBACK), pickText('funk', 'spruch', FUNK_SPRUECHE));
+    renderPlan(plan, tel, t + 0.12);
+    radioCrackle(t + 0.12 + plan.duration + 0.05, out, 0.8, 1);
+    return plan.duration + 0.3;
+  };
+  const funkLoop = () => { if (!amb) return; if (layer.weight > 0.05 && ready() && !muted) layer.funk(); timers[1] = setTimeout(funkLoop, nextFunkDelay(Math.random) * 1000); };
+  timers[1] = setTimeout(funkLoop, 5000);
+  return layer;
+}
+// Funk-Knacken: n kurze Rauschbursts (auch als SFX 'funk')
+function radioCrackle(t, out, vel, count) {
+  for (let i = 0; i < count; i++) {
+    const tt = t + i * (0.04 + Math.random() * 0.08);
+    const n = noise(); const hp = filt('highpass', 2800, 0.7);
+    const g = gainEnv(tt, { a: 0.001, peak: 0.5 * vel, d: 0.012 + Math.random() * 0.025 });
+    n.connect(hp); hp.connect(g); g.connect(out); n.start(tt); n.stop(tt + 0.06);
+  }
+}
+// Fallbacks, falls stimmen.json die Slugs 'haendler' / 'funk' (noch) nicht hat
+const HAENDLER_FALLBACK = { tonhoehe: 0.9, tempo: 1.1, stil: 'knarzig', vibrato: 0.2, laut: 1.1 };
+const HAENDLER_RUFE = ['Mango! Sweet mango!', 'Fresh coconut, my friend!', 'Two for one! Only today!', 'Cold drinks! Cold cold drinks!'];
+const FUNK_FALLBACK = { tonhoehe: 0.95, tempo: 1.2, stil: 'zackig', vibrato: 0, laut: 0.8 };
+const FUNK_SPRUECHE = ['Unit seven, copy.', 'Suspect wears sandals. Over.', 'Ten-four. Lunch break.', 'Nothing to report. Again.'];
+const lastText = {};
+function pickText(slug, situation, fallback) {
+  const t = pickBark(stimmen, slug, situation, lastText[slug]) || pickBark({ barks: { [slug]: { [situation]: fallback } } }, slug, situation, lastText[slug]);
+  lastText[slug] = t;
+  return t;
+}
+
+const LAYERS = { strand: layerStrand, markt: layerMarkt, posten: layerPosten };
+let zoneWeights = normalizeZones(null);
 export const ambience = {
   start() {
     if (!ready() || amb) return;
     const out = bus.ambience;
-    // Brandung: Rauschen → Lowpass, Cutoff und Lautstärke wabern mit einer langsamen Welle (≈ alle 9 s)
-    const n = noise();
-    const lp = filt('lowpass', 700, 0.5);
-    const swell = ctx.createGain(); swell.gain.value = 0.55;
-    const lfo = osc('sine', 1 / 9, now());
-    const lfoG = ctx.createGain(); lfoG.gain.value = 0.35; lfo.connect(lfoG); lfoG.connect(swell.gain);
-    const lfoF = ctx.createGain(); lfoF.gain.value = 450; lfo.connect(lfoF); lfoF.connect(lp.frequency);
-    // Gischt: Hochpass-Zischen, das kurz nach dem Schwall kommt (zweiter LFO, versetzt)
-    const n2 = noise(); const hp = filt('highpass', 2500, 0.5);
-    const foam = ctx.createGain(); foam.gain.value = 0.08;
-    const lfo2 = osc('sine', 1 / 9, now() + 2.2); const l2g = ctx.createGain(); l2g.gain.value = 0.07; lfo2.connect(l2g); l2g.connect(foam.gain);
     const fade = ctx.createGain(); fade.gain.setValueAtTime(0.0001, now()); fade.gain.exponentialRampToValueAtTime(1, now() + 2.5);
-    n.connect(lp); lp.connect(swell); swell.connect(fade);
-    n2.connect(hp); hp.connect(foam); foam.connect(fade);
     fade.connect(out);
-    n.start(); n2.start(); lfo.start(); lfo2.start(now() + 2.2);
-    amb = { nodes: [n, n2, lfo, lfo2], fade, gullTimer: null };
+    amb = { fade, layers: {}, gains: {}, gullTimer: null };
+    for (const z of ZONES) {
+      const g = ctx.createGain(); g.gain.value = zoneWeights[z]; g.connect(fade);
+      amb.gains[z] = g;
+      amb.layers[z] = LAYERS[z](g);
+      amb.layers[z].weight = zoneWeights[z];
+    }
     const scheduleGull = () => {
-      amb.gullTimer = setTimeout(() => { if (!amb) return; if (ready() && !muted) gull(now() + 0.05, out); scheduleGull(); }, nextGullDelay(Math.random) * 1000);
+      amb.gullTimer = setTimeout(() => { if (!amb) return; if (ready() && !muted && zoneWeights.strand > 0.05) gull(now() + 0.05, amb.gains.strand); scheduleGull(); }, nextGullDelay(Math.random) * 1000);
     };
     amb.gullTimer = setTimeout(scheduleGull, 2500);
   },
@@ -484,10 +634,25 @@ export const ambience = {
     if (!amb) return;
     const a = amb; amb = null;
     clearTimeout(a.gullTimer);
+    for (const l of Object.values(a.layers)) l.timers.forEach(clearTimeout);
     a.fade.gain.setTargetAtTime(0.0001, now(), 0.4);
-    setTimeout(() => { stopAt(a.nodes, 0); a.fade.disconnect(); }, 2000);
+    setTimeout(() => { for (const l of Object.values(a.layers)) stopAt(l.nodes, 0); a.fade.disconnect(); }, 2000);
   },
   isPlaying: () => !!amb,
+  /** Zonen-Mischung, z. B. { strand: 1, markt: 0.3 }; fehlende Zonen = 0, weich überblendet (~1 s). null = nur Strand. */
+  setZone(gewichte) {
+    zoneWeights = normalizeZones(gewichte);
+    if (!amb) return zoneWeights;
+    for (const z of ZONES) {
+      amb.gains[z].gain.setTargetAtTime(zoneWeights[z], now(), 0.35);
+      amb.layers[z].weight = zoneWeights[z];
+    }
+    return zoneWeights;
+  },
+  getZone: () => ({ ...zoneWeights }),
+  /** Händlerruf / Funkspruch sofort (z. B. beim Betreten), Dauer in s; 0 ohne laufende Ambience */
+  ruf: () => (amb && ready() ? amb.layers.markt.ruf() : 0),
+  funk: () => (amb && ready() ? amb.layers.posten.funk() : 0),
 };
 
 // ---------- Musik: Strand-Loop ----------
@@ -607,8 +772,11 @@ export async function loadStimmen(url = './data/stimmen.json') {
   return stimmen;
 }
 export const setStimmen = (json) => { stimmen = normalizeStimmen(json); return stimmen; };
-/** Profil für Kunden-id (z. B. 'zivi_1') oder Slug ('mentor', 'spieler'); unbekannt → default */
-export const stimmeFor = (id) => stimmen.stimmen[slugFor(stimmen, id)];
+/** Profil für Kunden-id (z. B. 'zivi_1') oder Slug ('mentor', 'spieler'); unbekannt → fallback (sonst default) */
+export const stimmeFor = (id, fallback = null) => {
+  const slug = slugFor(stimmen, id);
+  return slug === 'default' && fallback ? normalizeStimme(fallback) : stimmen.stimmen[slug];
+};
 export const stimmenIds = () => Object.keys(stimmen.stimmen);
 export const barkSituations = (id) => Object.keys(stimmen.barks[slugFor(stimmen, id)] || {});
 /**
@@ -645,13 +813,20 @@ export const getVoiceMode = () => voiceMode;
 export const ttsAvailable = () => typeof speechSynthesis !== 'undefined' && typeof SpeechSynthesisUtterance !== 'undefined';
 
 function playPlan(plan, panPos = 0) {
-  const st = STIL[plan.stimme.stil];
   const t0 = now() + 0.02;
   const g = ctx.createGain(); g.gain.value = plan.stimme.laut;
   // Position links/rechts (nur wenn gewünscht; Mitte spart den Panner)
   if (panPos) { const p = pan(panPos); g.connect(p); p.connect(bus.voice); } else g.connect(bus.voice);
+  const nodes = renderPlan(plan, g, t0);
+  speaking = { gain: g, nodes, until: t0 + plan.duration };
+  setTimeout(() => { if (speaking && speaking.gain === g) { speaking = null; g.disconnect(); } }, (plan.duration + 0.3) * 1000);
+}
+/** Brabbel-Plan ab t0 in dest rendern (auch für Stimmengewirr/Händler/Funk); gibt die gestarteten Quellen zurück */
+function renderPlan(plan, dest, t0) {
+  const st = STIL[plan.stimme.stil];
+  const g = dest;
   const nodes = [];
-  // leichter Hall-Ersatz: nichts; Stimmen bleiben trocken, damit sie über der Ambience sitzen
+  // Stimmen bleiben trocken, damit sie über der Ambience sitzen
   for (const n of plan.notes) {
     const t = t0 + n.t;
     const o = osc(st.wave, n.freq, t);
@@ -668,8 +843,7 @@ function playPlan(plan, panPos = 0) {
     if (st.sub) { const s = osc('sine', n.freq / 2, t); const sg = ctx.createGain(); sg.gain.value = 0.5; s.connect(sg); sg.connect(env); s.start(t); s.stop(t + n.dur + 0.06); nodes.push(s); }
     if (st.rau) { const r = noise(); const rb = filt('bandpass', n.freq * 2, 1); const rg = ctx.createGain(); rg.gain.value = 0.12; r.connect(rb); rb.connect(rg); rg.connect(env); r.start(t); r.stop(t + n.dur); nodes.push(r); }
   }
-  speaking = { gain: g, nodes, until: t0 + plan.duration };
-  setTimeout(() => { if (speaking && speaking.gain === g) { speaking = null; g.disconnect(); } }, (plan.duration + 0.3) * 1000);
+  return nodes;
 }
 function speakTts(stimme, text) {
   const u = new SpeechSynthesisUtterance(String(text));

@@ -10,7 +10,7 @@ export const MAX_HEAT = 3;
 export const TALK_DIST = 3.2;     // so nah muss man ran für E/F
 export const SHOES = ['sandale', 'flipflop', 'turnschuh', 'barfuss', 'gummistiefel'];
 export const SHIRTS = ['hawaii', 'polo_sauber', 'tanktop', 'ohne', 'uniform_versteckt', 'hawaii_neu', 'kittel', 'trikot'];
-export const ACCESSORIES = [null, 'cap', 'ohrknopf', 'hund', 'rucksack', 'sonnenbrille', 'kamera', 'surfbrett', 'gehstock', 'handy', 'kopfhoerer'];
+export const ACCESSORIES = [null, 'cap', 'ohrknopf', 'hund', 'rucksack', 'sonnenbrille', 'kamera', 'surfbrett', 'gehstock', 'handy', 'kopfhoerer', 'fischkiste', 'bierdose'];
 // optionale Content-Felder (alles darf fehlen)
 export const PANTS = ['shorts', 'badehose', 'chino', 'jogginghose', 'rock', 'lang'];
 export const SKINTONES = ['hell', 'mittel', 'dunkel', 'sonnenbrand'];
@@ -18,11 +18,12 @@ export const BEARDS = ['keiner', 'stoppel', 'schnauzer', 'vollbart'];
 export const GLASSES = ['keine', 'lesebrille', 'sonnenbrille', 'sportbrille'];
 export const HAIRS = ['kurz', 'lang', 'lockig', 'dutt', 'weiss', 'glatze'];
 export const MOODS = ['neutral', 'misstrauisch', 'erschrocken', 'zufrieden', 'selig'];
-export const EXTRAS = ['socken', 'preisschild', 'stirnband', 'halstuch_hund', 'funkgeraet', 'strohhut', 'cocktail', 'rollator', 'einkaufskorb', 'pulsuhr', 'buegelfalte', 'nass', 'bändchen', 'baendchen', 'schwitzt', 'notizblock'];
+export const EXTRAS = ['socken', 'preisschild', 'stirnband', 'halstuch_hund', 'funkgeraet', 'strohhut', 'cocktail', 'rollator', 'einkaufskorb', 'pulsuhr', 'buegelfalte', 'nass', 'bändchen', 'baendchen', 'schwitzt', 'notizblock',
+  'schuerze', 'fischgeruch', 'bauchtasche', 'sonnenbrand_streifen', 'riesenhut', 'faecher', 'kreuzfahrt_baendchen', 'rucksack_leer', 'faehrenticket', 'handschellen_umriss'];
 export const SPAWNS = ['K1', 'K2', 'K3', 'K4', 'K5', 'K6'];
 
 export function initialState() {
-  return { geld: 0, ware: START_WARE, heat: 0, tag: 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0 };
+  return { geld: 0, ware: START_WARE, heat: 0, tag: 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, mangos: 0, tageOhneVorfall: 0 };
 }
 
 // ---------- Kundschaft: fehlende/kaputte Felder robust auffüllen ----------
@@ -85,13 +86,14 @@ export function pickLine(list, idx = 0) {
 // ---------- Verkauf / Ablehnen / Heat ----------
 export function kundeStatus(state, id) { return state.status[id] || 'neutral'; }
 
-export function sell(state, kunde, lineIdx = 0, { beschlagnahmt = ZIVI_BESCHLAGNAHMT } = {}) {
+export function sell(state, kunde, lineIdx = 0, { beschlagnahmt = ZIVI_BESCHLAGNAHMT, posten = null, pos = null } = {}) {
   if (state.verhaftet) return { state, result: 'verhaftet', text: '' };
   if (kundeStatus(state, kunde.id) !== 'neutral') return { state, result: 'schon_erledigt', text: '' };
   if (state.ware <= 0) return { state, result: 'keine_ware', text: pickLine(state.texte?.ausverkauft_kunde, lineIdx) || 'Alles leer, Mann. Morgen wieder.' };
   if (kunde.zivi) {
-    // Der Beutel ist weg (an die Polizei), Geld gibt es keins
-    const heat = Math.min(MAX_HEAT, state.heat + Math.max(1, kunde.heat));
+    // Der Beutel ist weg (an die Polizei), Geld gibt es keins; in Sichtweite des Postens doppelt Heat
+    const mult = posten && pos && inPostenSicht(pos, posten) ? 2 : 1;
+    const heat = Math.min(MAX_HEAT, state.heat + Math.max(1, kunde.heat) * mult);
     const next = {
       ...state, heat,
       ware: beschlagnahmt ? state.ware - 1 : state.ware,
@@ -118,7 +120,9 @@ export const isArrested = (state) => state.heat >= MAX_HEAT || state.verhaftet;
 
 // Verhaftung mild: Tag verloren, Ware weg, Geld bleibt, alle Kunden wieder neutral
 export function newDay(state) {
-  return { ...state, geld: state.geld, ware: START_WARE, heat: 0, tag: state.tag + 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0 };
+  // Tafel „Tage ohne Vorfall“: zählt hoch, springt bei einer Verhaftung auf 0
+  const tageOhneVorfall = isArrested(state) ? 0 : (state.tageOhneVorfall || 0) + 1;
+  return { ...state, geld: state.geld, ware: START_WARE, heat: 0, tag: state.tag + 1, status: {}, verhaftet: false, verkauftHeute: 0, geldHeute: 0, anZivisHeute: 0, tageOhneVorfall };
 }
 
 // Heat als Text/Icons für das HUD
@@ -467,4 +471,71 @@ export function finishMentor(state, folge) {
   let next = state;
   for (const e of folge) if (e.aktion) next = applyMentorAktion(next, e.aktion, e.value);
   return { ...next, mentorTag: state.tag };
+}
+
+// ---------- Posten 7: Polizei-Präsenz als Heat-Zone, Mangos als Gnade ----------
+// Position/Radius kommen aus dem Markt-Layout (zone-markt-layout.js), bis dahin dieser Platzhalter nördlich des Dorfs
+export const POSTEN_DEFAULT = { x: 20, z: -84, r: 15 };
+export const inPostenSicht = (pos, posten = POSTEN_DEFAULT) => Math.hypot(pos.x - posten.x, pos.z - posten.z) <= posten.r;
+export const MANGO_PREIS = 10;
+// Mango am Markt-Stand kaufen (Geld −, Mango +); zu wenig Geld → unverändert
+export function buyMango(state, preis = MANGO_PREIS) {
+  if (state.geld < preis) return { state, result: 'kein_geld' };
+  return { state: { ...state, geld: state.geld - preis, mangos: (state.mangos || 0) + 1 }, result: 'gekauft' };
+}
+// Mango am Posten abgeben: Heat −1, einmal pro Tag, nur mit Mango
+export function giveMango(state) {
+  if (!(state.mangos > 0)) return { state, result: 'keine_mango' };
+  if (state.mangoTag === state.tag) return { state, result: 'schon_heute' };
+  if (state.heat <= 0) return { state, result: 'kein_heat' };
+  return { state: { ...state, mangos: state.mangos - 1, heat: state.heat - 1, mangoTag: state.tag }, result: 'gnade' };
+}
+export const mangoAbgegeben = (state) => state.mangoTag === state.tag;
+// Text der Tafel am Posten
+export const tafelText = (state) => `TAGE OHNE VORFALL: ${isArrested(state) ? 0 : (state.tageOhneVorfall || 0)}`;
+
+// ---------- Posten 7: Texte (data/texte.json → posten7{}) ----------
+export const DEFAULT_POSTEN7 = {
+  mango: {
+    gnaedig: ['Pong nimmt die Mango. „Ich hab dich heute nicht gesehen.“'],
+    schon_gehabt: ['„Eine Mango pro Tag. Zwei wären Bestechung.“'],
+    keine_mango: ['„Keine Mango, keine Gnade. Der Markt ist da drüben.“'],
+    kein_heat: ['„Du bist sauber. Iss sie selbst.“'],
+  },
+  tafel: { zeile1: 'Tage ohne Vorfall: {tage}', zeile2: { 0: 'Heute alles ruhig.', 1: 'Jemand hat was gesehen.', 2: 'Streife verstärkt.', 3: 'FAHNDUNG.' }, nachts: ['Posten geschlossen.'] },
+  pong: { heat_0: ['„Schöner Tag. Bleib sauber.“'], heat_1: ['„Ich hab was gehört.“'], heat_2: ['„Ich kenn deinen Namen.“'], heat_3: ['„Mitkommen.“'] },
+};
+export function normalizePosten7(json) {
+  const t = json && typeof json === 'object' && json.posten7 && typeof json.posten7 === 'object' ? json.posten7 : {};
+  const D = DEFAULT_POSTEN7;
+  const m = t.mango && typeof t.mango === 'object' ? t.mango : {};
+  const ta = t.tafel && typeof t.tafel === 'object' ? t.tafel : {};
+  const z2 = ta.zeile2 && typeof ta.zeile2 === 'object' ? ta.zeile2 : {};
+  const po = t.pong && typeof t.pong === 'object' ? t.pong : {};
+  const zeile2 = {};
+  for (let h = 0; h <= MAX_HEAT; h++) zeile2[h] = str(z2[String(h)], D.tafel.zeile2[h]);
+  const pong = {};
+  for (let h = 0; h <= MAX_HEAT; h++) pong[`heat_${h}`] = strList(po[`heat_${h}`], D.pong[`heat_${h}`]);
+  return {
+    mango: {
+      gnaedig: strList(m.gnaedig, D.mango.gnaedig), schon_gehabt: strList(m.schon_gehabt, D.mango.schon_gehabt),
+      keine_mango: strList(m.keine_mango, D.mango.keine_mango), kein_heat: strList(m.kein_heat, D.mango.kein_heat),
+    },
+    tafel: { zeile1: str(ta.zeile1, D.tafel.zeile1), zeile2, nachts: strList(ta.nachts, D.tafel.nachts) },
+    pong,
+  };
+}
+// Ergebnis von giveMango → Textliste aus posten7.mango
+export const MANGO_TEXT_KEY = { gnade: 'gnaedig', schon_heute: 'schon_gehabt', keine_mango: 'keine_mango', kein_heat: 'kein_heat' };
+export function mangoText(p7, result, lineIdx = 0) {
+  const key = MANGO_TEXT_KEY[result];
+  return key ? pickLine((p7 || DEFAULT_POSTEN7).mango[key], lineIdx) : '';
+}
+// Pong ansprechen: Spruch nach Heat-Stufe
+export const pongText = (p7, state, lineIdx = 0) => pickLine((p7 || DEFAULT_POSTEN7).pong[`heat_${Math.max(0, Math.min(MAX_HEAT, state.heat))}`], lineIdx);
+// Tafel: zwei Zeilen (Zähler + Heat-Stufe)
+export function tafelLines(p7, state) {
+  const P = p7 || DEFAULT_POSTEN7;
+  const tage = isArrested(state) ? 0 : (state.tageOhneVorfall || 0);
+  return [fillText(P.tafel.zeile1, { tage }), P.tafel.zeile2[Math.max(0, Math.min(MAX_HEAT, state.heat))]];
 }

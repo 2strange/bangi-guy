@@ -1,5 +1,5 @@
 {
-  "_schema": "Stimmen und Barks (kurze englische Ausrufe, 1–5 Wörter, Lebowski-/Surfer-Ton) für Sprechblasen und das Gebrabbel (Animal-Crossing-Stil). Eigentümer: Content. LOOKUP: slug = zuordnung[kundeId] ?? kundeId; profil = stimmen[slug]?.charakter ?? stimmen.default.charakter. Feste Slugs: default (Fallback), spieler (der Schluffi), mentor. stimmen{slug} = charakter {tonhoehe 0.5–2.0 (1.0 = mittlere Männerstimme ~220 Hz, 0.6 Bass, 1.6 Oma/Kind), tempo 0.6–1.6 (1.0 = ~8 Silben/s), stil (schluffig|brummig|knarzig|quietschig|zackig|piepsig|cool), vibrato 0–1 (nervös = hoch), laut 0.5–1.2 (relative Lautstärke)} und barks {situation: []}. Situationen bei Kunden: gruss (Spieler kommt in Reichweite), kauf (Verkauf abgeschlossen), ablehnung (Spieler lehnt ab oder Kunde will nicht), zivi_verdaechtig (Spieler schaut genau hin / Kunde merkt Misstrauen; bei Zivis die Tarnung, bei Harmlosen Verwirrung); mentor hat stattdessen gruss, lektion, nachschub, abschied; default und spieler haben keine barks. zuordnung{kundeId: slug} verbindet kunden.json mit einer Stimme (gleiche Info als Feld stimme in kunden.json; zuordnung gewinnt bei Widerspruch). Barks werden zufällig gewählt, nie zweimal hintereinander dieselbe; Satzzeichen steuern das Gebrabbel (? = Tonhöhe hoch, ! = lauter, … = Pause). Apostrophe sind gerade (').",
+  "_schema": "Stimmen und Barks (kurze englische Ausrufe, 1–5 Wörter, Lebowski-/Surfer-Ton) für Sprechblasen und das Gebrabbel (Animal-Crossing-Stil). Eigentümer: Content. LOOKUP: slug = zuordnung[kundeId] ?? kundeId; profil = stimmen[slug]?.charakter ?? stimmen.default.charakter. Feste Slugs: default (Fallback), spieler (der Schluffi), mentor. stimmen{slug} = charakter {tonhoehe 0.5–2.0 (1.0 = mittlere Männerstimme ~220 Hz, 0.6 Bass, 1.6 Oma/Kind), tempo 0.6–1.6 (1.0 = ~8 Silben/s), stil (schluffig|brummig|knarzig|quietschig|zackig|piepsig|cool), vibrato 0–1 (nervös = hoch), laut 0.5–1.2 (relative Lautstärke)} und barks {situation: []}. Situationen bei Kunden: gruss (Spieler kommt in Reichweite), kauf (Verkauf abgeschlossen), ablehnung (Spieler lehnt ab oder Kunde will nicht), zivi_verdaechtig (Spieler schaut genau hin / Kunde merkt Misstrauen; bei Zivis die Tarnung, bei Harmlosen Verwirrung); mentor hat stattdessen gruss, lektion, nachschub, abschied; pong (Polizist, Nicht-Kunde) hat pfiff, sichtung, verfolgung, mango_gnaedig, mango_schon, mango_keine, verhaftung; haendler (Markt-Ambience, keine Figur) hat nur ruf; funk (Polizeifunk am Posten, keine Figur) hat nur spruch; default und spieler haben keine barks. zuordnung{kundeId: slug} verbindet kunden.json mit einer Stimme (gleiche Info als Feld stimme in kunden.json; zuordnung gewinnt bei Widerspruch). Barks werden zufällig gewählt, nie zweimal hintereinander dieselbe; Satzzeichen steuern das Gebrabbel (? = Tonhöhe hoch, ! = lauter, … = Pause). Apostrophe sind gerade (').",
 
   "zuordnung": {
     "stammkunde_1": "stammkunde",
@@ -11,7 +11,11 @@
     "jogger_1": "jogger",
     "zivi_1": "zivi_polo",
     "zivi_2": "zivi_verkleidet",
-    "zivi_3": "zivi_hund"
+    "zivi_3": "zivi_hund",
+    "fischer_1": "fischer",
+    "lauter_typ_1": "lauter_typ",
+    "touristin_1": "touristin",
+    "zivi_4": "zivi_frager"
   },
 
   "stimmen": {
@@ -105,6 +109,86 @@
         "kauf": ["Rex, mark. I mean, sit.", "Rex has decided.", "Smells… interesting.", "Good boy, Rex.", "Thank you. Rex thanks you."],
         "ablehnung": ["Smart kid.", "Rex remembers.", "Tomorrow. Coincidence.", "Rex, we go.", "Shame. Says Rex."],
         "zivi_verdaechtig": ["It's a bandana.", "Bottle opener. Yes.", "He sniffs everyone.", "Rex, heel.", "Beach dog. Totally."]
+      }
+    },
+    "fischer": {
+      "charakter": { "tonhoehe": 0.75, "tempo": 0.85, "stil": "knarzig", "vibrato": 0.1, "laut": 1.0 },
+      "barks": {
+        "gruss": ["Up since four.", "Cat stole my fish.", "Not so close.", "Fresh… ish.", "What you got?"],
+        "kauf": ["Take a fish too.", "Before Pong comes.", "Good. Now go.", "Fish included.", "Eleven. He comes at eleven."],
+        "ablehnung": ["No fish either?", "Always here.", "Cat's smarter.", "Fine. Fine.", "Tomorrow, then."],
+        "zivi_verdaechtig": ["Boots? It's fish, man.", "Smell that? Not a cop.", "Cat vouches for me.", "Look all you want."]
+      }
+    },
+    "lauter_typ": {
+      "charakter": { "tonhoehe": 0.9, "tempo": 1.2, "stil": "quietschig", "vibrato": 0.3, "laut": 1.2 },
+      "barks": {
+        "gruss": ["HEY! YOU GOT WEED?!", "IT'S YOU! THE GUY!", "EVERYONE KNOWS YOU!", "YOOO!", "BIG FAN!"],
+        "kauf": ["HE'S GOT IT!", "WHAT'S YOUR NAME?!", "I'LL TELL NOBODY!", "YES! YES!", "LEGEND!"],
+        "ablehnung": ["OKAY! NO WEED HERE!", "I'LL ASK HIM!", "I'M QUIET! QUIET!", "FINE! LOUD FINE!", "GOT IT! NOTHING!"],
+        "zivi_verdaechtig": ["ME?! A COP?!", "I'M JUST LOUD!", "WHY WHISPER?!", "WHAT?!"]
+      }
+    },
+    "touristin": {
+      "charakter": { "tonhoehe": 1.35, "tempo": 1.0, "stil": "piepsig", "vibrato": 0.3, "laut": 0.9 },
+      "barks": {
+        "gruss": ["Yoo-hoo!", "Are you local?", "Photo? No? Okay, photo.", "Husband's asleep.", "How exotic!"],
+        "kauf": ["Oh my!", "For the diary.", "Back by five!", "Delightful.", "Postcards too?"],
+        "ablehnung": ["Oh. Mangoes, then.", "Just once, I thought.", "Husband was right.", "Pity.", "Well!"],
+        "zivi_verdaechtig": ["Is it the hat?", "I'm on a cruise!", "Cheeky boy.", "Do I look official?"]
+      }
+    },
+    "zivi_frager": {
+      "charakter": { "tonhoehe": 1.0, "tempo": 1.1, "stil": "cool", "vibrato": 0.0, "laut": 0.95 },
+      "barks": {
+        "gruss": ["Just off the ferry!", "Who supplies who here?", "Collecting… experiences.", "Cool market.", "So, where from?"],
+        "kauf": ["And where's it from?", "Your supplier nice?", "That's enough. For today.", "Noted. I mean, nice.", "Up the hill, right?"],
+        "ablehnung": ["Who else, then?", "The hill, maybe?", "Three more days.", "Understood.", "I'll ask around."],
+        "zivi_verdaechtig": ["Backpack's just light.", "Ticket? Souvenir.", "I pack minimal.", "These? Trekking shoes.", "Why the pocket stare?"]
+      }
+    },
+    "pong": {
+      "charakter": { "tonhoehe": 0.85, "tempo": 0.9, "stil": "brummig", "vibrato": 0.1, "laut": 1.1 },
+      "barks": {
+        "pfiff": ["*TWEEEET*", "*tweet tweet*", "*TWEET!*", "*fweeeh… tweet*"],
+        "sichtung": ["Hey! You!", "Stop. Please.", "Sandals, I know.", "Come back! Slowly!", "Not again."],
+        "verfolgung": ["I can't… run…", "Tropical regulations!", "Wait up!", "Someone… stop him…", "My sandals!"],
+        "mango_gnaedig": ["Ah. A mango.", "Never saw you.", "Lunch. Go.", "One mango, one mercy.", "Hm. Fine."],
+        "mango_schon": ["Already had one.", "Two? No.", "Rules are rules.", "Nice try.", "Full. Go."],
+        "mango_keine": ["No mango, no mercy.", "Hands empty, huh.", "Market's that way.", "Bring fruit.", "Nothing? Nothing."],
+        "verhaftung": ["Got you. Finally.", "Day's over, kid.", "Coffee's okay here.", "Tropical justice.", "Sit. Not on my desk."]
+      }
+    },
+    "haendler": {
+      "charakter": { "tonhoehe": 0.9, "tempo": 1.1, "stil": "knarzig", "vibrato": 0.2, "laut": 1.1 },
+      "barks": {
+        "ruf": [
+          "Mangoes! Fresh mangoes!",
+          "Fish! Still arguing!",
+          "Two for one, one for two!",
+          "Coconuts! No refunds!",
+          "Best price, worst fish!",
+          "Hats! Hats for heads!",
+          "Cold water, warm smile!",
+          "Sunscreen! You need it!"
+        ]
+      }
+    },
+    "funk": {
+      "charakter": { "tonhoehe": 0.95, "tempo": 1.2, "stil": "zackig", "vibrato": 0.0, "laut": 0.8 },
+      "barks": {
+        "spruch": [
+          "Unit seven, copy.",
+          "Suspect wears sandals.",
+          "Ten-four. Lunch break.",
+          "Mango delivery confirmed.",
+          "Lost him at the laundry.",
+          "Requesting faster shoes.",
+          "Dog unit on the beach.",
+          "Ferry's in. Stay sharp.",
+          "Negative on the hill. Too steep.",
+          "Whistle battery low."
+        ]
       }
     },
     "mentor": {

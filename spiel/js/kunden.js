@@ -1,7 +1,8 @@
 // kunden.js — Kundschaft aus Teilen (alles aus data/kunden.json, normalisiert in game.js):
 // Schuhe (sandale, flipflop, turnschuh, barfuss, gummistiefel), Hemd (hawaii, hawaii_neu, polo_sauber, tanktop, ohne,
 // uniform_versteckt, kittel, trikot), Hose, Haare, Bart, Brille, Accessoire (cap, ohrknopf, hund, rucksack,
-// sonnenbrille, kamera, surfbrett, gehstock, handy, kopfhoerer) und Extras (socken, preisschild, stirnband,
+// sonnenbrille, kamera, surfbrett, gehstock, handy, kopfhoerer, fischkiste, bierdose) und Extras (socken, preisschild, stirnband,
+// schuerze, riesenhut, faecher,
 // halstuch_hund, funkgeraet, strohhut, cocktail, einkaufskorb, bändchen). Die Fallen (Socken, Preisschild, Ohrknopf,
 // Hund) sind bewusst groß und kontrastreich.
 // Figuren haben Pivot-Gruppen wie der Schluffi (userData.parts), damit sie schlendern können.
@@ -300,6 +301,20 @@ export function buildKunde(k, seed = 1, outfit = null) {
         const board = toonMesh(bg, 0xff5fa2, { outline: 0.045 });
         board.position.set(0.38, -0.72, 0.1); board.rotation.set(Math.PI / 2, 0, Math.PI / 2 - 0.1); arm.add(board);
         const stripe = toonMesh(new THREE.BoxGeometry(0.08, 2.0, 0.17), 0xffffff, { outline: 0.02 }); board.add(stripe);
+      } else if (k.accessoire === 'fischkiste') {
+        // Fischkiste unterm Arm, zwei Fische gucken raus
+        const box = toonMesh(new THREE.BoxGeometry(0.7, 0.35, 0.45), 0xd8a85a, { outline: 0.035 });
+        box.position.copy(hp).add(V(0.25, -0.2, 0.05)); arm.add(box);
+        for (const dx of [-0.15, 0.15]) {
+          const fg = new THREE.SphereGeometry(0.12, 8, 6); fg.scale(1.8, 0.7, 0.5);
+          const fish = toonMesh(fg, 0x9fd8ff, { outline: 0.02 });
+          fish.position.copy(hp).add(V(0.25 + dx, 0.02, 0.05)); fish.rotation.y = 0.4 * Math.sign(dx); arm.add(fish);
+        }
+      } else if (k.accessoire === 'bierdose') {
+        const can = toonMesh(new THREE.CylinderGeometry(0.1, 0.1, 0.3, 10), 0xffd54a, { outline: 0.025 });
+        can.position.copy(hp).add(V(0, 0.2, 0.05)); arm.add(can);
+        const ring = toonMesh(new THREE.CylinderGeometry(0.11, 0.11, 0.04, 10), 0xdddddd, { outline: 0.015 });
+        ring.position.copy(hp).add(V(0, 0.36, 0.05)); arm.add(ring);
       } else if (extras.has('cocktail')) {
         const glass = toonMesh(new THREE.ConeGeometry(0.16, 0.3, 10), 0xffb13b, { outline: 0.025 });
         glass.geometry.rotateX(Math.PI); glass.position.copy(hp).add(V(0, 0.28, 0.05)); arm.add(glass);
@@ -325,6 +340,16 @@ export function buildKunde(k, seed = 1, outfit = null) {
     root.add(limb(V(-0.4, hipY + 0.2, -0.2), V(-0.42, hipY + 0.6, -0.22), 0.015, 0x222222, { outline: 0.01 }));
     const led = toonMesh(new THREE.SphereGeometry(0.03, 6, 5), 0xff2222, { outline: 0, basic: true });
     led.position.set(-0.4, hipY + 0.18, -0.13); root.add(led);
+  }
+  if (extras.has('schuerze')) {
+    const ap = toonMesh(new THREE.BoxGeometry(0.72, 1.1, 0.06), 0xf4f4f8, { outline: 0.035 });
+    ap.position.set(0, hipY + 0.1, 0.5); root.add(ap);
+    const stain = toonMesh(new THREE.CircleGeometry(0.12, 8), 0x9fd8ff, { outline: 0, basic: true });
+    stain.position.set(0.12, hipY + 0.2, 0.54); root.add(stain);
+  }
+  if (extras.has('faecher')) {
+    const fan = toonMesh(new THREE.CircleGeometry(0.36, 10, Math.PI * 0.1, Math.PI * 0.8), 0xff5fa2, { outline: 0.025 });
+    fan.position.set(-0.75, hipY + 1.2, 0.3); fan.rotation.set(0, 0.6, 0); root.add(fan);
   }
   if (k.accessoire === 'rucksack') {
     const pack = toonMesh(new RoundedBoxGeometry(0.7, 0.9, 0.4, 3, 0.12), 0x3bb84a, { outline: 0.045 });
@@ -415,7 +440,14 @@ export function buildKunde(k, seed = 1, outfit = null) {
     const brim = toonMesh(brimGeo, 0xe8463a, { outline: 0.035 });
     brim.position.set(0, 0.36, 0.62); brim.rotation.x = -0.2; head.add(brim);
   }
-  if (extras.has('strohhut')) {
+  if (extras.has('riesenhut')) {
+    const top = toonMesh(new THREE.CylinderGeometry(0.46, 0.5, 0.28, 14), 0xfff1c2, { outline: 0.04 });
+    top.position.set(0, 0.6, 0); head.add(top);
+    const brim = toonMesh(new THREE.CylinderGeometry(1.25, 1.25, 0.05, 20), 0xfff1c2, { outline: 0.045 });
+    brim.position.set(0, 0.47, 0); brim.rotation.set(0.08, 0, 0.1); head.add(brim);
+    const ribbon = toonMesh(new THREE.CylinderGeometry(0.51, 0.51, 0.09, 14), 0xff5fa2, { outline: 0.02 });
+    ribbon.position.set(0, 0.5, 0); head.add(ribbon);
+  } else if (extras.has('strohhut')) {
     const top = toonMesh(new THREE.CylinderGeometry(0.42, 0.46, 0.3, 14), 0xe3b04b, { outline: 0.04 });
     top.position.set(0, 0.6, 0); head.add(top);
     const brim = toonMesh(new THREE.CylinderGeometry(0.85, 0.85, 0.05, 18), 0xe3b04b, { outline: 0.04 });

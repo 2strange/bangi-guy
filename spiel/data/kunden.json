@@ -1,5 +1,5 @@
 {
-  "_schema": "Kundschaft für Bangi Beach. Eigentümer: Content. PFLICHT (aus dem Stub): id, typ, schuhe (sandale|flipflop|turnschuh|barfuss|gummistiefel), hemd (hawaii|polo_sauber|tanktop|ohne|uniform_versteckt|hawaii_neu|kittel|trikot), accessoire (null|cap|ohrknopf|hund|rucksack|sonnenbrille|kamera|surfbrett|gehstock|handy|kopfhoerer), zivi (bool), zahlt (Münzen), heat (Heat bei Verkauf, 0–3), saetze {gruss[], kauf[], ablehnung[], reveal[]}. OPTIONAL (Content-Erweiterung, alles darf fehlen): name (Spitzname für die Sprechblase), hose (shorts|badehose|chino|jogginghose|rock|lang), hautton (hell|mittel|dunkel|sonnenbrand), bart (keiner|stoppel|vollbart|schnauzer), brille (keine|sonnenbrille|lesebrille|sportbrille), haare (kurz|lang|glatze|dutt|weiss|lockig), extras (Liste kleiner Zweitmerkmale: socken, hut, preisschild, buegelfalte, stirnband, halstuch_hund, funkgeraet, notizblock, nass, strohhut, rollator), stimmung_start (neutral|misstrauisch|erschrocken|zufrieden – Mimik-API), mimik (Freitext-Wunsch an die Gesichter: was Augen/Mund im Normalzustand, beim Kauf und bei Ablehnung tun), tells (Liste der sichtbaren Hinweise, für Hilfe-Modus und Designer-Doku), tempo (Laufgeschwindigkeit relativ zum Spieler bei der Flucht: 1.0 = gleich schnell), spawn (Spawn-Punkt K1–K6 der Welt-Skizze), stimme (Slug einer Stimme in stimmen.json für Barks und Gebrabbel). Regel fürs Lesen: Schuhe zuerst, dann Hemd, dann Accessoire/Extras. Kein einzelnes Merkmal reicht – die Kombination zählt.",
+  "_schema": "Kundschaft für Bangi Beach. Eigentümer: Content. PFLICHT (aus dem Stub): id, typ, schuhe (sandale|flipflop|turnschuh|barfuss|gummistiefel), hemd (hawaii|polo_sauber|tanktop|ohne|uniform_versteckt|hawaii_neu|kittel|trikot), accessoire (null|cap|ohrknopf|hund|rucksack|sonnenbrille|kamera|surfbrett|gehstock|handy|kopfhoerer|fischkiste|bierdose), zivi (bool), zahlt (Münzen), heat (Heat bei Verkauf, 0–3), saetze {gruss[], kauf[], ablehnung[], reveal[]}. OPTIONAL (Content-Erweiterung, alles darf fehlen): name (Spitzname für die Sprechblase), hose (shorts|badehose|chino|jogginghose|rock|lang), hautton (hell|mittel|dunkel|sonnenbrand), bart (keiner|stoppel|vollbart|schnauzer), brille (keine|sonnenbrille|lesebrille|sportbrille), haare (kurz|lang|glatze|dutt|weiss|lockig), extras (Liste kleiner Zweitmerkmale: socken, hut, preisschild, buegelfalte, stirnband, halstuch_hund, funkgeraet, notizblock, nass, strohhut, rollator, schuerze, fischgeruch, bauchtasche, sonnenbrand_streifen, riesenhut, faecher, kreuzfahrt_baendchen, rucksack_leer, faehrenticket, handschellen_umriss), stimmung_start (neutral|misstrauisch|erschrocken|zufrieden – Mimik-API), mimik (Freitext-Wunsch an die Gesichter: was Augen/Mund im Normalzustand, beim Kauf und bei Ablehnung tun), tells (Liste der sichtbaren Hinweise, für Hilfe-Modus und Designer-Doku), tempo (Laufgeschwindigkeit relativ zum Spieler bei der Flucht: 1.0 = gleich schnell), spawn (Spawn-Punkt K1–K6 der Welt-Skizze), stimme (Slug einer Stimme in stimmen.json für Barks und Gebrabbel). Regel fürs Lesen: Schuhe zuerst, dann Hemd, dann Accessoire/Extras. Kein einzelnes Merkmal reicht – die Kombination zählt.",
   "kunden": [
     {
       "id": "stammkunde_1", "typ": "Stammkunden-Schluffi", "name": "Der Walross-Typ",
@@ -159,6 +159,70 @@
         "kauf": ["Rex, markieren. Äh, ich meine: Rex, Sitz.", "Danke. Rex hat sich jedenfalls schon entschieden.", "Das riecht ja… interessant. Sagt Rex."],
         "ablehnung": ["Kluger Junge. Rex, wir gehen.", "Rex ist enttäuscht. Rex hat ein Gedächtnis.", "Okay. Wir sind morgen wieder hier. Rex und ich. Zufällig."],
         "reveal": ["Rex, fass. Nein, Rex. FASS. Rex!", "Zentrale, der Hund hat's gefunden. Ich hab nur geguckt.", "Rex ist Beamter. Du bist verhaftet. Beide."]
+      }
+    },
+    {
+      "id": "fischer_1", "typ": "Fischhändler-Kunde", "name": "Nok vom Fischstand",
+      "schuhe": "gummistiefel", "hemd": "tanktop", "hose": "lang", "accessoire": "fischkiste",
+      "hautton": "dunkel", "bart": "stoppel", "brille": "keine", "haare": "kurz",
+      "extras": ["schuerze", "fischgeruch"],
+      "zivi": false, "zahlt": 35, "heat": 0, "tempo": 0.6, "spawn": "K4", "stimme": "fischer",
+      "stimmung_start": "neutral",
+      "mimik": "Müde, aber wach; ein Auge halb zu, Mundwinkel schief wie nach 4 Uhr früh. Beim Kauf: breites Grinsen mit Zahnlücke. Bei Ablehnung: hebt eine Braue, nickt, 'okay, dann nicht'.",
+      "tells": ["GUMMISTIEFEL bei Sonne = Fischstand, kein Monsun", "Schürze mit Schuppen", "die Katze folgt ihm, nicht der Polizei", "riecht man, bevor man ihn sieht"],
+      "saetze": {
+        "gruss": ["Seit vier Uhr wach. Was hast du?", "Die Katze hat mir den Fisch geklaut. Dich klaut sie hoffentlich nicht.", "Nicht so nah. Du riechst nach Tourist."],
+        "kauf": ["Für nach dem Markt. Oder während.", "Gib her, bevor Pong vorbeikommt. Er kommt immer um elf.", "Du kriegst 'nen Fisch dazu. Nimm den Fisch. Bitte."],
+        "ablehnung": ["Auch gut. Fisch willst du auch nicht, oder?", "Dann morgen. Ich bin immer hier. Immer.", "Die Katze hat mehr Geschäftssinn als du."],
+        "reveal": []
+      }
+    },
+    {
+      "id": "lauter_typ_1", "typ": "Der laute Typ", "name": "Lars, Lautstärke 11",
+      "schuhe": "sandale", "hemd": "trikot", "hose": "shorts", "accessoire": "bierdose",
+      "hautton": "sonnenbrand", "bart": "keiner", "brille": "sonnenbrille", "haare": "glatze",
+      "extras": ["sonnenbrand_streifen", "bauchtasche"],
+      "zivi": false, "zahlt": 30, "heat": 2, "tempo": 0.8, "spawn": "K4", "stimme": "lauter_typ",
+      "stimmung_start": "zufrieden",
+      "mimik": "Mund immer offen, Augen weit, alles ist ein Ausrufezeichen. Beim Kauf: brüllt vor Freude, Arme hoch. Bei Ablehnung: kurz beleidigt, dann noch lauter freundlich.",
+      "tells": ["Sandalen, Trikot, Bierdose: harmlos", "aber: man hört ihn über den ganzen Markt (Heat 2 beim Verkauf)", "Bauchtasche voller Kleingeld", "Sonnenbrand in Trikot-Form"],
+      "saetze": {
+        "gruss": ["HEY! HAST DU GRAS?!", "DU! JA DU! BIST DU DER TYP?!", "ALTER, ICH HAB VON DIR GEHÖRT! ALLE HABEN VON DIR GEHÖRT!"],
+        "kauf": ["GEIL! LEUTE, ER HAT'S! ER HAT'S WIRKLICH!", "DANKE, MANN! WIE HEISST DU? WO WOHNST DU?!", "ICH SAG'S KEINEM! HÖRT IHR? KEINEM!"],
+        "ablehnung": ["OKAY! VERSTANDEN! KEIN GRAS BEI DEM HIER!", "SCHADE! ICH FRAG DEN DA DRÜBEN!", "ALLES GUT! ICH BIN LEISE! LEISE!"],
+        "reveal": []
+      }
+    },
+    {
+      "id": "touristin_1", "typ": "Kreuzfahrt-Tante", "name": "Frau Dr. Hut",
+      "schuhe": "sandale", "hemd": "hawaii", "hose": "rock", "accessoire": "kamera",
+      "hautton": "hell", "bart": "keiner", "brille": "sonnenbrille", "haare": "weiss",
+      "extras": ["riesenhut", "faecher", "kreuzfahrt_baendchen"],
+      "zivi": false, "zahlt": 15, "heat": 0, "tempo": 0.5, "spawn": "K4", "stimme": "touristin",
+      "stimmung_start": "zufrieden",
+      "mimik": "Dauerlächeln unter einem Hut von der Größe eines Sonnenschirms, Augen nur als Lachfalten. Beim Kauf: kichert hinter dem Fächer. Bei Ablehnung: 'Ach so', fächelt weiter.",
+      "tells": ["Hut größer als der Marktstand", "Kreuzfahrt-Bändchen am Handgelenk: muss um fünf zurück aufs Schiff", "zahlt wenig, kauft aber jeden Tag", "fotografiert alles, auch dich (harmlos, aber peinlich)"],
+      "saetze": {
+        "gruss": ["Huhu! Sind Sie einheimisch? Sie sehen so einheimisch aus.", "Mein Mann schläft auf dem Schiff. Ich erlebe was.", "Darf ich ein Foto? Nein? Ich mach trotzdem eins."],
+        "kauf": ["Das kommt ins Reisetagebuch. Als 'Gewürz'.", "Entzückend. Haben Sie auch Postkarten davon?", "Um fünf muss ich aufs Schiff. Reicht das bis dahin?"],
+        "ablehnung": ["Ach so. Dann eben Mangos.", "Schade, ich hätte so gern was Verbotenes gemacht. Einmal.", "Na gut. Mein Mann sagt eh, ich übertreibe."],
+        "reveal": []
+      }
+    },
+    {
+      "id": "zivi_4", "typ": "Der Fragesteller", "name": "Backpacker mit Fragen",
+      "schuhe": "turnschuh", "hemd": "tanktop", "hose": "shorts", "accessoire": "rucksack",
+      "hautton": "hell", "bart": "stoppel", "brille": "keine", "haare": "kurz",
+      "extras": ["rucksack_leer", "faehrenticket", "handschellen_umriss"],
+      "zivi": true, "zahlt": 55, "heat": 2, "tempo": 1.5, "spawn": "K1", "stimme": "zivi_frager",
+      "stimmung_start": "neutral",
+      "mimik": "Freundliches Backpacker-Gesicht, aber die Augen scannen ständig den Markt statt dich anzuschauen. Beim Kauf: ein kurzes, zufriedenes Augenschließen, wie beim Abhaken. Beim Reveal: Lächeln bleibt, Augen werden Polizei.",
+      "tells": ["sieht aus wie Jonas, ABER: Turnschuhe statt Trekkingsandalen", "Rucksack hängt flach: leer (kein Backpacker reist mit leerem Rucksack)", "Fährenticket von HEUTE, Stoppeln von gestern", "fragt nicht nach Ware, sondern WOHER sie kommt", "Umriss von Handschellen in der Hosentasche"],
+      "saetze": {
+        "gruss": ["Hey! Bin gerade mit der Fähre gekommen. Wo kriegt man hier denn… du weißt schon?", "Cooler Markt. Wer beliefert eigentlich wen hier so?", "Ich sammel Erfahrungen. Und Namen. Also, Erfahrungen."],
+        "kauf": ["Super. Und woher genau kommt das? Nur aus Interesse.", "Danke! Dein Lieferant, ist der auch so nett?", "Perfekt, das reicht. Ich meine: das reicht mir für heute."],
+        "ablehnung": ["Schade. Weißt du, wer sonst… na gut.", "Verstehe. Dann frag ich auf dem Hügel. Da wohnt doch jemand, oder?", "Kein Problem. Ich bin noch drei Tage hier. Mindestens."],
+        "reveal": ["Die Fähre war der Dienstweg. Wörtlich.", "Zentrale, Zielperson hat Lieferant angedeutet. Hügel. Ich wiederhole: Hügel.", "Der Rucksack war leer, weil da jetzt dein Beutel reinkommt."]
       }
     }
   ]
