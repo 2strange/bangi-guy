@@ -163,12 +163,18 @@ export function schluffi() {
   torso.position.set(0, hipY + 0.42, 0.05);
   torso.rotation.x = 0.12;
   inner.add(torso);
-  const belly = toonMesh(new THREE.SphereGeometry(0.34, 14, 10), skin, { outline: 0.035 });
-  belly.position.set(0.02, hipY + 0.22, 0.38);
+  // Bauch: lugt nur unten unterm Hemd hervor — das Hemd hat einen Saum, der über den oberen Teil fällt
+  const belly = toonMesh(new THREE.SphereGeometry(0.36, 14, 10), skin, { outline: 0.035 });
+  belly.position.set(0.02, hipY + 0.14, 0.3);
   inner.add(belly);
   const navel = toonMesh(new THREE.SphereGeometry(0.035, 6, 5), BLACK, { outline: 0, basic: true });
-  navel.position.set(0, -0.05, 0.3);
+  navel.position.set(0, -0.12, 0.33);
   belly.add(navel);
+  const hemGeo = new THREE.CylinderGeometry(0.5, 0.56, 0.34, 16, 1, true);
+  deform(hemGeo, (v) => { if (v.y < 0) v.y += 0.06 * Math.sin(Math.atan2(v.z, v.x) * 5); }); // Saum hängt unregelmäßig
+  const hem = toonMesh(hemGeo, toon(0xffffff, { map: torso.material.map, side: THREE.DoubleSide }), { outline: 0.04 });
+  hem.position.set(0, hipY + 0.3, 0.1); hem.rotation.set(0.1, 0, 0.04);
+  inner.add(hem);
   for (let i = 0; i < 3; i++) {
     const btn = toonMesh(new THREE.SphereGeometry(0.035, 6, 5), 0xfff5e0, { outline: 0.012 });
     btn.position.set(-0.3 + i * 0.07, hipY + 0.62 - i * 0.14, 0.44 - i * 0.03);

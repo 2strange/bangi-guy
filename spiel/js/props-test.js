@@ -8,6 +8,7 @@
 // ?what=huette → Finale-Hütte in allen Zuständen + Wegweiser normal/„Jetzt stimmt es.“
 // ?what=neue  → die neuen Kunden (Fischhändler, lauter Typ, Kreuzfahrt-Tante, Fragesteller) mit kundenExtras()
 // ?what=neue2 → Bauer Nok, Kletterer Dao, Frau Trillerpfeife (Zivi), Flitterwochen-Paar
+// ?what=bauch → Schluffi von vorn und von der Seite (Bauch unterm Hemd)
 import * as THREE from 'three';
 import { toonMesh, textTexture } from './toon.js';
 import { schluffi, runner, sandal, sneaker, pose, POSES, buildNong, updateNong, setNongMood, kundenExtras, updateKundenExtras } from './figures.js';
@@ -48,6 +49,11 @@ if (WHAT === 'feet') {
   const b = runner(); b.position.set(1.7, 0, 0); scene.add(b);
   camera.position.set(0, 1.6, 5.2);
   camera.lookAt(0, 0.6, 0);
+} else if (WHAT === 'bauch') {
+  const a = schluffi(); a.position.set(-1.6, 0, 0); scene.add(a);
+  const b = schluffi(); b.position.set(1.6, 0, 0); b.rotation.y = Math.PI / 2; scene.add(b);
+  camera.position.set(0, 1.9, 5.6);
+  camera.lookAt(0, 1.5, 0);
 } else if (WHAT === 'shoes') {
   const items = [[sandal(0xf0b98a, 'L'), -2.4], [sandal(0xf0b98a, 'R'), -0.8], [sneaker(0xe8463a, 'L'), 0.8], [sneaker(0xe8463a, 'R'), 2.4]];
   for (const [shoe, x] of items) { shoe.position.set(x, 0, 0); shoe.scale.setScalar(1.6); scene.add(shoe); }
