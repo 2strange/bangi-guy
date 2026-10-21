@@ -11,7 +11,7 @@ import { sandal } from './figures.js';
 import { face, faceDecal } from './faces.js';
 import { plate, cobbleTexture, paving } from './zone-dorf.js';
 import { WATER_Y } from './world.js';
-import { LANES, PROPS, EXITS, STEG, FERRY, FERRY_SPAWN, FURT, HAFENPLATZ, PIER_SPOTS, PIER_ANCHORS, WORLD_MAX_X, SHORE_Z, SCHUPPEN, FELSNASE, BAUARBEITER, pierColliders, ferryAt, furtRadius } from './zone-pier-layout.js';
+import { LANES, PROPS, EXITS, STEG, FERRY, FERRY_SPAWN, FURT, HAFENPLATZ, PIER_SPOTS, PIER_ANCHORS, WORLD_MAX_X, SHORE_Z, SCHUPPEN, FELSNASE, BAUARBEITER, PROMENADE_SPERRE, BAUZAUN, pierColliders, ferryAt, furtRadius } from './zone-pier-layout.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
@@ -292,6 +292,23 @@ export function buildPier(parent, colliders) {
       const rock = toonMesh(rg, i % 2 ? 0x8d8fa0 : 0x7f8292, { outline: 0.06 });
       rock.position.set(f.x, f.z > SHORE_Z ? WATER_Y + 0.1 : 0.1, f.z); rock.rotation.y = rand() * 3; add(rock);
     });
+    // Tor an der Promenade (Sägebock-Absperrung) und Bauzaun bis zur Hecke: krumme Pfosten, gestreifte Bretter
+    const tor = barrier('PROMENADE – im Bau'); tor.position.set(PROMENADE_SPERRE.x, 0, PROMENADE_SPERRE.z); tor.rotation.y = -Math.PI / 2; tor.scale.setScalar(1.3); add(tor);
+    const zaun = new THREE.Group();
+    const tex = stripeTexture(['#e8463a', '#ffffff', '#e8463a', '#ffffff', '#e8463a', '#ffffff'], { vertical: true });
+    const z0 = BAUZAUN.z0, z1 = BAUZAUN.z1, n = Math.round((z1 - z0) / 2.4);
+    for (let i = 0; i <= n; i++) {
+      const z = z0 + (z1 - z0) * i / n;
+      zaun.add(limb(V(BAUZAUN.x, 0, z), V(BAUZAUN.x + (rand() - 0.5) * 0.25, 1.5 + rand() * 0.3, z + (rand() - 0.5) * 0.2), 0.08, 0xd8a85a, { outline: 0.035 }));
+    }
+    for (let i = 0; i < n; i++) {
+      const za = z0 + (z1 - z0) * i / n, zb = z0 + (z1 - z0) * (i + 1) / n;
+      const board = toonMesh(new THREE.BoxGeometry(0.1, 0.45, zb - za - 0.15), toon(0xffffff, { map: tex }), { outline: 0.03 });
+      board.position.set(BAUZAUN.x, 0.75 + (i % 2) * 0.35, (za + zb) / 2); board.rotation.x = (rand() - 0.5) * 0.12; zaun.add(board);
+    }
+    const bz = plate('BAUSTELLE · BETRETEN VERBOTEN · 2019', 2.8, 0.42, { font: 'bold 54px sans-serif', tw: 1024, th: 160, thick: 0.05 });
+    bz.position.set(BAUZAUN.x + 0.1, 1.9, (z0 + z1) / 2); bz.rotation.set(0, Math.PI / 2, 0.06); zaun.add(bz);
+    add(zaun);
     const worker = sleepingWorker(); worker.position.set(BAUARBEITER.x, 0, BAUARBEITER.z); worker.rotation.y = BAUARBEITER.rot; add(worker);
     const cone = toonMesh(new THREE.ConeGeometry(0.3, 0.8, 8), 0xff7f3f, { outline: 0.035 }); cone.position.set(BAUARBEITER.x + 1.2, 0.4, BAUARBEITER.z + 1.6); cone.rotation.z = 0.1; add(cone);
   }

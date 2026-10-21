@@ -498,3 +498,52 @@ test('Furt als Fluchtroute: Sandalen-Streife watet mit halbem Tempo, Turnschuh-S
   const land = chaseStep({ ...start, x: 0, z: 0, lastSeen: { x: 0, z: -5 } }, [], { x: 0, z: -5 }, 1 / 60, { sees: true, heat: 3, schuhe: 'turnschuhe' });
   assert.ok(land.st.moving);
 });
+
+// ---------- Untiefe: Wat-Tempo, Flip-Flop-Stolpern, Fähren-Gäste ----------
+import { inUntiefe, wadeFactor, STUMBLE_EVERY, STUMBLE_TIME, darfInFurt } from '../js/logic.js';
+test('wadeFactor: an Land 1, in der Untiefe 0,6 für Sandalen/barfuß/Flip-Flops, Turnschuhe kommen nicht hinein', () => {
+  const fx = (FURT.x0 + FURT.x1) / 2;
+  assert.equal(wadeFactor({ x: fx, z: SHORE_E - 1 }), 1);
+  close(wadeFactor({ x: fx, z: SHORE_E + 3 }, 'sandalen'), WADE_FACTOR);
+  close(wadeFactor({ x: fx, z: SHORE_E + 3 }, 'barfuss'), WADE_FACTOR);
+  close(wadeFactor({ x: fx, z: SHORE_E + 3 }, 'flipflop'), WADE_FACTOR);
+  assert.equal(wadeFactor({ x: fx, z: SHORE_E + 3 }, 'turnschuh'), 0);
+  assert.equal(inUntiefe({ x: FURT.x0 - 1, z: SHORE_E + 3 }), false);
+  assert.ok(darfInFurt('flipflop') && !darfInFurt('gummistiefel'));
+});
+test('stepPlayer: in der Untiefe Wat-Tempo; Flip-Flops stolpern alle ~3 Einheiten und stehen 0,8 s', () => {
+  const fx = (FURT.x0 + FURT.x1) / 2;
+  const start = { ...idle, x: fx, z: SHORE_E + 2 };
+  // Sandalen: 1 s waten ≈ WALK_SPEED × 0,6
+  let s = start;
+  for (let t = 0; t < 1; t += 1 / 60) s = stepPlayer(s, { dir: { x: 0, z: 1 }, run: false }, 1 / 60, [], WORLD, { schuhe: 'sandalen' });
+  assert.ok(Math.abs((s.z - start.z) - WALK_SPEED * WADE_FACTOR) < 0.5, `Wat-Tempo (${(s.z - start.z).toFixed(2)})`);
+  assert.equal(s.stumbled, false);
+  // Flip-Flops: Stolperer nach STUMBLE_EVERY Einheiten, danach Stillstand
+  let f = { ...start, z: SHORE_E + 1 };
+  let stumbles = 0, stoodStill = 0;
+  for (let t = 0; t < 6; t += 1 / 60) {
+    f = stepPlayer(f, { dir: { x: 0, z: 1 }, run: true }, 1 / 60, [], WORLD, { schuhe: 'flipflop' });
+    if (f.stumbled) stumbles++;
+    if (f.stumble > 0) stoodStill += 1 / 60;
+  }
+  assert.ok(stumbles >= 1, 'mindestens ein Stolperer');
+  assert.ok(stoodStill >= STUMBLE_TIME * stumbles - 0.1, `Stillstand ${stoodStill.toFixed(2)} s`);
+  assert.ok(f.z <= FURT.maxZ + 1e-9, 'nicht über den Korridor hinaus');
+  // Turnschuhe: gar nicht hinein
+  let t2 = { ...idle, x: fx, z: SHORE_E - 2 };
+  for (let t = 0; t < 4; t += 1 / 60) t2 = stepPlayer(t2, { dir: { x: 0, z: 1 }, run: true }, 1 / 60, [], WORLD, { schuhe: 'turnschuh' });
+  close(t2.z, shoreZ(fx) + WADE_DEPTH, 1e-6);
+});
+test('assignAnchors: Fähren-Gäste (Spawn K1) bekommen Hafen-Plätze, der Rest bleibt gemischt', () => {
+  const ks = [{ id: 'a' }, { id: 'b', spawn: 'K1' }, { id: 'c' }, { id: 'd' }, { id: 'e' }, { id: 'z1', zivi: true, spawn: 'K1' }, { id: 'z2', zivi: true }];
+  for (let day = 1; day <= 3; day++) {
+    const m = assignAnchors(ks, ANCHORS, { day });
+    assert.equal(m.b.zone, 'pier', `Tag ${day}: b im Hafen`);
+    assert.equal(m.z1.zone, 'pier', `Tag ${day}: z1 im Hafen`);
+    for (const z of ['z1', 'z2']) for (const k of ks) {
+      if (k.id === z) continue;
+      assert.ok(Math.hypot(m[z].x - m[k.id].x, m[z].z - m[k.id].z) >= ZIVI_MIN_DIST, `Tag ${day}: ${z} zu nah an ${k.id}`);
+    }
+  }
+});

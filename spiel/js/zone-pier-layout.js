@@ -39,8 +39,11 @@ export const furtRadius = (a) => 1 + 0.1 * Math.sin(3 * a + 0.4) + 0.06 * Math.s
 export const SCHUPPEN = { x: 65, z: -4.5, rot: 0.05, w: 6, d: 7 };
 export const FELSNASE = [{ x: 64.8, z: 1.2, r: 2.0 }, { x: 65.6, z: 4.8, r: 1.9 }, { x: 66.2, z: 8.0, r: 1.8 }, { x: 66.6, z: 11.0, r: 1.6 }, { x: 67, z: 13.8, r: 1.4 }];
 export const BAUARBEITER = { x: 67.6, z: -11.2, r: 1.0, rot: -Math.PI / 2 };
-// Absperrung „PROMENADE – im Bau“ aus world.js (bleibt stehen, schließt die Lücke zum Schuppen)
+// Tor „PROMENADE – im Bau“ an der Promenade (ersetzt die alte Absperrung aus world.js) und Bauzaun vom
+// Heckenende (z -25.5) bis zum Schuppen: so gibt es zwischen Hotelstrand und Pier keinen Landweg
 export const PROMENADE_SPERRE = { x: 64.5, z: -10.8, w: 1.5, d: 6.5 };
+export const BAUZAUN = { x: 66, z0: -26, z1: -7.5, w: 0.6 };
+export const SPERRE_Z = { from: -26, to: SHORE_Z };   // über diese z-Spanne ist die Ost-West-Passage dicht (Test)
 
 // Kulissen mit Collidern
 export const PROPS = [
@@ -54,7 +57,7 @@ export const PROPS = [
   { kind: 'poller', x: 86.0, z: 5, r: 0.25 },
   { kind: 'fischer', x: 86.2, z: 22, r: 0.6, rot: Math.PI / 2 },
   { kind: 'schild', x: 76, z: 7, r: 0.3 },
-  { kind: 'laterne', x: 66, z: -3, r: 0.3 },
+  { kind: 'laterne', x: 69.5, z: -6, r: 0.3 },
   { kind: 'laterne', x: 90, z: -2, r: 0.3 },
 ];
 
@@ -98,6 +101,8 @@ export function pierColliders() {
   out.push(aabb(SCHUPPEN.x, SCHUPPEN.z, SCHUPPEN.w, SCHUPPEN.d, SCHUPPEN.rot));
   for (const f of FELSNASE) out.push({ x: f.x, z: f.z, r: f.r });
   out.push({ x: BAUARBEITER.x, z: BAUARBEITER.z, r: BAUARBEITER.r });
+  out.push({ ...PROMENADE_SPERRE });
+  out.push({ x: BAUZAUN.x, z: (BAUZAUN.z0 + BAUZAUN.z1) / 2, w: BAUZAUN.w, d: BAUZAUN.z1 - BAUZAUN.z0 });
   return out;
 }
 export const allColliders = pierColliders;

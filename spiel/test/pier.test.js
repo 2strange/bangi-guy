@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  PIER, LANES, EXITS, PROPS, STEG, FERRY, FERRY_SPAWN, FURT, PIER_SPOTS, PIER_ANCHORS, WORLD_MAX_X, LANE_WIDTH, SHORE_Z, furtRadius, SCHUPPEN, FELSNASE, PROMENADE_SPERRE,
+  PIER, LANES, EXITS, PROPS, STEG, FERRY, FERRY_SPAWN, FURT, PIER_SPOTS, PIER_ANCHORS, WORLD_MAX_X, LANE_WIDTH, SHORE_Z, furtRadius, SCHUPPEN, FELSNASE, PROMENADE_SPERRE, BAUZAUN, SPERRE_Z,
   pierColliders, allColliders, ferryAt, ferryDocked, furtDepthLimit, stegDepthLimit, laneLength,
 } from '../js/zone-pier-layout.js';
 import { segmentColliderDistance, reachableWaypoints, LANES as DORF_LANES } from '../js/zone-dorf-layout.js';
@@ -106,18 +106,16 @@ test('Furt und Steg: Sandalen dürfen bei der Furt tiefer, auf dem Steg bis zum 
   assert.ok(Math.abs(mid.x - STEG.x) < 1e-9, 'Stegmitte wird verschoben');
 });
 
-test('Sperre an Land: zwischen Promenaden-Absperrung, Bootsschuppen und Felsnase kommt niemand durch', () => {
-  const colliders = [...pierColliders(), PROMENADE_SPERRE];
-  const world = { minX: -66, maxX: WORLD_MAX_X, minZ: -98 };
-  // Probe-Punkte entlang der Linie x = 65 von der Promenade bis zur Uferlinie: jeder wird rausgedrückt
-  for (let z = -13; z <= SHORE_Z + 0.5; z += 0.5) {
-    const q = resolveCollisions({ x: SCHUPPEN.x, z }, PLAYER_RADIUS, colliders, world);
-    assert.ok(Math.hypot(q.x - SCHUPPEN.x, q.z - z) > 1e-6, `Lücke in der Sperre bei (${SCHUPPEN.x}, ${z})`);
+test('Sperre an Land: von der Hecke bis ins Wasser gibt es keine Ost-West-Passage (Bauzaun, Tor, Schuppen, Fels)', () => {
+  const colliders = pierColliders();
+  // Für jedes z: die Strecke x 60 → 70 muss einen Collider schneiden (Abstand 0)
+  for (let z = SPERRE_Z.from; z <= SPERRE_Z.to + 1.5; z += 0.25) {
+    const d = Math.min(...colliders.map((c) => segmentColliderDistance([60, z], [70, z], c)));
+    assert.ok(d < PLAYER_RADIUS, `Passage bei z=${z.toFixed(2)} (Abstand ${d.toFixed(2)})`);
   }
-  // Lücken zwischen den Einzelteilen sind schmaler als der Spieler
-  const parts = [{ ...PROMENADE_SPERRE, z0: PROMENADE_SPERRE.z - PROMENADE_SPERRE.d / 2, z1: PROMENADE_SPERRE.z + PROMENADE_SPERRE.d / 2 }, { z0: SCHUPPEN.z - SCHUPPEN.d / 2, z1: SCHUPPEN.z + SCHUPPEN.d / 2 }];
-  assert.ok(parts[1].z0 - parts[0].z1 < PLAYER_RADIUS * 2, 'Lücke Absperrung–Schuppen');
-  assert.ok(FELSNASE[0].z - FELSNASE[0].r - parts[1].z1 < PLAYER_RADIUS * 2, 'Lücke Schuppen–Fels');
-  for (let i = 1; i < FELSNASE.length; i++) assert.ok(Math.hypot(FELSNASE[i].x - FELSNASE[i - 1].x, FELSNASE[i].z - FELSNASE[i - 1].z) < FELSNASE[i].r + FELSNASE[i - 1].r, `Lücke im Fels ${i}`);
+  assert.ok(BAUZAUN.z0 <= -25.5, 'Bauzaun erreicht die Hecke nicht');
+  assert.ok(BAUZAUN.z1 >= SCHUPPEN.z - SCHUPPEN.d / 2, 'Bauzaun erreicht den Schuppen nicht');
   assert.ok(FELSNASE[FELSNASE.length - 1].z + FELSNASE[FELSNASE.length - 1].r > SHORE_Z + WADE_DEPTH, 'Felsnase reicht nicht bis ins Wasser');
+  // Die Zufahrt vom Markt bleibt östlich des Zauns frei
+  for (let i = 1; i < LANES.hafen_zufahrt.length; i++) assert.ok(segmentColliderDistance(LANES.hafen_zufahrt[i - 1], LANES.hafen_zufahrt[i], { x: BAUZAUN.x, z: (BAUZAUN.z0 + BAUZAUN.z1) / 2, w: BAUZAUN.w, d: BAUZAUN.z1 - BAUZAUN.z0 }) >= LANE_WIDTH / 2);
 });
