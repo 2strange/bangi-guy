@@ -411,7 +411,8 @@ export function finaleHuette() {
   const fx = 0.75 * (1 + 0.14 * 0.62) + lean * 0.62, fz = (d / 2) * 0.38 + (d / 2 * 1.06 + lean * 0.25) * 0.62, fy = st + hh * 0.62;
   // --- zu verkaufen ---
   { const o = grp('verkauf');
-    post(o, 2.2, 1.6); schild(o, 'ZU VERKAUFEN', 2.25, 1.6, 2.2); schild(o, '1000 MÜNZEN · BIS SONNTAG', 2.22, 1.6, 1.65, { bg: '#e8c57a', w: 2.4, h: 0.36 });
+    post(o, 2.2, 1.6); schild(o, 'ZU VERKAUFEN', 2.25, 1.6, 2.2);
+    g.userData.zielSchild = schild(o, '1000 MÜNZEN · BIS SONNTAG', 2.22, 1.6, 1.65, { bg: '#e8c57a', w: 2.4, h: 0.36 });
     for (const [dy, rz] of [[0.2, 0.35], [-0.15, -0.4]]) { const brett = toonMesh(new THREE.BoxGeometry(1.1, 0.16, 0.06), 0x8b5a2b, { outline: 0.025 }); brett.position.set(fx, fy + dy, fz + 0.12); brett.rotation.z = rz; o.add(brett); }
   }
   // --- halb deine: Möwe sitzt schon drauf ---
@@ -436,6 +437,7 @@ export function finaleHuette() {
     const bed = toonMesh(new THREE.BoxGeometry(2.2, 0.3, 1.0), 0x8b5a2b, { outline: 0.035 }); bed.position.set(0.2, 0.15, -d / 2 - 1.2); o.add(bed);
     for (let i = 0; i < 5; i++) { const leaf = toonMesh(new THREE.ConeGeometry(0.06, 0.55, 5), i % 2 ? 0x3bb84a : 0x2f9f3a, { outline: 0.02 }); leaf.position.set(-0.6 + i * 0.4, 0.55, -d / 2 - 1.2); leaf.rotation.z = (i % 2 ? 1 : -1) * 0.2; o.add(leaf); }
     const s = schild(o, 'KRÄUTER · PRIVAT', 0.2, -d / 2 - 1.75, 0.6, { bg: '#e8c57a', w: 1.4, h: 0.3 }); s.rotation.y = Math.PI;
+    g.userData.beetLokal = new THREE.Vector3(0.2, 0, -d / 2 - 2.4); // hier steht der Mentor, wenn er hinter der Hütte gärtnert
   }
   // --- Posten 8 ---
   { const o = grp('posten8');
@@ -457,6 +459,16 @@ export function finaleHuette() {
 }
 
 export const HUETTE_ZUSTAENDE = ['verkauf', 'halb', 'deine', 'posten8'];
+
+// Zielbetrag auf dem Verkaufsschild neu malen (Wochenziel ist kalibrierbar)
+export function setHuetteZiel(g, betrag, { text = `${betrag} MÜNZEN · BIS SONNTAG` } = {}) {
+  const b = g.userData.zielSchild;
+  if (!b) return;
+  const tex = textTexture(text, { bg: '#e8c57a', fg: '#2b1b0b', font: 'bold 56px sans-serif', w: 1024, h: 160 });
+  const lit = toon(0xffffff, { map: tex });
+  b.material[4] = lit; b.material[5] = lit; b.material.needsUpdate = true;
+  g.userData.ziel = betrag;
+}
 export function setHuette(g, zustand) {
   const S = g.userData.zustaende;
   if (!S) return;

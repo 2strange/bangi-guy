@@ -350,9 +350,17 @@ export function buildHuegel(parent, colliders) {
     }
   }
   update(0);
-  // Mentor zwischen Garten (tagsüber, mit Hacke/Gießkanne) und Bar-Hocker (abends, sitzend mit Kokosnuss) umsetzen
+  // Mentor umsetzen: Garten auf der Kuppe (tagsüber, Hacke/Gießkanne), Bar-Hocker (abends, sitzend mit Kokosnuss),
+  // oder hinter die Finale-Hütte (nach einem guten Finale gärtnert er dort; vom Hügel kommt kein Rauch mehr)
   const garten = { x: mentorObj.position.x, y: mentorObj.position.y, z: mentorObj.position.z, yaw: mentorObj.rotation.y };
   let nut = null;
+  mentorObj.userData.ort = 'huegel';
+  function gaertnern(x, y, z, yaw) {
+    pose(mentorObj, 'stehen');
+    mentorObj.position.set(x, y, z); mentorObj.rotation.y = yaw;
+    P.hoe.visible = true; P.can.visible = true;
+    if (nut) nut.visible = false;
+  }
   function mentorAnBar(an) {
     if (!P) return;
     if (an) {
@@ -363,14 +371,37 @@ export function buildHuegel(parent, colliders) {
       if (!nut) { nut = coconut(true); nut.scale.setScalar(0.8); nut.position.set(0.3, -0.95, 0.25); P.arms[1].add(nut); }
       nut.visible = true;
       P.arms[1].rotation.x = -1.2; P.arms[1].rotation.z = -0.3; // hält die Nuss hoch
+      mentorObj.userData.ort = 'bar';
     } else {
-      pose(mentorObj, 'stehen');
-      mentorObj.position.set(garten.x, garten.y, garten.z); mentorObj.rotation.y = garten.yaw;
-      P.hoe.visible = true; P.can.visible = true;
-      if (nut) nut.visible = false;
+      const heim = mentorObj.userData.huette;
+      if (heim) mentorAnHuette(heim, true); else { gaertnern(garten.x, garten.y, garten.z, garten.yaw); mentorObj.userData.ort = 'huegel'; }
     }
-    mentorObj.userData.anBar = !!an;
+    mentorObj.userData.anBar = mentorObj.userData.ort === 'bar';
+  }
+  // fh = Gruppe aus props.finaleHuette(); an = true → Mentor steht hinter der Hütte am Kräuterbeet (Blick zum Beet),
+  // bleibt dort auch nach Bar-Abenden (mentorAnBar(false) führt zurück zur Hütte); an = false → zurück auf die Kuppe
+  function mentorAnHuette(fh, an = true) {
+    if (!P) return;
+    if (an && fh?.userData.beetLokal) {
+      fh.updateMatrixWorld(true);
+      const p = fh.localToWorld(fh.userData.beetLokal.clone());
+      const mitte = fh.localToWorld(new THREE.Vector3(0, 0, 0));
+      gaertnern(p.x, 0, p.z, Math.atan2(mitte.x - p.x, mitte.z - p.z));
+      mentorObj.userData.huette = fh; mentorObj.userData.ort = 'huette';
+    } else {
+      mentorObj.userData.huette = null;
+      gaertnern(garten.x, garten.y, garten.z, garten.yaw); mentorObj.userData.ort = 'huegel';
+    }
+    mentorObj.userData.anBar = false;
   }
   const baseUpdate = update;
-  return { spots: HUEGEL_SPOTS, update: (t) => { if (mentorObj?.userData.anBar) { for (const r of smoke) r.visible = false; return; } baseUpdate(t); }, height: huegelHeight, mentor: mentorObj, mentorAnBar, mentorBarSpot };
+  return {
+    spots: HUEGEL_SPOTS, height: huegelHeight, mentor: mentorObj, mentorAnBar, mentorAnHuette, mentorBarSpot,
+    update: (t) => {
+      const ort = mentorObj?.userData.ort;
+      if (ort !== 'huegel') for (const r of smoke) r.visible = false; // kein Rauch, wenn der Mentor nicht oben ist
+      if (ort === 'bar') return;
+      baseUpdate(t);
+    },
+  };
 }

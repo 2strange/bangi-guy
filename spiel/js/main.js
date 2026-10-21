@@ -17,7 +17,7 @@ import {
   initialState, normalizeKatalog, pickKunden, startDialog, advanceDialog, chooseOption, isArrested, newDay, moodFor,
   kundeStatus, nearestKunde, wanderStep, inspectCamera, kundeLookYaw, TALK_DIST, idSeed,
   normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE, gagFor, nextIdleGagDelay,
-  mergeTexte, mergeKundenKatalog, normalizeOptionen,
+  mergeTexte, mergeKundenKatalog, normalizeOptionen, toSave, fromSave, hatFortschritt, fillText,
   normalizeStimmen, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
   normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
@@ -159,6 +159,11 @@ let optionen = normalizeOptionen((() => { try { return JSON.parse(localStorage.g
 const LANG = q('lang'); // ?lang=en für Snaps
 if (LANG) optionen = { ...optionen, sprache: LANG === 'en' ? 'en' : 'de' };
 function saveOptionen() { try { localStorage.setItem(OPT_KEY, JSON.stringify(optionen)); } catch (e) { /* privat/gesperrt */ } }
+// Spielstand: automatisch beim Tageswechsel (Morgenstand), Startkarte „Weiter“/„Neues Spiel“ wenn einer da ist
+const SAVE_KEY = 'bangi.spielstand';
+function saveGame() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ ...toSave(game), zeit: new Date().toISOString() })); } catch (e) { /* privat/gesperrt */ } }
+function readSave() { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return null; } }
+function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignorieren */ } }
 async function fetchJson(url) { try { const res = await fetch(url, { cache: 'no-store' }); return res.ok ? await res.json() : null; } catch (e) { return null; } }
 let texte = normalizeTexte(null);
 let abendTexte = normalizeAbend(null);
@@ -572,6 +577,7 @@ const touch = ui.createTouchControls({
 if (TOUCH) touch.show();
 window.addEventListener('keydown', (e) => {
   if (mode === 'menu') { if (e.code === 'Escape') closeMenu(); e.preventDefault(); return; }
+  if (mode === 'start') { if (['Enter', 'Space', 'Digit1'].includes(e.code)) startChoice(0); else if (e.code === 'Digit2') startChoice(1); e.preventDefault(); return; }
   if (e.code === 'Escape' && (mode === 'free')) { openMenu(); e.preventDefault(); return; }
   if (mode === 'arrest' || mode === 'card') { if (e.code === 'Enter' || e.code === 'Space') { startNewDay(); e.preventDefault(); } return; }
   if (mode === 'dialog') { dialogKey(e); return; }
@@ -600,6 +606,24 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
   const hit = new THREE.Vector3();
   if (ray.ray.intersectPlane(groundPlane, hit)) clickTarget = { x: hit.x, z: hit.z };
 });
+// ---------- Startkarte: Spielstand vorhanden → „Weiter“ (Stand laden) oder „Neues Spiel“ (Stand löschen) ----------
+function showStart(saved) {
+  const T = texte.start;
+  mode = 'start';
+  ui.showCard({ titel: T.titel, zeilen: [fillText(T.stand, saved)], buttons: [T.weiter, T.neu] });
+}
+function startChoice(i) {
+  const saved = fromSave(readSave());
+  ui.hideCard();
+  if (i === 0 && saved) {
+    game = { ...game, ...saved };
+    spawnKunden(game.tag);
+    for (const s of streifen) s.patrol = { ...patrolStart(s.route), mode: 'patrol' };
+    tagesuhr = initialClock(); applyTageszeit(); placeMentor(false);
+  } else clearSave();
+  refreshHud();
+  mode = 'free';
+}
 // ---------- Optionen-Menü (⚙): pausiert das Spiel (Modus menu), Esc oder „Schließen“ geht zurück ----------
 let menuPrev = 'free';
 function menuModel() {
@@ -639,7 +663,7 @@ ui.onMenu({
 });
 ui.onOptionClick((i, where) => {
   sfx('talk');
-  if (where === 'card') startNewDay();
+  if (where === 'card') { if (mode === 'start') startChoice(i); else startNewDay(); }
   else if (mode === 'mentor') advanceMentor();
   else if (mode === 'info') endInfo();
   else if (mode === 'bar') advanceBar(i);
@@ -742,6 +766,7 @@ function endDay(vorspann = null, { fuss = null } = {}) {
 function startNewDay() {
   game = newDay(game, { nacht: nachtArt });
   nachtArt = 'bar';
+  saveGame(); // Morgenstand des neuen Tages
   tagesuhr = initialClock();
   applyTageszeit();
   placeMentor(false);
@@ -1154,6 +1179,7 @@ function setupScene() {
     return;
   }
   if (SCENE === 'menue') { openMenu(); return; }
+  if (SCENE === 'start') { showStart({ ...initialState(), tag: 3, geld: 140, ware: 4 }); return; }
   if (SCENE === 'figur') {
     // Einzelfigur auf offenem Sand, Blick zur Kamera: ?scene=figur&id=surfer_1[&cy=50]
     const k = (SCENE_ID && kundeById(SCENE_ID)) || kunden[0];
@@ -1235,9 +1261,7 @@ if (SNAP) {
 } else {
   resize();
   window.addEventListener('resize', resize);
-  loadTexte();
-  loadStimmen();
-  loadKunden();
+  Promise.all([loadTexte(), loadStimmen(), loadKunden()]).then(() => { const sv = readSave(); if (hatFortschritt(sv)) showStart(fromSave(sv)); });
   let last = performance.now();
   renderer.setAnimationLoop((now) => {
     const dt = Math.min(0.05, (now - last) / 1000);

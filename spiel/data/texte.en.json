@@ -38,7 +38,9 @@
     "titel": { "feierabend": "Closing time.", "verhaftet": "BUSTED." },
     "optionen": { "tag_beenden": "End the day", "weiter": "Keep wandering", "neuer_tag": "New day" },
     "dialog": { "was_laeuft": "What's up?", "verkaufen": "Sell", "lieber_nicht": "Better not", "weiter": "Next", "hinschauen": "Take a closer look", "beenden": "Leave" },
-    "heat_label": { "0": "cold", "1": "warm-ish", "2": "hot", "3": "MANHUNT" }
+    "heat_label": { "0": "cold", "1": "warm-ish", "2": "hot", "3": "MANHUNT" },
+    "menue": { "titel": "Options", "sprache": "Text language", "beschlagnahme": "Undercover takes the goods", "musik": "Music", "ton": "Sound", "an": "on", "aus": "off", "schliessen": "Close", "hinweis": "Voices stay English. So does the seagull." },
+    "hud": { "tag": "Day", "heat": "Heat", "ware": "Stash", "geld": "Cash", "mangos": "Mangoes", "ziel": "Goal", "uhr": { "morgen": "Morning", "mittag": "Noon", "nachmittag": "Afternoon", "abend": "Evening", "nacht": "Night" } }
   },
 
   "tutorial": {

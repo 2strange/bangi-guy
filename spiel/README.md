@@ -218,6 +218,13 @@ gelegt – fehlende Zweige, andere Listenlängen oder leere Strings fallen auf D
 `mergeKundenKatalog` in `js/game.js`, getestet). Dialog-Beschriftungen und Menütexte kommen aus `texte.json → ui{}`
 (`dialog`, `menue`, `titel`, `optionen`, …). `?lang=en` setzt die Sprache für Snaps, `?snap=1&scene=menue` zeigt das Menü.
 
+## Spielstand
+Beim Tageswechsel wird der Morgenstand des neuen Tages automatisch gespeichert (`localStorage` `bangi.spielstand`,
+Schema mit `version`; nur Tag, Kasse, Tasche, Heat, Mangos, Tafel – Tagesinternes ist morgens ohnehin frisch).
+Beim nächsten Start erscheint eine Karte „Weiter“ / „Neues Spiel“ (1/2 bzw. Klick); „Neues Spiel“ löscht den
+Stand. `toSave`/`fromSave` in `js/game.js` sind reine Funktionen (getestet, fremde Version oder Müll → null).
+`?snap=1&scene=start` zeigt die Karte.
+
 ## Offen / nächste Schritte
 - Statische Deko zusammenführen (Hecke, Palmen, Laternen) und Konturen als Screen-Space-Pass, falls die
   Draw-Calls auf schwächeren Rechnern bremsen.

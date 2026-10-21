@@ -265,6 +265,8 @@ export const DEFAULT_TEXTE = {
   heat_label: { 0: 'kalt', 1: 'lauwarm', 2: 'heiß', 3: 'FAHNDUNG' },
   // Optionen-Menü (⚙): Oberflächen-Beschriftungen, Content kann sie unter ui.menue{} übersetzen
   menue: { titel: 'Optionen', sprache: 'Textsprache', beschlagnahme: 'Zivi nimmt die Ware ab', musik: 'Musik', ton: 'Ton', an: 'an', aus: 'aus', schliessen: 'Schließen', hinweis: 'Stimmen bleiben Englisch.' },
+  // Startkarte bei vorhandenem Spielstand
+  start: { titel: 'Bangi Beach', stand: 'Spielstand: Tag {tag} · {geld} Münzen · {ware} Beutel', weiter: 'Weiter', neu: 'Neues Spiel' },
   reveal_gags: [],
 };
 const strList = (v, fallback) => (Array.isArray(v) && v.length && v.every((x) => typeof x === 'string' && x.trim()) ? v : fallback);
@@ -276,7 +278,7 @@ export function normalizeTexte(json) {
   const pick = (key) => (u[key] !== undefined ? u[key] : t[key]);
   const obj = (v) => (v && typeof v === 'object' ? v : {});
   const te = obj(t.tagesende);
-  const op = obj(pick('optionen')), ti = obj(pick('titel')), di = obj(pick('dialog')), hl = obj(pick('heat_label')), me = obj(pick('menue'));
+  const op = obj(pick('optionen')), ti = obj(pick('titel')), di = obj(pick('dialog')), hl = obj(pick('heat_label')), me = obj(pick('menue')), sta = obj(pick('start'));
   const tagesende = {};
   for (const l of LAGEN) tagesende[l] = strList(te[l], DEFAULT_TEXTE.tagesende[l]);
   const strMap = (src, defaults) => Object.fromEntries(Object.keys(defaults).map((k) => [k, str(src[k], defaults[k])]));
@@ -292,6 +294,7 @@ export function normalizeTexte(json) {
     dialog: strMap(di, DEFAULT_TEXTE.dialog),
     heat_label: strMap(hl, DEFAULT_TEXTE.heat_label),
     menue: strMap(me, DEFAULT_TEXTE.menue),
+    start: strMap(sta, DEFAULT_TEXTE.start),
   };
 }
 
@@ -328,6 +331,26 @@ export function mergeKundenKatalog(deJson, enJson) {
   });
   return deJson && Array.isArray(deJson.kunden) ? { ...deJson, kunden: out } : out;
 }
+
+// ---------- Spielstand: automatisch am Tagesende (Morgenstand des neuen Tages), „Weiter“/„Neues Spiel“ beim Start ----------
+export const SAVE_VERSION = 1;
+export const SAVE_FELDER = ['tag', 'geld', 'ware', 'heat', 'mangos', 'tageOhneVorfall'];
+/** Nur das, was über Nacht zählt: Tag, Kasse, Tasche, Heat, Mangos, Tafel. Tagesinternes (status, verkauftHeute …) ist morgens ohnehin frisch. */
+export function toSave(state) {
+  const n = (v, d = 0) => (Number.isFinite(v) ? v : d);
+  return { version: SAVE_VERSION, tag: Math.max(1, Math.round(n(state.tag, 1))), geld: Math.max(0, n(state.geld)), ware: Math.max(0, Math.min(MAX_WARE, n(state.ware))), heat: Math.max(0, Math.min(MAX_HEAT, n(state.heat))), mangos: Math.max(0, n(state.mangos)), tageOhneVorfall: Math.max(0, n(state.tageOhneVorfall)) };
+}
+/** Gespeicherter Stand → Spielzustand (auf initialState gelegt); null bei fremder Version, Müll oder Tag 1 ohne Fortschritt. */
+export function fromSave(json) {
+  if (!json || typeof json !== 'object' || json.version !== SAVE_VERSION) return null;
+  if (!Number.isFinite(json.tag) || json.tag < 1) return null;
+  const clean = toSave(json);
+  const base = initialState();
+  const out = { ...base };
+  for (const f of SAVE_FELDER) out[f] = clean[f];
+  return out;
+}
+export const hatFortschritt = (json) => { const s = fromSave(json); return !!s && (s.tag > 1 || s.geld > 0 || s.mangos > 0); };
 
 // ---------- Optionen (⚙): Textsprache, Zivi-Beschlagnahme, Musik, Ton — Ablage im Browser, robust gegen Müll ----------
 export const DEFAULT_OPTIONEN = { sprache: 'de', beschlagnahme: ZIVI_BESCHLAGNAHMT, musik: true, ton: true };

@@ -112,12 +112,15 @@ export function createUI() {
   }
 
   // Vollbild-Karte (Verhaftet / Tagesbilanz)
-  function showCard({ titel, zeilen = [], klein = null, button = 'Weiter', rot = false }) {
+  // buttons: mehrere Knöpfe (1, 2 …) statt des einen ⏎-Knopfs, z. B. Startkarte „Weiter“ / „Neues Spiel“
+  function showCard({ titel, zeilen = [], klein = null, button = 'Weiter', buttons = null, rot = false }) {
     if (!arrest) return;
+    const btns = buttons && buttons.length ? buttons : [button];
+    const html = btns.map((b, i) => `<button class="opt${i === 0 ? ' sel' : ''}" data-i="${i}"><span class="key">${btns.length > 1 ? i + 1 : '⏎'}</span> ${escapeHtml(b)}</button>`).join(' ');
     arrest.innerHTML = `<div class="card"><h1 class="${rot ? 'rot' : ''}">${escapeHtml(titel)}</h1>
       ${zeilen.map((z) => `<p>${escapeHtml(z)}</p>`).join('')}
       ${klein ? `<p class="small">${escapeHtml(klein)}</p>` : ''}
-      <button class="opt sel" data-i="0"><span class="key">⏎</span> ${escapeHtml(button)}</button></div>`;
+      ${html}</div>`;
     arrest.style.display = 'flex';
   }
   function showArrest(state, button = 'Neuer Tag') {

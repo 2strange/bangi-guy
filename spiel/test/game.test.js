@@ -689,3 +689,24 @@ test('normalizeOptionen: Defaults (DE, Beschlagnahme an, Musik/Ton an), nur gül
   assert.deepEqual(o, { sprache: 'en', beschlagnahme: false, musik: true, ton: true });
   assert.equal(normalizeOptionen({ sprache: 'fr' }).sprache, 'de');
 });
+
+import { toSave, fromSave, hatFortschritt, SAVE_VERSION, SAVE_FELDER } from '../js/game.js';
+test('Spielstand: toSave/fromSave sind ein Rundlauf über die Nachtfelder; fremde Version, Müll und Tag < 1 → null', () => {
+  const s = { ...initialState(), tag: 4, geld: 140, ware: 3, heat: 2, mangos: 7, tageOhneVorfall: 2, verkauftHeute: 5, status: { k1: 'zufrieden' }, texte: { x: 1 } };
+  const j = toSave(s);
+  assert.deepEqual(Object.keys(j).sort(), ['version', ...SAVE_FELDER].sort(), 'nur Nachtfelder + Version');
+  assert.equal(j.version, SAVE_VERSION);
+  const r = fromSave(JSON.parse(JSON.stringify(j)));
+  assert.equal(r.tag, 4); assert.equal(r.geld, 140); assert.equal(r.ware, 3); assert.equal(r.heat, 2); assert.equal(r.mangos, 7); assert.equal(r.tageOhneVorfall, 2);
+  assert.equal(r.verkauftHeute, 0); assert.deepEqual(r.status, {}); assert.equal(r.texte, undefined, 'Tagesinternes und Texte kommen frisch');
+  assert.equal(fromSave(null), null); assert.equal(fromSave('x'), null); assert.equal(fromSave({ version: 99, tag: 2 }), null); assert.equal(fromSave({ version: SAVE_VERSION, tag: 0 }), null);
+  assert.equal(fromSave({ version: SAVE_VERSION, tag: 'zwei' }), null);
+  // Müll in den Feldern wird geklemmt/ersetzt
+  const m = fromSave({ version: SAVE_VERSION, tag: 2, geld: -5, ware: 99, heat: 9, mangos: 'x' });
+  assert.equal(m.geld, 0); assert.equal(m.ware, MAX_WARE); assert.equal(m.heat, MAX_HEAT); assert.equal(m.mangos, 0); assert.equal(m.tageOhneVorfall, 0);
+  assert.equal(hatFortschritt(toSave(initialState())), false, 'Tag 1 ohne Geld = kein Fortschritt');
+  assert.equal(hatFortschritt(toSave({ ...initialState(), geld: 5 })), true);
+  assert.equal(hatFortschritt(toSave(newDay(initialState()))), true);
+  assert.equal(hatFortschritt(null), false);
+  assert.equal(nT(null).start.weiter, 'Weiter');
+});
