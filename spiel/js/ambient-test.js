@@ -5,6 +5,7 @@
 // ?what=strand → Chad (an_tresen_lehnen · kippen_fangen · moewe_anreden · einschlafen_tresen) · Influencerin (pose_steg · foto)
 //                mit Reflektor-Freund (reflektor_heben · blick_ins_meer) und Stativ
 // ?what=pong   → Pong am Pausentisch: fuesse_hoch · schnarchen · aufwachen
+// ?what=paar   → das Ehepaar von vorn: drei Pose-Paare, beide leicht zur Kamera gedreht
 import * as THREE from 'three';
 import { toonMesh, BLACK } from './toon.js';
 import { lounger, limb } from './props.js';
@@ -69,6 +70,14 @@ if (WHAT === 'kinder') {
   stelle(buildAmbientFigur('reflektor_freund'), 8.4, 0.8, -0.6, 'blick_ins_meer', 0.6, 5);
   const st = stativ(); st.position.set(4.9, 0, 1.6); scene.add(st);
   camera.position.set(0.8, 3.6, 17); camera.lookAt(0.8, 1.3, 0);
+} else if (WHAT === 'paar') {
+  const paare = [['handy_hochhalten', 'dose_heben'], ['zeitschrift_rollen', 'schnorchel_runter'], ['hinterherrufen', 'zurueckkommen_nass']];
+  paare.forEach(([ps, pe], i) => {
+    const x = -4.4 + i * 4.4;
+    stelle(buildAmbientFigur('ehe_sie'), x - 1.0, 0, 0.55, ps, i === 1 ? 0.3 : 0.5);
+    stelle(buildAmbientFigur('ehe_er'), x + 1.0, 0, -0.55, pe, i === 2 ? 0.3 : 0.5);
+  });
+  camera.position.set(0, 3.0, 11.5); camera.lookAt(0, 1.4, 0);
 } else if (WHAT === 'pong') {
   const tisch = (x) => { const g = new THREE.Group(); g.position.set(x, 0, 0); const platte = toonMesh(new THREE.BoxGeometry(1.6, 0.08, 1.0), 0xd8a85a, { outline: 0.035 }); platte.position.set(0, 0.75, 1.6); g.add(platte); for (const [dx, dz] of [[-0.7, 1.2], [0.7, 1.2], [-0.7, 2.0], [0.7, 2.0]]) g.add(limb(new THREE.Vector3(dx, 0, dz), new THREE.Vector3(dx, 0.72, dz), 0.04, 0x8b5a2b, { outline: 0.02 })); const sitz = toonMesh(new THREE.BoxGeometry(0.8, 0.07, 0.8), 0x8b5a2b, { outline: 0.03 }); sitz.position.y = 0.55; g.add(sitz); const lehne = toonMesh(new THREE.BoxGeometry(0.8, 0.7, 0.07), 0x8b5a2b, { outline: 0.03 }); lehne.position.set(0, 0.95, -0.37); g.add(lehne); scene.add(g); return g; };
   [['fuesse_hoch', 0.95, 6], ['schnarchen', 0.5, 20], ['aufwachen', 0.5, 5]].forEach(([name, u, dauer], i) => {

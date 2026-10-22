@@ -1,13 +1,278 @@
 {
   "_schema": "Datei-Manifest der echten Ausrufe. Eigentümer: Audio. Die LISTE der Ausrufe (id, text, stimme, situation, regie) liegt in data/ausrufe.json (Content); hier stehen nur die Dateien dazu. clips[] je Eintrag: id (muss in data/ausrufe.json existieren), datei oder dateien[] (relativ zu diesem Ordner; mehrere Formate in Reihenfolge der Versuche, z. B. ogg dann mp3; Platzhalter sind wav), tonhoehe_aufnahme (Tonhöhe der aufgenommenen Stimme auf der Skala der Stimmprofile, 1.0 = mittlere Männerstimme; Wiedergabe wird je Stimmprofil darauf bezogen gepitcht), platzhalter (true = synthetischer Blip aus platzhalter.mjs, kein echter Clip). Ausrufe ohne Eintrag hier laufen als Gebrabbel mit ihrem Text. Echte Clips: mp3 (läuft überall inkl. Safari), optional zusätzlich ogg davor.",
   "clips": [
-    { "id": "duuude", "datei": "duuude.wav", "tonhoehe_aufnahme": 1.0, "platzhalter": true },
-    { "id": "far_out", "datei": "far_out.wav", "tonhoehe_aufnahme": 0.8, "platzhalter": true },
-    { "id": "all_good", "datei": "all_good.wav", "tonhoehe_aufnahme": 1.0, "platzhalter": true },
-    { "id": "bro", "datei": "bro.wav", "tonhoehe_aufnahme": 0.9, "platzhalter": true },
-    { "id": "control", "datei": "control.wav", "tonhoehe_aufnahme": 1.0, "platzhalter": true },
-    { "id": "got_you", "datei": "got_you.wav", "tonhoehe_aufnahme": 0.85, "platzhalter": true },
-    { "id": "listen_man", "datei": "listen_man.wav", "tonhoehe_aufnahme": 0.7, "platzhalter": true },
-    { "id": "hm", "datei": "hm.wav", "tonhoehe_aufnahme": 0.8, "platzhalter": true }
+    {
+      "id": "duuude",
+      "datei": "duuude.mp3",
+      "tonhoehe_aufnahme": 0.9,
+      "platzhalter": false,
+      "hash": "3e1926c4750d"
+    },
+    {
+      "id": "far_out",
+      "datei": "far_out.mp3",
+      "tonhoehe_aufnahme": 0.9,
+      "platzhalter": false,
+      "hash": "272133f93865"
+    },
+    {
+      "id": "all_good",
+      "datei": "all_good.mp3",
+      "tonhoehe_aufnahme": 0.9,
+      "platzhalter": false,
+      "hash": "fbbd039e6070"
+    },
+    {
+      "id": "bro",
+      "datei": "bro.mp3",
+      "tonhoehe_aufnahme": 0.9,
+      "platzhalter": false,
+      "hash": "ed79d6957e32"
+    },
+    {
+      "id": "control",
+      "datei": "control.mp3",
+      "tonhoehe_aufnahme": 0.9,
+      "platzhalter": false,
+      "hash": "e134af6bfc52"
+    },
+    {
+      "id": "got_you",
+      "datei": "got_you.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "6914cbf4be17"
+    },
+    {
+      "id": "listen_man",
+      "datei": "listen_man.mp3",
+      "tonhoehe_aufnahme": 0.9,
+      "platzhalter": false,
+      "hash": "64c8de0b25c0"
+    },
+    {
+      "id": "hm",
+      "datei": "hm.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "d28e61205bc7"
+    },
+    {
+      "id": "organic",
+      "datei": "organic.mp3",
+      "tonhoehe_aufnahme": 1.3,
+      "platzhalter": false,
+      "hash": "0e03c2416aa7"
+    },
+    {
+      "id": "i_said_nothing",
+      "datei": "i_said_nothing.mp3",
+      "tonhoehe_aufnahme": 1.3,
+      "platzhalter": false,
+      "hash": "130e49e5dfb7"
+    },
+    {
+      "id": "just_a_tourist",
+      "datei": "just_a_tourist.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "7ab13e6a4d6b"
+    },
+    {
+      "id": "interesting",
+      "datei": "interesting.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "390108cff172"
+    },
+    {
+      "id": "rex_attack",
+      "datei": "rex_attack.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "8498faeae792"
+    },
+    {
+      "id": "hey_you",
+      "datei": "hey_you.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "d0ee64903e26"
+    },
+    {
+      "id": "cant_run",
+      "datei": "cant_run.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "2f377a3fd71e"
+    },
+    {
+      "id": "a_mango",
+      "datei": "a_mango.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "58a15adf9f70"
+    },
+    {
+      "id": "barefoot_family",
+      "datei": "barefoot_family.mp3",
+      "tonhoehe_aufnahme": 0.9,
+      "platzhalter": false,
+      "hash": "55a5f96a6188"
+    },
+    {
+      "id": "be_the_wave",
+      "datei": "be_the_wave.mp3",
+      "tonhoehe_aufnahme": 0.9,
+      "platzhalter": false,
+      "hash": "d2f7beab7cb1"
+    },
+    {
+      "id": "you_got_weed",
+      "datei": "you_got_weed.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "eaa215991a48"
+    },
+    {
+      "id": "dont_tell_hannelore",
+      "datei": "dont_tell_hannelore.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "06a5153c913d"
+    },
+    {
+      "id": "you_look_thin",
+      "datei": "you_look_thin.mp3",
+      "tonhoehe_aufnahme": 1.3,
+      "platzhalter": false,
+      "hash": "a20f75b9b02f"
+    },
+    {
+      "id": "kokos_ruf",
+      "datei": "kokos_ruf.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "a65ba063769d"
+    },
+    {
+      "id": "heyyy_man",
+      "datei": "heyyy_man.mp3",
+      "tonhoehe_aufnahme": 0.9,
+      "platzhalter": false,
+      "hash": "3451b0e1d722"
+    },
+    {
+      "id": "stoked",
+      "datei": "stoked.mp3",
+      "tonhoehe_aufnahme": 0.9,
+      "platzhalter": false,
+      "hash": "d1bfcd583e95"
+    },
+    {
+      "id": "groovy",
+      "datei": "groovy.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "4e787e640399"
+    },
+    {
+      "id": "rex_sit",
+      "datei": "rex_sit.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "ee0be7aec3d5"
+    },
+    {
+      "id": "stay_right_there",
+      "datei": "stay_right_there.mp3",
+      "tonhoehe_aufnahme": 1.3,
+      "platzhalter": false,
+      "hash": "6cd5416647d7"
+    },
+    {
+      "id": "and_where_from",
+      "datei": "and_where_from.mp3",
+      "tonhoehe_aufnahme": 1.3,
+      "platzhalter": false,
+      "hash": "f005f9e62045"
+    },
+    {
+      "id": "tropical_regulations",
+      "datei": "tropical_regulations.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "c2f272e1c8d7"
+    },
+    {
+      "id": "no_mango",
+      "datei": "no_mango.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "784b2c813a24"
+    },
+    {
+      "id": "fresh_garden",
+      "datei": "fresh_garden.mp3",
+      "tonhoehe_aufnahme": 0.9,
+      "platzhalter": false,
+      "hash": "e95e69d28371"
+    },
+    {
+      "id": "last_round",
+      "datei": "last_round.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "2b18097f5e40"
+    },
+    {
+      "id": "chef_bites",
+      "datei": "chef_bites.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "52a64b95e3ea"
+    },
+    {
+      "id": "he_s_got_it",
+      "datei": "he_s_got_it.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "f0f3f4814560"
+    },
+    {
+      "id": "young_man",
+      "datei": "young_man.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "0babbae7149f"
+    },
+    {
+      "id": "change_please",
+      "datei": "change_please.mp3",
+      "tonhoehe_aufnahme": 1.3,
+      "platzhalter": false,
+      "hash": "f7020722d4fb"
+    },
+    {
+      "id": "selfie",
+      "datei": "selfie.mp3",
+      "tonhoehe_aufnahme": 1.3,
+      "platzhalter": false,
+      "hash": "09bd973475cb"
+    },
+    {
+      "id": "something_special",
+      "datei": "something_special.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "92eef9540fd7"
+    },
+    {
+      "id": "heads_up",
+      "datei": "heads_up.mp3",
+      "tonhoehe_aufnahme": 0.85,
+      "platzhalter": false,
+      "hash": "92ac3921e6c9"
+    }
   ]
 }
