@@ -14,7 +14,7 @@ test('normalizeSzenen: Fenster, Ort (Spot oder {x,z,r}), Figuren, Schritte sorti
     { id: 'kinder', titel: 'Kinder', fenster: { von: '17:00', bis: '09:00' }, chance: 0.7, ab_tag: 1, ort: { x: 1, z: 2 }, tage: [2, 4, 'x'],
       figuren: [{ slug: 'kind_1', start: 'strand', stimme: 'kind' }, { nix: 1 }],
       schritte: [{ t: 8, wer: 'streife', aktion: 'pose', pose: 'stolpern', dauer: 5 }, { t: 0, wer: 'kind_1', aktion: 'sag', text: 'Rennen.', bark: 'WATER WAR!', dauer: 8 }, { t: 1, aktion: 'tanzen' }, 'kaputt'],
-      ende: 'schritte', loop: false, ansprechen: ['Hast du Eis?', 'Mama hat recht.', 3],
+      ende: 'schritte', loop: false, ansprechen: ['Hast du Eis?', 'Mama hat recht.', 3], folge: { abends_haengematte_belegt: true, nix: false },
       wirkung: { streife_stolpert: true, verstecke: [{ spot: 'strand', r: 4 }, { x: 3, z: 4 }, 'nix'], quatsch: 1 }, requisite: ['eimer'], sound: ['kreischen'], kommentar: { wer: 'mentor', text: 'Kinder.' } },
     { id: '', titel: 'kaputt' },
   ] });
@@ -24,12 +24,14 @@ test('normalizeSzenen: Fenster, Ort (Spot oder {x,z,r}), Figuren, Schritte sorti
   assert.deepEqual(k.figuren.map((f) => [f.slug, f.start, f.stimme]), [['kind_1', 'strand', 'kind']]);
   assert.deepEqual(k.schritte.map((a) => [a.t, a.dauer, a.wer, a.aktion]), [[0, 8, 'kind_1', 'sag'], [8, 5, 'streife', 'pose']]); assert.equal(k.dauer, 13); assert.equal(k.ende, 'schritte'); assert.equal(k.loop, false);
   assert.deepEqual(k.wirkung, { streife_stolpert: true, verstecke: [{ spot: 'strand', r: 4 }, { x: 3, z: 4, r: 3 }] }); assert.deepEqual(k.ansprechen, ['Hast du Eis?', 'Mama hat recht.']);
-  assert.equal(szeneAnsprechen(k, 3), 'Mama hat recht.'); assert.deepEqual(k.kommentar, { wer: 'mentor', text: 'Kinder.' });
+  assert.equal(szeneAnsprechen(k, 3), 'Mama hat recht.'); assert.deepEqual(k.kommentar, { wer: 'mentor', text: 'Kinder.' }); assert.deepEqual(k.folge, { abends_haengematte_belegt: true });
+  assert.equal(normalizeSzenen({ szenen: [{ id: 'x', folge: 'einmal' }] })[0].folge.einmal, true); assert.equal(normalizeSzenen({ szenen: [{ id: 'x', folge: {} }] })[0].folge, null);
   const D = normalizeSzenen(null); assert.equal(D[0].id, 'pong_mittag'); assert.deepEqual(D[0].wirkung, { streife_p1: 'schlaeft' }); assert.ok(Math.abs(D[0].fenster.von - 7 / 18) < 1e-9); assert.equal(D[0].loop, true);
   assert.deepEqual(normalizeSzenen({ szenen: [{ id: '' }] }).map((s) => s.id), DEFAULT_SZENEN.map((s) => s.id));
   const echt = normalizeSzenen(JSON.parse(readFileSync(new URL('../data/szenen.json', import.meta.url), 'utf8')));
   assert.ok(echt.length >= 6); const pong = echt.find((s) => s.id === 'pong_mittag');
   assert.ok(pong && pong.wirkung.streife_p1 === 'schlaeft' && pong.loop && pong.schritte.length >= 6 && pong.ansprechen.length >= 1 && pong.ort === 'posten');
+  assert.deepEqual(echt.find((s) => s.id === 'betrunkener')?.folge, { abends_haengematte_belegt: true }); assert.equal(echt.find((s) => s.id === 'ehepaar')?.kommentar?.wer, 'barkeeper');
   assert.ok(echt.every((s) => s.ab_tag >= 2 && s.fenster.von < s.fenster.bis && s.schritte.length && s.dauer > 0));
 });
 

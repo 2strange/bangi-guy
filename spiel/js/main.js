@@ -11,7 +11,8 @@ import { initLicht } from './licht.js';
 import { zielMarker, updateMarker } from './marker.js';
 import { ereignisSteuerung } from './ereignisse.js';
 import { createSpuren } from './spuren.js';
-import { normalizeSzenen, szenenDesTages, szenenAktiv, szeneSchritte, szeneAnsprechen, szenenWirkung, inStolperZone } from './szenen.js';
+import { normalizeSzenen, szenenDesTages, szenenAktiv, szeneSchritte, szeneAnsprechen, szenenWirkung, inStolperZone, zeitT } from './szenen.js';
+import { buildAmbientFigur, stolpern, handtuchAufLiege, handtuchRolle, handtuchPlan, sandburgKaputt, bierdosenHaufen } from './ambient.js';
 import { setHuetteZiel, setHuette, setWegweiserText, coconut } from './props.js';
 import { mentorBarSpot } from './zone-huegel.js';
 import { createUI, isTouchDevice, hintSeen, markHint } from './ui.js';
@@ -197,28 +198,111 @@ let szenenHeute = []; // Szenen des Tages (Chance deterministisch aus dem Seed)
 let szenenLauf = {}; // id → zuletzt abgespielte Sekunde (damit jeder Ablauf-Schritt einmal kommt)
 let szenenWirk = szenenWirkung([]);
 let szeneNah = null; // aktive Szene in Reichweite (E = ansprechen)
+let szenenGelaufen = []; // Szenen, die heute liefen (Bar-Kommentar abends)
 async function loadSzenen() { const json = await fetchJson('./data/szenen.json'); szenen = normalizeSzenen(json); planeSzenen(); }
-// Szenen-Ort: Spot-Name (strand|markt|posten|pier|bar|liegen|dorf|…) oder {x,z,r} → Weltposition mit Radius
-const SZENE_ORT = (ort) => (ort && typeof ort === 'object' ? ort : { r: 5, ...({ strand: world.spots.mitte, steg: world.spots.pier }[ort] || world.spots[ort] || world.spots.start) });
+// Szenen-Ort: Spot-Name (strand|markt|posten|pier|steg|bar|liegen|dorf|…) oder {x,z,r} → Weltposition mit Radius
+const SZENE_ORT = (ort) => (ort && typeof ort === 'object' ? ort : { r: 5, ...({ strand: world.spots.mitte }[ort] || world.spots[ort] || world.spots.start) });
 // Szenen-Sounds, die im Fenster von selbst laufen (Slug → Pause zwischen zwei Durchläufen in s, Hörradius); Schritt-Sounds laufen über `sound`-Schritte
-const SZENE_SOUND_TAKT = { schnarchen_pong: { pause: [0.4, 0.8], radius: 12 } };
+const SZENE_SOUND_TAKT = { schnarchen_pong: { pause: [0.4, 0.8], radius: 12 }, kinder_kreischen: { pause: [15, 30], radius: 30 }, streit_duo: { pause: [8, 15], radius: 22 } };
 let szenenSoundAt = {}; // Slug → nächster Start (ms)
 let pongSchlief = false;
-function planeSzenen() { szenenHeute = szenenDesTages(szenen, { seed: game.seed, woche: game.woche, tag: game.tag }); szenenLauf = {}; }
+// Szenen-Figuren (ambient.js): Aufstellung je Szene relativ zum Ort (dx/dz, Blick yaw); kreis = Kinder laufen im Kreis um den Ort (Startwinkel)
+const szenenGroup = new THREE.Group(); scene.add(szenenGroup);
+const szenenFiguren = {}; // szene.id → { slug → Figur-Zustand, _req: Requisiten, _plan: Handtuch-Plan }
+const SZENE_AUFSTELLUNG = {
+  kinder: { kind_1: { kreis: 0 }, kind_2: { kreis: 2.1 }, kind_3: { kreis: 4.2 } },
+  ehepaar: { ehe_sie: { dx: -2, dz: -3.5, yaw: 1.1 }, ehe_er: { dx: 0.5, dz: -3.5, yaw: -1.1 } }, // vor den Hotel-Liegen, einander zugewandt
+  handtuch_werfer: { werfer_1: { dx: -2, dz: -9.5, yaw: 0 }, werfer_2: { dx: 0, dz: -9.5, yaw: 0.3 } }, // Hotelseite, Blick auf die Liegen
+  betrunkener: { chad: { dx: 2, dz: -3.3, yaw: Math.PI } }, // am Tresen
+  influencerin: { influencerin: { dx: 0, dz: 2, yaw: Math.PI }, reflektor_freund: { dx: 1.6, dz: 1.5, yaw: -Math.PI / 2 } }, // Rücken zum Meer
+};
+const KINDER_KREIS = { r: 2.5, w: 1.0 }; // Radius, Winkelgeschwindigkeit (rad/s)
+const MEER_WEG = 9; // ehe_er „geht tauchen“: so weit Richtung Meer (+z)
+function szeneAufbauen(szene) {
+  if (szenenFiguren[szene.id]) return;
+  const o = SZENE_ORT(szene.ort), auf = SZENE_AUFSTELLUNG[szene.id] || {};
+  const F = szenenFiguren[szene.id] = { _req: [], _plan: null };
+  for (const fig of szene.figuren) {
+    if (fig.slug === 'pong') continue; // Pong ist die Markt-Figur (pongPose)
+    let g = null; try { g = buildAmbientFigur(fig.slug, fig.aussehen); } catch (e) { g = null; }
+    if (!g) continue;
+    const a = auf[fig.slug] || { dx: 0, dz: 0, yaw: 0 };
+    const start = fig.start ? SZENE_ORT(fig.start) : o;
+    const f = { slug: fig.slug, stimme: fig.stimme, g, x: start.x + (a.dx || 0), z: start.z + (a.dz || 0), yaw: a.yaw || 0, ziel: null, speed: 1.2, kreis: a.kreis !== undefined ? { cx: o.x, cz: o.z, ang: a.kreis } : null, stehtBis: 0, yawZiel: null, geworfen: false };
+    f.x0 = f.x; f.z0 = f.z; f.yaw0 = f.yaw;
+    g.position.set(f.x, 0, f.z); g.rotation.y = f.yaw; szenenGroup.add(g); F[fig.slug] = f;
+  }
+  try { // Requisiten mit Baustein
+    if (szene.requisite.includes('sandburg_kaputt')) { const r = sandburgKaputt(); r.position.set(o.x + 3.6, 0, o.z + 2.8); F._req.push(r); }
+    if (szene.requisite.includes('bierdosen_haufen') && F.chad) { const r = bierdosenHaufen(); r.position.set(F.chad.x + 0.9, 0, F.chad.z + 0.4); F._req.push(r); }
+  } catch (e) { /* ohne Requisite */ }
+  for (const r of F._req) szenenGroup.add(r);
+  if (szene.wirkung.liegen_belegt) F._plan = handtuchPlan(world.liegenAlle?.length || 0, game.tag); // welche Liegen heute ein Handtuch bekommen
+}
+function szeneAbbauen(id) {
+  const F = szenenFiguren[id]; if (!F) return;
+  for (const [k, f] of Object.entries(F)) { if (k.startsWith('_')) continue; szenenGroup.remove(f.g); delete szenenAnker[`szene_${id}_${k}`]; }
+  for (const r of F._req) szenenGroup.remove(r);
+  delete szenenFiguren[id];
+}
+const rollen = []; // fliegende Handtuch-Rollen { g, von, nach, t0, dauer, liege, farben }
+function handtuchWerfen(f) { // Wurfmoment der Pose handtuch_werfen: nächste Liege aus dem Plan, Rolle fliegt in ~1,2 s hin
+  const plan = szenenFiguren.handtuch_werfer?._plan; if (!plan?.length || !world.liegenAlle?.length) return;
+  const w = plan.shift(), liege = world.liegenAlle[w.liege]; if (!liege) return;
+  const g = handtuchRolle(w.farben), hand = new THREE.Vector3(0.22, -1.0, 0.25);
+  try { f.g.userData.parts.arms[1].localToWorld(hand); } catch (e) { hand.set(f.x, 1.4, f.z); }
+  g.position.copy(hand); szenenGroup.add(g);
+  rollen.push({ g, von: hand.clone(), nach: new THREE.Vector3(liege.x, 0.6, liege.z), t0: performance.now() / 1000, dauer: 1.2, liege, farben: w.farben });
+}
+function updateRollen(t) {
+  for (let i = rollen.length - 1; i >= 0; i--) {
+    const r = rollen[i], u = Math.min(1, (t - r.t0) / r.dauer);
+    r.g.position.lerpVectors(r.von, r.nach, u); r.g.position.y += 2.2 * Math.sin(u * Math.PI); r.g.userData.update(t);
+    if (u >= 1) { szenenGroup.remove(r.g); rollen.splice(i, 1); try { handtuchAufLiege(r.liege.obj, r.farben); } catch (e) { /* ohne Handtuch */ } sfx('handtuch', { pan: panFor(r.liege.obj) }); }
+  }
+}
+function handtuecherWeg() { for (const l of world.liegenAlle || []) for (const c of [...l.obj.children]) if (c.userData.farben) l.obj.remove(c); }
+function updateSzenenFiguren(t, dt) {
+  for (const F of Object.values(szenenFiguren)) for (const [k, f] of Object.entries(F)) {
+    if (k.startsWith('_')) continue;
+    const steht = t < f.stehtBis;
+    if (!steht) f.yawZiel = null;
+    if (f.kreis) { // Kinder: im Kreis um den Ort, bei einer Stand-Pose anhalten
+      f.g.userData.rennt = !steht;
+      if (!steht) { f.kreis.ang += dt * KINDER_KREIS.w; f.x = f.kreis.cx + Math.cos(f.kreis.ang) * KINDER_KREIS.r; f.z = f.kreis.cz + Math.sin(f.kreis.ang) * KINDER_KREIS.r; f.yaw = Math.atan2(-Math.sin(f.kreis.ang), Math.cos(f.kreis.ang)); }
+    } else if (f.ziel) { // geh: geradeaus zum Ziel
+      const dx = f.ziel.x - f.x, dz = f.ziel.z - f.z, d = Math.hypot(dx, dz), step = f.speed * dt;
+      if (d <= step) { f.x = f.ziel.x; f.z = f.ziel.z; f.ziel = null; f.yaw = f.yawRuhe ?? f.yaw; } else { f.x += dx / d * step; f.z += dz / d * step; f.yaw = Math.atan2(dx, dz); }
+    }
+    if (f.yawZiel) f.yaw = Math.atan2(f.yawZiel.x - f.x, f.yawZiel.z - f.z);
+    f.g.position.set(f.x, 0, f.z); f.g.rotation.y = f.yaw;
+    try { f.g.userData.update?.(t); } catch (e) { /* Figur ohne update */ }
+    if (f.g.userData.ambient?.wurfMoment) { if (!f.geworfen) { f.geworfen = true; handtuchWerfen(f); } } else f.geworfen = false;
+  }
+  updateRollen(t);
+}
+const naechsteStreife = (pos, max = 14) => streifen.filter(streifeAktiv).map((s) => ({ s, d: Math.hypot(s.patrol.x - pos.x, s.patrol.z - pos.z) })).filter((x) => x.d <= max).sort((a, b) => a.d - b.d)[0]?.s || null;
+function streifeStolpert(s, t, dauer = 5) { // fällt hin (ambient.js), bleibt liegen, steht auf; eine Verfolgung ist damit vorbei
+  s.stolper = { t0: t, dauer };
+  s.patrol = { ...s.patrol, mode: s.patrol.mode === 'chase' ? 'return' : s.patrol.mode, wait: dauer, moving: false, lost: 0, kante: false };
+}
+function planeSzenen() { szenenHeute = szenenDesTages(szenen, { seed: game.seed, woche: game.woche, tag: game.tag }); szenenLauf = {}; szenenGelaufen = []; for (const id of Object.keys(szenenFiguren)) szeneAbbauen(id); for (const r of rollen) szenenGroup.remove(r.g); rollen.length = 0; }
 function updateSzenen(now) {
+  const t = now / 1000;
   const aktive = szenenAktiv(szenenHeute, tagesuhr.t01);
   const neu = {};
   for (const { szene, seitSek } of aktive) {
     const vorher = szenenLauf[szene.id];
+    if (vorher === undefined) { szeneAufbauen(szene); if (!szenenGelaufen.includes(szene.id)) szenenGelaufen.push(szene.id); }
     for (const st of szeneSchritte(szene, vorher ?? -1, seitSek)) szenenSchritt(szene, st, now);
     neu[szene.id] = seitSek;
   }
-  for (const id of Object.keys(szenenLauf)) if (!(id in neu)) ui.hideBarks?.(); // Fensterende: Blasen weg
+  for (const id of Object.keys(szenenLauf)) if (!(id in neu)) { szeneAbbauen(id); ui.hideBarks(); } // Fensterende: Figuren und Blasen weg
   szenenLauf = neu;
   szenenWirk = szenenWirkung(aktive, SZENE_ORT);
   const schlaeft = szenenWirk.streife_p1 === 'schlaeft';
-  if (schlaeft !== pongSchlief) { pongSchlief = schlaeft; try { world.markt?.pongSchlaeft?.(schlaeft); } catch (e) { /* ohne Markt */ } } // Mütze über die Augen, Zzz
-  for (const { szene } of aktive) for (const slug of szene.sound) { // Dauer-Sounds im Fenster (Schnarchen), nur in Hörweite, Lautstärke nach Abstand
+  if (schlaeft !== pongSchlief) { pongSchlief = schlaeft; if (!schlaeft) { try { world.markt?.pongPose?.('aufwachen', t, 1.5); } catch (e) { /* ohne Markt */ } } } // Fensterende ohne „aufwachen“-Schritt: Pong wacht trotzdem auf
+  for (const { szene } of aktive) for (const slug of szene.sound) { // Dauer-Sounds im Fenster (Schnarchen, Kinder, Streit), nur in Hörweite, Lautstärke nach Abstand
     const takt = SZENE_SOUND_TAKT[slug]; if (!takt || now < (szenenSoundAt[slug] || 0)) continue;
     const o = slug === 'schnarchen_pong' && world.markt?.pong ? world.markt.pong.position : SZENE_ORT(szene.ort);
     const dist = Math.hypot(o.x - state.x, o.z - state.z); if (dist > takt.radius) { szenenSoundAt[slug] = now + 500; continue; }
@@ -226,22 +310,57 @@ function updateSzenen(now) {
     szenenSoundAt[slug] = now + (dauer || 2.2) * 1000 + (takt.pause[0] + Math.random() * (takt.pause[1] - takt.pause[0])) * 1000;
   }
   szeneNah = aktive.map((a) => a.szene).find((sz) => { const o = SZENE_ORT(sz.ort); return Math.hypot(o.x - state.x, o.z - state.z) < Math.max(4, o.r) && sz.ansprechen.length; }) || null;
+  liegenReserviert();
 }
-// Schritt: sag = Erzähltext als Einblendung unten (+ optionaler Bark als Blase), bark = Blase an der Figur (Pong/Streife = P1,
-// sonst Anker am Ort, bis die Szenen-Figuren stehen), sound über sfx; pose/geh/warte warten auf die Figuren
+// Handtuch-Reservierung (wirkung liegen_belegt): die Liegen-Kunden bleiben bis 14 Uhr im Hotel und kommen dann zu ihrer Liege
+const LIEGEN_FREI_AB = zeitT('14:00');
+function liegenReserviert() {
+  if (SCENE && SCENE !== 'szene') return; // Schnappschüsse anderer Szenen setzen Kunden selbst auf die Liegen
+  const belegt = szenenHeute.some((sz) => sz.wirkung.liegen_belegt) && tagesuhr.t01 < LIEGEN_FREI_AB;
+  for (const k of kunden) {
+    if (!k.liege) continue;
+    if (belegt && !k.wartet && !k.freigegeben) { k.wartet = true; k.group.visible = false; k.collider.r = 0; k.npc = { ...k.npc, x: 999, z: 999, moving: false }; }
+    if (!belegt && k.wartet) { k.wartet = false; k.freigegeben = true; k.group.visible = true; k.collider.r = 0.7; const h = world.spots.hotel; k.npc = { ...k.npc, x: h.x, z: h.z, points: [{ x: h.x, z: h.z }, { x: k.anchor.x, z: k.anchor.z }], idx: 1, pause: 1 + Math.random(), moving: false }; k.group.userData.pose = null; }
+  }
+}
+// Schritt: sag = Erzähltext als Einblendung unten (+ optionaler Bark als Blase), bark = Blase an der Figur (Pong = Markt-Pong, Streife = nächste
+// Streife, sonst Szenen-Figur oder Anker am Ort), pose = Pose der Figur (ambient.js) bzw. pongPose / Stolpern der Streife, geh = Ziel, sound über sfx
 function szenenSchritt(szene, st, now, { halten = false } = {}) { // halten: Blase stehen lassen (Schnappschuss)
-  const anker = st.wer === 'pong' ? 'pong' : st.wer === 'streife' ? (streifen[0]?.id || 'streife_p1') : `szene_${szene.id}_${st.wer}`;
+  const t = now / 1000, o = SZENE_ORT(szene.ort);
+  const F = szenenFiguren[szene.id]?.[st.wer] || null;
+  const anker = st.wer === 'pong' ? 'pong' : st.wer === 'streife' ? (naechsteStreife(o, 30) || streifen[0])?.id || 'streife_p1' : `szene_${szene.id}_${st.wer}`;
   if (st.aktion === 'sag' && st.text && mode === 'free') { ui.showPrompt(fillText(st.text, dayReport(game)), { small: true }); hinweisBis = now + Math.min(9000, 1000 + st.dauer * 1000); }
   const blase = st.aktion === 'bark' ? st.bark || st.text : st.aktion === 'sag' ? st.bark : null;
-  if (blase) { ui.showBark(anker, blase, halten ? 999 : Math.min(4, st.dauer)); if (!anker.startsWith('streife') && anker !== 'pong') szenenAnker[anker] = SZENE_ORT(szene.ort); try { audio?.babble?.(szene.figuren.find((f) => f.slug === st.wer)?.stimme || st.wer, blase, { pan: 0 }); } catch (e) { /* ohne Ton */ } }
-  if (st.aktion === 'sound' && st.text) sfx(st.text, { pan: 0, gain: 0.6 });
+  if (blase) {
+    ui.showBark(anker, blase, halten ? 999 : Math.min(4, st.dauer));
+    if (F) szenenAnker[anker] = { obj: F.g.userData.parts?.head || F.g }; else if (!anker.startsWith('streife') && anker !== 'pong') szenenAnker[anker] = o;
+    const stimme = F?.stimme || szene.figuren.find((f) => f.slug === st.wer)?.stimme || (st.wer === 'streife' ? 'pong' : st.wer);
+    try { audio?.babble?.(stimme, blase, { pan: F ? panFor(F.g) : 0 }); } catch (e) { /* ohne Ton */ }
+  }
+  if (st.aktion === 'pose') {
+    if (F) {
+      try { F.g.userData.pose?.(st.pose, t, st.dauer); } catch (e) { /* Pose unbekannt */ }
+      if (F.kreis && st.pose !== 'rennen_kreis') F.stehtBis = t + st.dauer; // Kind bleibt für die Pose stehen
+      if (st.pose === 'pistole_auf_streife') { const s = naechsteStreife(o, 30); F.yawZiel = s ? s.patrol : null; }
+      if (st.pose === 'schnorchel_runter') { F.ziel = { x: F.x0, z: F.z0 + MEER_WEG }; F.yawRuhe = 0; } // geht tauchen
+      if (st.pose === 'zurueckkommen_nass') { F.ziel = { x: F.x0, z: F.z0 }; F.yawRuhe = F.yaw0; }
+      if (st.pose === 'handtuch_werfen') F.geworfen = false;
+    } else if (st.wer === 'pong') { try { world.markt?.pongPose?.(st.pose, t, st.dauer); } catch (e) { /* ohne Markt */ } }
+    else if (st.wer === 'streife' && st.pose === 'stolpern') { const s = naechsteStreife(o, 14); if (s && !s.stolper) streifeStolpert(s, t, st.dauer); }
+  }
+  if (st.aktion === 'geh' && F && st.ziel) { const z = SZENE_ORT(st.ziel); F.ziel = { x: z.x, z: z.z }; }
+  if (st.aktion === 'sound' && st.text) sfx(st.text, { pan: F ? panFor(F.g) : 0, gain: 0.6 });
 }
-const szenenAnker = {}; // Bark-Anker ohne Figur: Position am Szenen-Ort
+const szenenAnker = {}; // Bark-Anker: { obj } (Figurkopf) oder { x, z } (Ort)
 const alleVerstecke = () => (szenenWirk.verstecke.length ? [...world.hideouts, ...szenenWirk.verstecke] : world.hideouts);
 function szeneAnreden() {
   if (!szeneNah) return;
   const text = szeneAnsprechen(szeneNah, lineIdx++);
-  if (text) showInfo({ id: 'szene', name: szeneNah.titel, x: SZENE_ORT(szeneNah.ort).x, z: SZENE_ORT(szeneNah.ort).z, obj: szeneNah.figuren.some((f) => f.slug === 'pong') && world.markt?.pong ? world.markt.pong : player }, fillText(text, dayReport(game)));
+  if (!text) return;
+  const F = Object.entries(szenenFiguren[szeneNah.id] || {}).find(([k]) => !k.startsWith('_'))?.[1] || null;
+  const obj = F ? F.g : szeneNah.figuren.some((f) => f.slug === 'pong') && world.markt?.pong ? world.markt.pong : player;
+  if (szeneNah.folge) game = { ...game, folgen: { ...(game.folgen || {}), ...szeneNah.folge } }; // z. B. abends_haengematte_belegt (Einschlaf-Zeile)
+  showInfo({ id: 'szene', name: szeneNah.titel, x: SZENE_ORT(szeneNah.ort).x, z: SZENE_ORT(szeneNah.ort).z, obj }, fillText(text, dayReport(game)));
 }
 let ereignisse = normalizeEreignisse(null); // Tages-Ereignisse (texte.json → ereignisse[])
 let woche = normalizeWoche(null); // Wochenbogen: Tagesziele + Finale (texte.json → woche{}), Ziel kalibriert am Kundenkatalog
@@ -435,7 +554,7 @@ function placeBarks() {
   (barkeeperObj.userData.parts?.head || barkeeperObj).getWorldPosition(barkHead); barkHead.y += 0.9; barkHead.project(camera);
   ui.placeBark('barkeeper', (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now);
   if (world.markt?.pong) { (world.markt.pong.userData.parts?.head || world.markt.pong).getWorldPosition(barkHead); barkHead.y += 0.9; barkHead.project(camera); ui.placeBark('pong', (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now); } // Pong am Posten (Szenen)
-  for (const [id, pos] of Object.entries(szenenAnker)) { barkHead.set(pos.x, 2.4, pos.z); barkHead.project(camera); ui.placeBark(id, (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now); }
+  for (const [id, pos] of Object.entries(szenenAnker)) { if (pos.obj) { pos.obj.getWorldPosition(barkHead); barkHead.y += 0.9; } else barkHead.set(pos.x, 2.4, pos.z); barkHead.project(camera); ui.placeBark(id, (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now); }
   for (const s of streifen) {
     s.group.userData.parts.head.getWorldPosition(barkHead);
     barkHead.y += 0.9; barkHead.project(camera);
@@ -645,7 +764,7 @@ function startBarAbend() {
   tutorialFire('bar_betreten');
   // letzter Tag der Woche: Finale-Stufe festhalten, Hütte umbauen (Zustände aus props.js), Mentor zieht bei „gut“ hinter die Hütte
   if (!game.finale && tagesziel(woche, game.tag) && game.tag === woche.tage.length) { game = { ...game, finale: finaleStufe(game, woche) }; applyFinale(game.finale); }
-  barFolge = barAbend(game, abendTexte, lineIdx++, { woche });
+  barFolge = barAbend(game, abendTexte, lineIdx++, { woche, szenen: szenenGelaufen.map((id) => szenenHeute.find((sz) => sz.id === id)?.kommentar).filter(Boolean) }); // je gelaufener Ambient-Szene ein Kommentar
   barIdx = 0;
   nachtArt = 'bar';
   for (const key in keys) keys[key] = false;
@@ -724,7 +843,7 @@ function updatePatrol(dt, now) {
     s.patrol = r.st;
     // Szene im Weg (Kinder, Ehepaar): läuft der Spieler mitten durch, stolpert die verfolgende Streife und verliert ihn
     if (r.st.mode === 'chase' && inStolperZone(szenenWirk, state) && Math.hypot(r.st.x - state.x, r.st.z - state.z) < 7) {
-      s.patrol = { ...r.st, mode: 'return', lost: 0, kante: false, wait: 2, moving: false };
+      streifeStolpert(s, now / 1000, 3);
       ui.showBark(s.id, 'Oof!', 2); try { audio?.bark?.('pong', 'sichtung', { pan: panFor(s.group) }); } catch (e) { /* ohne Ton */ }
       if (mode === 'free') ui.showPrompt('Die Streife stolpert über die Szene — weg bist du.');
     }
@@ -744,6 +863,7 @@ function updatePatrol(dt, now) {
       try { audio?.bark?.('pong', 'sichtung', { pan: panFor(s.group) }); } catch (e) { /* ohne Ton */ }
     }
     applyCop(s);
+    if (s.stolper) { const u = (now / 1000 - s.stolper.t0) / s.stolper.dauer; stolpern(s.group, Math.min(1, u)); if (u >= 1) s.stolper = null; } // Szene: hingefallen (ambient.js), nach der Pose aufgeräumt
   }
 }
 let mentorFolge = null; // laufende Blasenfolge
@@ -1114,6 +1234,7 @@ function setEreignisRequisite(ev, an) {
 function morgen() {
   zielGemeldet = false;
   refreshKokos();
+  game = { ...game, folgen: {} }; handtuecherWeg();
   planeSzenen();
   // Tagesereignis: Einblendung, Requisite (world.setEreignis, falls vorhanden), Sound (audio.ereignis, falls vorhanden)
   const ev = game.ereignis;
@@ -1552,10 +1673,19 @@ function setupScene() {
     game = { ...game, tag: Math.max(game.tag, sz.ab_tag) }; szenenHeute = [sz]; szenenLauf = {};
     tagesuhr = { t01: (sz.fenster.von + sz.fenster.bis) / 2 }; applyTageszeit(); refreshHud();
     const ort = SZENE_ORT(sz.ort);
-    state = { ...state, x: ort.x + 2.5, z: ort.z + 3.5, yaw: Math.atan2(-2.5, -3.5), speed: 0 };
     mode = 'free';
-    updateSzenen(0); for (const s of streifen) applyCop(s);
+    updateSzenen(0); updateSzenenFiguren(performance.now() / 1000, 0.5);
+    // Spieler landseitig (−z) vor den Figuren, Blick aufs Meer: die Kamera schaut Richtung +z, die Figuren stehen davor
+    const figs = Object.entries(szenenFiguren[sz.id] || {}).filter(([k]) => !k.startsWith('_')).map(([, f]) => f);
+    const zMin = figs.length ? Math.min(...figs.map((f) => f.z)) - (figs.some((f) => f.kreis) ? KINDER_KREIS.r : 0) : ort.z;
+    const xMitte = figs.length ? figs.reduce((a, f) => a + f.x, 0) / figs.length : ort.x;
+    state = { ...state, x: xMitte, z: zMin - 5, yaw: 0, speed: 0 };
+    for (const s of streifen) applyCop(s);
     const erster = sz.schritte.find((st) => st.bark || (st.aktion === 'sag' && st.text)); if (erster) szenenSchritt(sz, { ...erster, dauer: 999 }, performance.now(), { halten: true });
+    if (sz.schritte.some((st) => st.wer === 'streife' && st.pose === 'stolpern')) { // Kinder mit Streife: P1 liegt gerade im Sand, links vom Kreis
+      const s = streifen[0]; s.patrol = { ...s.patrol, x: ort.x - 4, z: ort.z + 0.5, yaw: Math.PI / 2, mode: 'patrol' }; streifeStolpert(s, performance.now() / 1000 - 1.2, 5); applyCop(s);
+      stolpern(s.group, 1.2 / 5);
+    }
     return;
   }
   if (SCENE === 'kokos') { // Verkäufer neben dem Schluffi am Wasser, Ruf-Blase, Kauf-Blase
@@ -1751,7 +1881,7 @@ if (SNAP) {
       if (amTresen && !warAmTresen && !barBeendetTag(tagesuhr.t01) && now > zwischenrufAt) { zwischenrufAt = now + 30000; ui.showBark('barkeeper', zwischenrufLine(abendTexte, lineIdx++), 3.2); nongSag('gruss', now); try { audio?.bark?.('barkeeper', 'zwischenruf', { pan: panFor(barkeeperObj) }); } catch (e) { /* ohne Ton */ } }
       warAmTresen = amTresen;
       if (barBeendetTag(tagesuhr.t01) && now > sunsetAt) { sunsetAt = now + 20000; ui.showBark('spieler', sonnenuntergangLine(abendTexte, lineIdx++), 4); }
-      if (nachtBeginnt(prev, tagesuhr.t01)) { nachtArt = 'haengematte'; sfx('gaehnen'); endDay(einschlafenLine(abendTexte, lineIdx++)); }
+      if (nachtBeginnt(prev, tagesuhr.t01)) { nachtArt = 'haengematte'; sfx('gaehnen'); endDay(einschlafenLine(abendTexte, lineIdx++, { belegt: !!game.folgen?.abends_haengematte_belegt })); }
       if (Math.floor(prev * 1000) !== Math.floor(tagesuhr.t01 * 1000)) refreshHud();
     }
     if (nearK) tutorialFire('kunde_in_reichweite');
@@ -1762,6 +1892,7 @@ if (SNAP) {
     for (const k of kunden) updateKundenExtras(k.group, now / 1000);
     updateTutorial(now);
     updateSzenen(now);
+    updateSzenenFiguren(now / 1000, dt);
     updatePatrol(dt, now);
     updateKokos(dt, now);
     spielerNuss.visible = kokosSchutz(game, tagesuhr.t01);

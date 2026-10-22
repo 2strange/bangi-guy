@@ -15,6 +15,8 @@ export function zeitT(v) {
 }
 const str = (v, d) => (typeof v === 'string' && v.trim() ? v : d);
 const strList = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.trim()) : []);
+/** folge: Objekt { schluessel: true } oder ein Schlüssel-String → { schluessel: true }; sonst null */
+const folgeOk = (f) => (typeof f === 'string' && f.trim() ? { [f]: true } : f && typeof f === 'object' && Object.values(f).some((v) => v === true) ? Object.fromEntries(Object.entries(f).filter(([, v]) => v === true)) : null);
 const ortOk = (o) => (typeof o === 'string' && o.trim() ? o : o && typeof o === 'object' && Number.isFinite(o.x) && Number.isFinite(o.z) ? { x: o.x, z: o.z, r: Number.isFinite(o.r) ? o.r : 5 } : null);
 
 export const DEFAULT_SZENEN = [
@@ -60,7 +62,7 @@ export function normalizeSzenen(json) {
       ab_tag: Number.isFinite(s.ab_tag) ? Math.max(2, Math.round(s.ab_tag)) : 2, // nie Tag 1 (Tutorial-Tag)
       ort: ortOk(s.ort) || 'strand', figuren, schritte, dauer,
       ende: s.ende === 'schritte' ? 'schritte' : 'fenster', loop: s.loop === true,
-      ansprechen: strList(s.ansprechen), folge: str(s.folge, null), wirkung, kommentar: k, requisite: strList(s.requisite), sound: strList(s.sound),
+      ansprechen: strList(s.ansprechen), folge: folgeOk(s.folge), wirkung, kommentar: k, requisite: strList(s.requisite), sound: strList(s.sound),
     };
   });
   return out.length ? out : normalizeSzenen({ szenen: DEFAULT_SZENEN });

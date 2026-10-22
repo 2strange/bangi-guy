@@ -621,6 +621,13 @@ test('Bar-Abend: Barkeeper-Gruß → Mentor-Rückblick nach Lage → letzte Rund
   assert.ok(!v.some((e) => e.frage), 'nach Verhaftung keine Feierabend-Frage');
   assert.ok(guteNacht(A).length > 3);
   assert.equal(zwischenrufLine(A, 0), DEFAULT_ABEND.barkeeper.zwischenruf[0], 'Zwischenruf fällt auf Default zurück');
+  // Ambient-Szenen: Kommentar je gelaufener Szene (mentor|barkeeper) nach dem Rückblick, nie nach einer Verhaftung; Hängematte belegt → eigene Einschlaf-Zeile
+  const sz = barAbend(s, A, 0, { szenen: [{ wer: 'barkeeper', text: 'Das Paar war da, Tag {tag}.' }, { wer: 'quatsch', text: 'Kinder.' }, { wer: 'mentor', text: '' }] });
+  assert.deepEqual(sz.map((e) => `${e.wer}:${e.id}`), ['barkeeper:gruss', 'mentor:rueckblick', 'barkeeper:szene:0', 'mentor:szene:1', 'barkeeper:letzte_runde', 'barkeeper:feierabend']);
+  assert.equal(sz[2].text, 'Das Paar war da, Tag 1.');
+  assert.ok(!barAbend({ ...s, heat: 3, verhaftet: true }, A, 0, { szenen: [{ wer: 'mentor', text: 'x' }] }).some((e) => e.id.startsWith('szene')));
+  assert.equal(einschlafenLine(A, 0, { belegt: true }), DEFAULT_ABEND.einschlafen_belegt[0]); assert.equal(einschlafenLine(A, 0), 'Zzz.');
+  assert.deepEqual(normalizeAbend({ abend_bar: { einschlafen: { text: ['a'], haengematte_belegt: ['Chad schnarcht.'] } } }).einschlafen_belegt, ['Chad schnarcht.']);
   assert.deepEqual(normalizeAbend(undefined), normalizeAbend({}));
 });
 test('Über Nacht kühlt der Heat: Bar −2, Hängematte −1, nie unter 0; nach Verhaftung 0', () => {

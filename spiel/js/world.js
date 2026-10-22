@@ -103,6 +103,7 @@ export function buildWorld() {
   // Strandliegen: Rückenteil am Kopfende (−z lokal), die Leute sitzen mit Blick nach +z = aufs Meer. Sitzpunkt (userData.sitz)
   // in Welt für die Anker liege_1..3 (Liege 3 bleibt frei)
   const liegen = {};
+  const liegenAlle = []; // alle vier Liegen (Objekt + Sitzpunkt), für Handtuch-Reservierungen der Szenen
   const liegeId = { 0: 'liege_1', 1: 'liege_2', 3: 'liege_3' };
   for (let i = 0; i < 4; i++) {
     const lo = lounger(i % 2 ? ['#3a7bd5', '#ffffff'] : ['#e8463a', '#fff5e0']);
@@ -113,6 +114,7 @@ export function buildWorld() {
     g.add(lo);
     rect(28 + i * 3.8, -4 + (i % 2) * 1.4, 1.6, 3.1);
     const sz = lo.userData.sitz || { x: 0, y: 0.52, z: -0.35 };
+    liegenAlle.push({ obj: lo, x: lo.position.x, z: lo.position.z, id: liegeId[i] || null });
     if (liegeId[i]) liegen[liegeId[i]] = { sitz: { x: lo.position.x + (sz.x * Math.cos(yaw) + sz.z * Math.sin(yaw)) * ls, y: sz.y * ls, z: lo.position.z + (-sz.x * Math.sin(yaw) + sz.z * Math.cos(yaw)) * ls }, yaw };
   }
 
@@ -265,5 +267,5 @@ export function buildWorld() {
     ost: { x: 58, z: -2, yaw: Math.PI / 2 },
     hecke: { x: 8, z: -17, yaw: 0.3 }, // Strandseite vor der Heckenlücke („nord“ gehört dem Dorf)
   };
-  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots, ...markt.spots, ...hafen.spots, ...reis.spots, ...hain.spots }, hideouts: [...dorf.hideouts, ...(markt.hideouts || []), ...(hafen.hideouts || []), ...(hain.hideouts || [])], dorf, huegel, markt, pier: hafen, reis, hain, sonne, nong, huette, wegweiser: sp, liegen, surfer: su };
+  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots, ...markt.spots, ...hafen.spots, ...reis.spots, ...hain.spots }, hideouts: [...dorf.hideouts, ...(markt.hideouts || []), ...(hafen.hideouts || []), ...(hain.hideouts || [])], dorf, huegel, markt, pier: hafen, reis, hain, sonne, nong, huette, wegweiser: sp, liegen, liegenAlle, surfer: su };
 }

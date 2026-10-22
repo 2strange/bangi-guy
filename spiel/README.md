@@ -218,8 +218,13 @@ Wirkung aufs Spiel: `streife_p1: "schlaeft"` (Pong bleibt am Posten und sieht ni
 bei einer Verfolgung durch den Ort, stolpert die Streife und verliert ihn), zusätzliche `verstecke`, `liegen_belegt`,
 `kunden_faktor`, `preis_faktor` (die letzten drei werden gelesen, aber noch nicht angewendet). Zeitplan, Schritt-Auslösung
 und gesammelte Wirkung sind reine Logik in `js/szenen.js` (getestet, auch gegen die Datei); main.js zeigt Texte und Blasen
-und wendet die Wirkung an; die Szenen-Figuren selbst folgen. Code-Default: **Pongs Mittagsschlaf** 13–14 Uhr.
-`?snap=1&scene=szene&id=pong_mittag`.
+und wendet die Wirkung an. Die Szenen-Figuren kommen aus `js/ambient.js` (je Slug, Posen als Zeitfunktionen) und werden
+pro Szene am Ort aufgestellt (Kinder laufen im Kreis, `geh`-Ziele und Meer-Ausflüge über die Position); `liegen_belegt`
+wirkt jetzt: die Handtuch-Werfer werfen morgens echte Handtücher auf die Liegen (`handtuchPlan`), die Liegen-Kunden kommen
+erst um 14 Uhr aus dem Hotel. Abends an der Bar kommentieren Mentor oder Barkeeper jede gelaufene Szene (`kommentar`), und
+wer den Betrunkenen anspricht, findet nachts die Hängematte belegt (`folge` → `abend_bar.einschlafen.haengematte_belegt[]`).
+Offen: `kunden_faktor`/`preis_faktor`. Code-Default: **Pongs Mittagsschlaf** 13–14 Uhr.
+`?snap=1&scene=szene&id=pong_mittag|kinder|ehepaar|…`.
 
 ## Kokos-Verkäufer
 Ein Kokos-Verkäufer läuft am Wasser entlang den ganzen Strand auf und ab (Verleih ↔ Bauzaun), weicht Liegen, Kundschaft

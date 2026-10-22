@@ -1033,6 +1033,7 @@ export const DEFAULT_ABEND = {
     verhaftet: ['Erwischt. Die Sandalen-Regel, Mann. Die SANDALEN-Regel.'],
   },
   einschlafen: ['Zu spät für die Bar. Die Hängematte hat dich.'],
+  einschlafen_belegt: ['Der Amerikaner liegt in deiner Hängematte und schnarcht Bangkok. Du schläfst im Sand daneben. Der Sand ist härter, als er aussieht.'], // Szene „Betrunkener“: folge abends_haengematte_belegt
 };
 export function normalizeAbend(json) {
   const t = json && typeof json === 'object' && json.abend_bar && typeof json.abend_bar === 'object' ? json.abend_bar : {};
@@ -1050,11 +1051,13 @@ export function normalizeAbend(json) {
     },
     mentor,
     einschlafen: strList(Array.isArray(ein) ? ein : ein.text, D.einschlafen),
+    einschlafen_belegt: strList(ein.haengematte_belegt, D.einschlafen_belegt),
   };
 }
 // Abend in der Bar: Barkeeper-Gruß → Mentor-Rückblick nach Lage → letzte Runde; danach die Bilanz-Karte (gute Nacht als Fußzeile).
 // Nach einer Verhaftung sitzt der Spieler abends trotzdem an der Bar (Pong bringt ihn vorbei) und der Mentor kommentiert.
-export function barAbend(state, abend, lineIdx = 0, { woche = null } = {}) {
+// szenen: Kommentare der heute gelaufenen Ambient-Szenen [{ wer: mentor|barkeeper, text }], kommen nach dem Tagesereignis
+export function barAbend(state, abend, lineIdx = 0, { woche = null, szenen = [] } = {}) {
   const A = abend || DEFAULT_ABEND;
   const rep = dayReport(state);
   const lage = lageFor(rep);
@@ -1065,6 +1068,7 @@ export function barAbend(state, abend, lineIdx = 0, { woche = null } = {}) {
     { id: 'rueckblick', wer: 'mentor', text: fillText(pickLine(A.mentor[lage], lineIdx), rep), bark: 'abend', lage },
     ...(tz && lage !== 'verhaftet' ? [{ id: 'tagesziel', wer: 'mentor', text: zielErreicht(state, tz) ? tz.geschafft : tz.verfehlt, bark: 'abend' }] : []),
     ...(state.ereignis?.abends ? [{ id: 'ereignis', wer: state.ereignis.abendsWer || 'mentor', text: state.ereignis.abends, bark: 'abend' }] : []),
+    ...(lage === 'verhaftet' ? [] : szenen.filter((k) => k && typeof k.text === 'string' && k.text).map((k, i) => ({ id: `szene:${i}`, wer: k.wer === 'barkeeper' ? 'barkeeper' : 'mentor', text: fillText(k.text, rep), bark: 'abend' }))),
     ...finale.map((t, i) => ({ id: `finale:${i}`, wer: /^Nong/.test(t) ? 'barkeeper' : 'mentor', text: t, bark: 'abend' })),
     { id: 'letzte_runde', wer: 'barkeeper', text: pickLine(A.barkeeper.letzte_runde, lineIdx), bark: 'letzte_runde' },
     // Nach dem Gespräch fragt Nong „Feierabend?“ — Ja = Bilanz, sonst zurück an den Strand. Nach einer Verhaftung gibt es keine Wahl.
@@ -1075,4 +1079,4 @@ export const FEIERABEND_FRAGE = 'Feierabend?';
 export const guteNacht = (abend, lineIdx = 0) => pickLine((abend || DEFAULT_ABEND).barkeeper.gute_nacht, lineIdx);
 export const sonnenuntergangLine = (abend, lineIdx = 0) => pickLine((abend || DEFAULT_ABEND).sonnenuntergang, lineIdx);
 export const zwischenrufLine = (abend, lineIdx = 0) => pickLine((abend || DEFAULT_ABEND).barkeeper.zwischenruf, lineIdx); // Nong tagsüber am Tresen
-export const einschlafenLine = (abend, lineIdx = 0) => pickLine((abend || DEFAULT_ABEND).einschlafen, lineIdx);
+export const einschlafenLine = (abend, lineIdx = 0, { belegt = false } = {}) => pickLine((abend || DEFAULT_ABEND)[belegt ? 'einschlafen_belegt' : 'einschlafen'] || DEFAULT_ABEND.einschlafen, lineIdx);
