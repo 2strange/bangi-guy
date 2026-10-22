@@ -9,7 +9,8 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { toonMesh, toon, deform, rng, textTexture, stripeTexture, BLACK } from './toon.js';
 import { limb, barrier, lamp, palm, coconut } from './props.js';
 import { sandal, kopfOhneSchattenwurf } from './figures.js';
-import { face, faceDecal } from './faces.js';
+import { face, faceDecal, setFace } from './faces.js';
+import { zzz } from './ambient.js';
 import { shirtTexture } from './kunden.js';
 import { plate, cat, cobbleTexture, paving } from './zone-dorf.js';
 import { STAENDE, GEDRAENGE, LANES, EXITS, POSTEN, PLATZ, MARKT_SPOTS, MARKT_ANCHORS, POSTEN_SICHT, MANGO_STAND, WORLD_MIN_Z, marktColliders, catAt } from './zone-markt-layout.js';
@@ -226,6 +227,7 @@ function policeCar() {
 }
 
 // Polizist Pong: Sandalen (Dienstvorschrift Tropen), Bauch, Mütze, Trillerpfeife. Blick nach +z
+const PONG_FACE = { skin: '#d9a06e', beard: 'schnauzer', seed: 88 };
 export function pong() {
   const root = new THREE.Group();
   const skin = 0xd9a06e, blue = 0x2a3f8f;
@@ -260,14 +262,15 @@ export function pong() {
   const shape = (geo) => { geo.scale(1.05, 1.1, 1); };
   const hg = new THREE.SphereGeometry(0.55, 28, 20); shape(hg);
   head.add(toonMesh(hg, skin, { outline: 0.05 }));
-  head.add(faceDecal(face('kunde', 'misstrauisch', { skin: '#d9a06e', beard: 'schnauzer', seed: 88 }), 0.557, shape));
+  const decal = faceDecal(face('kunde', 'misstrauisch', PONG_FACE), 0.557, shape); head.add(decal);
   const nose = toonMesh(new THREE.SphereGeometry(0.15, 10, 8), 0xc98a5a, { outline: 0.03 }); nose.position.set(0, -0.06, 0.56); head.add(nose);
   for (const s of [-1, 1]) { const ear = toonMesh(new THREE.SphereGeometry(0.11, 8, 6), skin, { outline: 0.03 }); ear.position.set(s * 0.57, 0, 0); head.add(ear); }
-  // Mütze
-  const capBody = toonMesh(new THREE.CylinderGeometry(0.52, 0.56, 0.32, 14), blue, { outline: 0.04 }); capBody.position.set(0, 0.52, -0.02); head.add(capBody);
-  const capTop = toonMesh(new THREE.CylinderGeometry(0.6, 0.52, 0.12, 14), blue, { outline: 0.04 }); capTop.position.set(0, 0.74, -0.02); head.add(capTop);
-  const capBrim = toonMesh(new THREE.BoxGeometry(0.55, 0.05, 0.32), 0x111111, { outline: 0.03 }); capBrim.position.set(0, 0.38, 0.58); head.add(capBrim);
-  const capBadge = toonMesh(new THREE.SphereGeometry(0.08, 8, 6), 0xffd54a, { outline: 0.02 }); capBadge.position.set(0, 0.56, 0.52); head.add(capBadge);
+  // Mütze als Gruppe (Drehpunkt an der Stirn), damit sie beim Mittagsschlaf über die Augen rutschen kann
+  const cap = new THREE.Group(); cap.position.set(0, 0.38, 0.3); head.add(cap);
+  const capBody = toonMesh(new THREE.CylinderGeometry(0.52, 0.56, 0.32, 14), blue, { outline: 0.04 }); capBody.position.set(0, 0.14, -0.32); cap.add(capBody);
+  const capTop = toonMesh(new THREE.CylinderGeometry(0.6, 0.52, 0.12, 14), blue, { outline: 0.04 }); capTop.position.set(0, 0.36, -0.32); cap.add(capTop);
+  const capBrim = toonMesh(new THREE.BoxGeometry(0.55, 0.05, 0.32), 0x111111, { outline: 0.03 }); capBrim.position.set(0, 0, 0.28); cap.add(capBrim);
+  const capBadge = toonMesh(new THREE.SphereGeometry(0.08, 8, 6), 0xffd54a, { outline: 0.02 }); capBadge.position.set(0, 0.18, 0.22); cap.add(capBadge);
   // Trillerpfeife an der Kordel, Pfeife im Mund wenn er pfeift
   const whistle = new THREE.Group();
   const wb = toonMesh(new THREE.CylinderGeometry(0.06, 0.06, 0.2, 8), 0xc9cfdc, { outline: 0.015 }); wb.rotation.z = Math.PI / 2; whistle.add(wb);
@@ -282,9 +285,29 @@ export function pong() {
     n.add(limb(V(0.08, 0.05, 0), V(0.08, 0.32, 0), 0.02, BLACK, { outline: 0, basic: true }));
     notes.push(n);
   }
-  root.userData.parts = { arms, head, whistle, whistleIdle, notes };
+  const z = zzz(); z.visible = false; z.position.set(0.7, neckY + 1.7, 0.2); z.userData.y0 = neckY + 1.7; root.add(z);
+  root.userData.parts = { arms, head, whistle, whistleIdle, notes, cap, decal, zzz: z };
+  root.userData.schlaeft = false;
   kopfOhneSchattenwurf(head);
   return root;
+}
+/** Mittagsschlaf: Mütze rutscht über die Augen, Kopf kippt zurück, Arme verschränkt, Zzz; an=false weckt ihn. */
+export function setPongSchlaeft(g, an) {
+  const P = g.userData.parts; if (!P) return;
+  g.userData.schlaeft = !!an;
+  P.cap.rotation.x = an ? 1.05 : 0; P.cap.position.y = an ? 0.02 : 0.38; P.cap.position.z = an ? 0.36 : 0.3; // Schirm vor den Augen
+  P.head.rotation.set(an ? -0.35 : 0, 0, an ? 0.12 : 0);
+  P.arms[0].rotation.set(an ? -1.1 : 0, 0, an ? 0.75 : 0); P.arms[1].rotation.set(an ? -1.0 : 0, 0, an ? -0.75 : 0);
+  P.whistle.visible = false; P.whistleIdle.visible = true; P.notes.forEach((n) => { n.visible = false; });
+  P.zzz.visible = !!an;
+  setFace(P.decal, face('kunde', an ? 'schlaeft' : 'misstrauisch', PONG_FACE));
+}
+/** Schlaf-Atmung (Bauch hebt sich, Zzz schweben) — läuft in buildMarkt().update, solange er schläft. */
+export function updatePongSchlaf(g, t) {
+  const P = g.userData.parts;
+  P.head.rotation.x = -0.35 + 0.03 * Math.sin(t * 1.6);
+  P.arms[0].rotation.x = -1.1 + 0.04 * Math.sin(t * 1.6); P.arms[1].rotation.x = -1.0 + 0.04 * Math.sin(t * 1.6);
+  P.zzz.userData.update(t);
 }
 
 /**
@@ -360,6 +383,7 @@ export function buildMarkt(parent, colliders, { exits = { pier: true, stadt: tru
     katze.position.set(c.x, 0, c.z); katze.rotation.y = c.yaw;
     katze.position.y = 0.06 * Math.abs(Math.sin(t * 9));
     for (const fl of flies) fl.children.forEach((f) => { const ph = t * 7 + f.userData.phase; f.position.set(Math.cos(ph) * 0.5, Math.sin(ph * 1.7) * 0.25, Math.sin(ph) * 0.4); });
+    if (pongObj.userData.schlaeft) { updatePongSchlaf(pongObj, t); return; } // Mittagsschlaf: kein Pfeifen, kein Umschauen
     const k = t % 12;
     const [armL, armR] = PP.arms;
     armL.rotation.set(0, 0, 0); armR.rotation.set(0, 0, 0); PP.head.rotation.set(0, 0, 0);
@@ -414,6 +438,7 @@ export function buildMarkt(parent, colliders, { exits = { pier: true, stadt: tru
   return {
     spots: MARKT_SPOTS, update, hideouts, anchors: MARKT_ANCHORS, bounds: { minZ: WORLD_MIN_Z },
     pong: pongObj, party,                   // Pong-Figur (userData.parts) und Party-Deko an/aus
+    pongSchlaeft: (an) => setPongSchlaeft(pongObj, an), // Mittagsschlaf 13–14 Uhr: Mütze über den Augen, Zzz
     posten: { ...POSTEN_SICHT },            // Vorplatz des Postens (Heat zählt hier doppelt)
     mangoStand: { ...MANGO_STAND },         // Bestechungs-Stand „1 MANGO = 1 GNADE“
     setTafel: st.userData.setTafel,         // Tafel „TAGE OHNE VORFALL“: untere Zeile neu malen

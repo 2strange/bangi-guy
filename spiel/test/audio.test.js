@@ -66,6 +66,11 @@ test('normalizeStimme: Defaults, Clamp, unbekannter Stil → schluffig', () => {
   const x = normalizeStimme({ tonhoehe: 99, tempo: 0.01, stil: 'opernsänger', vibrato: 7 });
   assert.equal(x.tonhoehe, 2.5); assert.equal(x.tempo, 0.4); assert.equal(x.stil, 'schluffig'); assert.equal(x.vibrato, 1);
   for (const k of Object.keys(STIL)) assert.equal(normalizeStimme({ stil: k }).stil, k);
+  // lallend: gedehnter, rutscht stärker ab und wackelt mehr als schluffig
+  assert.ok(STIL.lallend && STIL.lallend.len > STIL.schluffig.len && STIL.lallend.glide < STIL.schluffig.glide && STIL.lallend.vib > STIL.schluffig.vib);
+  const lall = babblePlan({ stil: 'lallend' }, 'Hey man, whassup.'), nuech = babblePlan({ stil: 'schluffig' }, 'Hey man, whassup.');
+  assert.ok(lall.duration > nuech.duration * 1.3, 'lallend dauert länger');
+  for (const n of lall.notes) assert.ok(n.freqEnd < n.freq, 'jede Silbe rutscht ab');
   // Content-Form (charakter + barks + zuordnung) und flache Form
   const m = normalizeStimmen({ _schema: 'x', zuordnung: { zivi_1: 'zivi_polo' }, stimmen: { zivi_polo: { charakter: { tonhoehe: 1.1, stil: 'zackig', laut: 1.2 }, barks: { gruss: ['Hello.', 'Hi.'] } } } });
   assert.equal(m.stimmen.zivi_polo.stil, 'zackig'); assert.equal(m.stimmen.zivi_polo.laut, 1.2); assert.ok(m.stimmen.default);
@@ -93,11 +98,12 @@ test('stimmen.json (Content): alle Slugs valide, jede Kunden-id hat eine Stimme,
   for (let i = 0; i < 40; i++) { const t = pickBark(db, 'surfer', 'kauf', last, r); assert.ok(t && t !== last); last = t; }
   assert.equal(pickBark(db, 'surfer', 'gibtsnicht'), null);
   assert.equal(pickBark(db, 'default', 'gruss'), null, 'default hat keine Barks');
+  setStimmen(db);
   for (const [slug, sits] of Object.entries(db.barks)) for (const [sit, list] of Object.entries(sits)) for (const t of list) {
     const p = babblePlan(db.stimmen[slug], t);
+    if (!/[a-zäöü]/i.test(t)) { assert.equal(p.duration, 0, `${slug}/${sit} „${t}“ ist stumm (nur Satzzeichen)`); continue; } // „…“ = sagt nichts, zulässig
     assert.ok(p.duration > 0.1 && p.duration < 4, `${slug}/${sit} „${t}“: ${p.duration}`);
   }
-  setStimmen(db);
   const b = bark('zivi_1', 'gruss');
   assert.ok(b && b.text && b.dauer > 0, 'bark liefert Text + Dauer auch ohne WebAudio');
   assert.equal(bark('zivi_1', 'gibtsnicht'), null);
@@ -129,7 +135,7 @@ test('musicPattern: 16 Takte, Skank nur auf Offbeats, One-Drop, Bass im Keller, 
   const ev = musicPattern(5).events; for (let i = 1; i < ev.length; i++) assert.ok(ev[i].step >= ev[i - 1].step);
 });
 
-test('Zonen: normalizeZones clampt, ignoriert Unbekanntes, null = Strand; Pseudo-Wörter brabbelbar', () => {
+test('Zonen: normalizeZones clampt, ignoriert Unbekanntes, null = Strand; Pseudo-Wörter brabbelbar', async () => {
   assert.deepEqual(ZONES, ['strand', 'markt', 'posten', 'pier', 'bar', 'reisfeld']);
   const Z = (o) => ({ strand: 0, markt: 0, posten: 0, pier: 0, bar: 0, reisfeld: 0, ...o });
   assert.deepEqual(normalizeZones(null), Z({ strand: 1 }));
@@ -171,6 +177,7 @@ test('Zonen: normalizeZones clampt, ignoriert Unbekanntes, null = Strand; Pseudo
   assert.equal(nextFunkDelay(() => 0), 10); assert.equal(nextFunkDelay(() => 1), 25);
   // stimmeFor mit Fallback: unbekannter Slug → Fallback-Profil, bekannter → aus stimmen.json
   assert.equal(stimmeFor('haendler_gibtsnicht', { stil: 'knarzig', tonhoehe: 0.9 }).stil, 'knarzig');
+  setStimmen(JSON.parse(await readFile(new URL('../data/stimmen.json', import.meta.url), 'utf8')));
   assert.equal(stimmeFor('mentor', { stil: 'piepsig' }).stil, 'knarzig', 'Datei gewinnt');
 });
 
@@ -210,8 +217,9 @@ test('Helfer: rng deterministisch im Bereich, hash stabil, Möwenpause 8–22 s,
 test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Dauer', () => {
   for (const n of ['kasse', 'ablehnen', 'heat', 'verhaftet', 'ausverkauft', 'schritt_sand', 'ui_klick', 'hinschauen', 'pfeife', 'mango', 'funk', 'tuten', 'tuktuk_abwuergen', 'gaehnen',
     'ui_oeffnen', 'ui_schliessen', 'ui_umschalten', 'ui_schritt', 'ziel', 'morgen', 'woche_gut', 'woche_fail', 'woche_mittel',
-    'schiffshorn_fern', 'moewe_klaut', 'party', 'stromausfall']) assert.ok(SFX_NAMES.includes(n), n);
-  assert.equal(SFX_NAMES.length, 27);
+    'schiffshorn_fern', 'moewe_klaut', 'party', 'stromausfall',
+    'kinder_fern', 'wasserpistole', 'streit', 'selfie', 'schnarchen', 'handtuch', 'dose_oeffnen']) assert.ok(SFX_NAMES.includes(n), n);
+  assert.equal(SFX_NAMES.length, 34);
   for (const n of SFX_NAMES) assert.equal(sfx(n), 0);
   assert.equal(sfx('gibtsnicht'), 0);
   assert.equal(sfx('tuktuk_abwuergen', { gain: 0.5, pan: -0.3 }), 0, 'Optionen ohne Audio: no-op');
@@ -245,10 +253,13 @@ test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Daue
   assert.deepEqual(ereignisAktionen('klick'), [['sfx', 'stromausfall'], ['musik_aus']]); assert.deepEqual(ereignisAktionen('klick', 'ende'), [['musik_an']]);
   assert.deepEqual(ereignisAktionen('stille'), []); assert.deepEqual(ereignisAktionen('stille', 'ende'), []);
   assert.equal(ereignisAktionen('erdbeben'), null);
-  for (const slug of Object.keys(EREIGNIS_SOUNDS)) for (const ph of ['start', 'ende']) for (const [art, arg] of ereignisAktionen(slug, ph)) {
+  for (const slug of Object.keys(EREIGNIS_SOUNDS)) for (const ph of ['start', 'ende']) for (const [art, arg, arg2] of ereignisAktionen(slug, ph)) {
     if (art === 'sfx') assert.ok(SFX_NAMES.includes(arg), `${slug}: SFX ${arg}`);
     if (art === 'wetter') assert.ok(WETTER.includes(arg), `${slug}: Wetter ${arg}`);
+    if (art === 'bark') assert.ok(typeof arg === 'string' && typeof arg2 === 'string', `${slug}: bark braucht Slug + Situation`);
   }
+  assert.deepEqual(ereignisAktionen('lallen'), [['bark', 'betrunkener', 'lallen']]);
+  assert.deepEqual(ereignisAktionen('schnarchen_pong'), [['sfx', 'schnarchen']]);
   assert.equal(ereignis('regen'), 0); assert.equal(ambience.getWetter(), 'regen'); ereignis('regen', 'ende'); assert.equal(ambience.getWetter(), 'klar');
   assert.equal(ereignis('stille'), 0); assert.equal(ereignis('erdbeben'), 0); assert.equal(ereignis('horn', 'start', { gain: 0.5 }), 0);
   ambience.setZone(null);
@@ -276,11 +287,19 @@ test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Daue
 });
 const d0 = (t) => babble('zivi_polo', t);
 
-test('texte.json (Content): jeder Ereignis-Sound-Slug ist in audio.js gemappt', async () => {
+test('texte.json + szenen.json (Content): jeder Sound-Slug ist in audio.js gemappt; bark-Slugs haben Stimme + Situation', async () => {
   const t = JSON.parse(await readFile(new URL('../data/texte.json', import.meta.url), 'utf8'));
   const e = t.ereignisse; const liste = Array.isArray(e) ? e : (e && e.liste) || [];
   assert.ok(liste.length >= 1, 'Ereignisse vorhanden');
   for (const x of liste) if (x.sound) assert.ok(ereignisAktionen(x.sound) !== null, `Ereignis ${x.id}: Sound-Slug „${x.sound}“ unbekannt`);
+  let szenen = [];
+  try { const z = JSON.parse(await readFile(new URL('../data/szenen.json', import.meta.url), 'utf8')); szenen = Array.isArray(z) ? z : (z.szenen && (Array.isArray(z.szenen) ? z.szenen : z.szenen.liste)) || []; } catch (err) { /* keine Szenen-Datei → nichts zu prüfen */ }
+  const db = normalizeStimmen(JSON.parse(await readFile(new URL('../data/stimmen.json', import.meta.url), 'utf8')));
+  for (const sz of szenen) for (const slug of (Array.isArray(sz.sound) ? sz.sound : sz.sound ? [sz.sound] : [])) {
+    const acts = ereignisAktionen(slug);
+    assert.ok(acts !== null, `Szene ${sz.id}: Sound-Slug „${slug}“ unbekannt`);
+    for (const [art, a1, a2] of acts) if (art === 'bark') assert.ok(db.stimmen[a1] && (db.barks[a1] || {})[a2], `Szene ${sz.id}: bark ${a1}/${a2} fehlt in stimmen.json`);
+  }
 });
 
 test('Ausrufe (rein): Manifest normalisieren, Clip-Wahl (eigene immer, allgemeine zu 50 %, nie doppelt), Rate begrenzt', () => {
@@ -308,7 +327,8 @@ test('Ausrufe (rein): Manifest normalisieren, Clip-Wahl (eigene immer, allgemein
   close(clipRate({ tonhoehe: 1.2 }, 0.8), 1.5); assert.equal(clipRate({ tonhoehe: 2.5 }, 0.5), 1.8); assert.equal(clipRate({ tonhoehe: 0.4 }, 1), 0.6); assert.equal(clipRate(null), 1);
 });
 
-test('Ausrufe ohne WebAudio: Fallback Gebrabbel, bark nutzt Clip-Text, Status-API', () => {
+test('Ausrufe ohne WebAudio: Fallback Gebrabbel, bark nutzt Clip-Text, Status-API', async () => {
+  setStimmen(JSON.parse(await readFile(new URL('../data/stimmen.json', import.meta.url), 'utf8')));
   setAusrufe({ ausrufe: [{ id: 'far_out', text: 'Far out.', stimme: 'stammkunde', situation: 'kauf' }] }, { clips: [{ id: 'far_out', datei: 'x.wav' }] });
   assert.equal(getAusrufe().length, 1);
   const r = ausruf('far_out', 'stammkunde');

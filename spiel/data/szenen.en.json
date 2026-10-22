@@ -1,0 +1,399 @@
+{
+  "_schema": "English mirror of szenen.json: same paths, string fields only (titel, schritte[].text for sag steps, ansprechen[], kommentar.text). Lists keep the German lengths; missing branches fall back to German. Barks are already English.",
+  "szenen": [
+    {
+      "id": "ehepaar",
+      "titel": "The Arguing Couple",
+      "schritte": [
+        {
+          "t": 0,
+          "wer": "ehe_sie",
+          "aktion": "pose"
+        },
+        {
+          "t": 0,
+          "wer": "ehe_sie",
+          "aktion": "sag",
+          "text": "'You said there'd be wifi.'"
+        },
+        {
+          "t": 4,
+          "wer": "ehe_er",
+          "aktion": "pose"
+        },
+        {
+          "t": 4,
+          "wer": "ehe_er",
+          "aktion": "sag",
+          "text": "'I said there'd be sea.'"
+        },
+        {
+          "t": 8,
+          "wer": "ehe_sie",
+          "aktion": "pose"
+        },
+        {
+          "t": 8,
+          "wer": "ehe_sie",
+          "aktion": "sag",
+          "text": "'The sea doesn't have wifi either.'"
+        },
+        {
+          "t": 12,
+          "wer": "ehe_er",
+          "aktion": "pose"
+        },
+        {
+          "t": 12,
+          "wer": "ehe_er",
+          "aktion": "sag",
+          "text": "'Then I'm going diving. It's quiet down there.'"
+        },
+        {
+          "t": 17,
+          "wer": "ehe_sie",
+          "aktion": "pose"
+        },
+        {
+          "t": 17,
+          "wer": "ehe_sie",
+          "aktion": "sag",
+          "text": "'That towel's been there since six, Harald! SIX!'"
+        },
+        {
+          "t": 21,
+          "wer": "ehe_er",
+          "aktion": "pose"
+        },
+        {
+          "t": 21,
+          "wer": "ehe_er",
+          "aktion": "sag",
+          "text": "He comes back, wet, with a shell. She takes the shell. Ten seconds of peace."
+        }
+      ],
+      "ansprechen": [
+        "She: 'Are you from the hotel? The wifi doesn't work.' He: 'Leave the boy, he sells sunglasses.' She: 'He doesn't have any sunglasses.' He: 'See, that's why the wifi doesn't work.'",
+        "Both at once: 'Do you have signal?' You don't. She: 'See.' He: 'YOU see.'",
+        "He, to you, quietly: 'Twenty years. Twenty. Got anything for ears?'"
+      ],
+      "kommentar": {
+        "text": "'The couple from the hotel was here. She wanted wifi, he wanted quiet. I gave them both an empty glass. Both happy.'"
+      }
+    },
+    {
+      "id": "kinder",
+      "titel": "Kids Running Around",
+      "schritte": [
+        {
+          "t": 0,
+          "wer": "kind_1",
+          "aktion": "pose"
+        },
+        {
+          "t": 0,
+          "wer": "kind_1",
+          "aktion": "sag",
+          "text": "Three kids run in a circle. Not anywhere. In a circle."
+        },
+        {
+          "t": 8,
+          "wer": "kind_2",
+          "aktion": "pose"
+        },
+        {
+          "t": 8,
+          "wer": "kind_2",
+          "aktion": "sag",
+          "text": "'WAIT! MY SHOE!' Nobody waits."
+        },
+        {
+          "t": 11,
+          "wer": "kind_3",
+          "aktion": "pose"
+        },
+        {
+          "t": 11,
+          "wer": "kind_3",
+          "aktion": "sag",
+          "text": "The little one tips the bucket over whoever's nearest. Whoever's nearest is whoever's there."
+        },
+        {
+          "t": 14,
+          "wer": "streife",
+          "aktion": "pose"
+        },
+        {
+          "t": 14,
+          "wer": "streife",
+          "aktion": "sag",
+          "text": "The patrol walks through. The patrol trips over kid number two, who's looking for his shoe. The patrol gets up again, slowly, in sandals."
+        },
+        {
+          "t": 19,
+          "wer": "kind_1",
+          "aktion": "pose"
+        },
+        {
+          "t": 19,
+          "wer": "kind_1",
+          "aktion": "sag",
+          "text": "'POLICE! HANDS UP!' The kids have disarmed Pong. Pong wasn't carrying anything."
+        }
+      ],
+      "ansprechen": [
+        "'Got ice cream?' 'No.' 'Then what have you got?' '... nothing.' 'Then you're dumb.' They run on.",
+        "Kid three looks at you, looks at the bucket, looks at you. You take a step back. Correct.",
+        "'Mum says you're the guy who stands around on the beach.' 'Mum's right.' 'Mum's ALWAYS right.' Water pistol, right in the face."
+      ],
+      "kommentar": {
+        "text": "'The kids knocked Pong over three times today. Three. The future of this island is in good, wet hands.'"
+      }
+    },
+    {
+      "id": "handtuch_werfer",
+      "titel": "The Towel Throwers at Six",
+      "schritte": [
+        {
+          "t": 0,
+          "wer": "werfer_1",
+          "aktion": "pose"
+        },
+        {
+          "t": 0,
+          "wer": "werfer_1",
+          "aktion": "sag",
+          "text": "Six a.m. A towel flies. Hits the lounger right at the front. That was the good one."
+        },
+        {
+          "t": 3,
+          "wer": "werfer_2",
+          "aktion": "pose"
+        },
+        {
+          "t": 3,
+          "wer": "werfer_2",
+          "aktion": "sag",
+          "text": "'The one next to it too. For the Müllers.'"
+        },
+        {
+          "t": 6,
+          "wer": "werfer_1",
+          "aktion": "pose"
+        },
+        {
+          "t": 6,
+          "wer": "werfer_1",
+          "aktion": "sag",
+          "text": "Second towel. Third. Fourth. The Müllers arrive at two."
+        },
+        {
+          "t": 12,
+          "wer": "werfer_2",
+          "aktion": "pose"
+        },
+        {
+          "t": 12,
+          "wer": "werfer_2",
+          "aktion": "sag",
+          "text": "'Seven. That's enough. Breakfast.' They leave. The loungers stay empty until two in the afternoon."
+        }
+      ],
+      "ansprechen": [
+        "'That one's reserved.' You didn't say anything. 'That one too.'",
+        "He, without looking at you: 'We were here first. Yesterday too. And the day before.' She: 'And tomorrow.'",
+        "'Do you have a towel? No? Then you don't have a lounger either. That's how it's regulated.'"
+      ]
+    },
+    {
+      "id": "betrunkener",
+      "titel": "The Drunk in Bangkok",
+      "schritte": [
+        {
+          "t": 0,
+          "wer": "chad",
+          "aktion": "pose"
+        },
+        {
+          "t": 0,
+          "wer": "chad",
+          "aktion": "sag",
+          "text": "'BANGKOK, BABY! Best city in the world!' Nong doesn't correct him. Nong never corrects anyone."
+        },
+        {
+          "t": 5,
+          "wer": "chad",
+          "aktion": "pose"
+        },
+        {
+          "t": 5,
+          "wer": "chad",
+          "aktion": "sag",
+          "text": "'I love this city. Where's the beach? Is this the beach? Bangkok has a BEACH?'"
+        },
+        {
+          "t": 10,
+          "wer": "chad",
+          "aktion": "pose"
+        },
+        {
+          "t": 10,
+          "wer": "chad",
+          "aktion": "sag",
+          "text": "He tips backwards. He catches himself. He celebrates having caught himself."
+        },
+        {
+          "t": 14,
+          "wer": "chad",
+          "aktion": "pose"
+        },
+        {
+          "t": 14,
+          "wer": "chad",
+          "aktion": "sag",
+          "text": "'Chef! Chef, you're my best friend here.' The seagull looks at him like a french fry."
+        },
+        {
+          "t": 19,
+          "wer": "chad",
+          "aktion": "pose"
+        },
+        {
+          "t": 19,
+          "wer": "chad",
+          "aktion": "sag",
+          "text": "From six p.m. he sleeps on the counter. From eight, in your hammock."
+        }
+      ],
+      "ansprechen": [
+        "'Bro! BRO! You know where we are?' 'Bangi Bay.' 'BANGKOK Bay! Knew it.'",
+        "'Have you got... you know... I'm in BANGKOK, man, they've got EVERYTHING here.' He has no money left. He had money. Chef has it.",
+        "'My flight's tomorrow. From Bangkok. Which way is Bangkok from here?' You point at the sea. He nods. 'Thought so.'"
+      ],
+      "kommentar": {
+        "text": "'The American is sleeping in your hammock. He thinks this is Bangkok. Let him. In Bangkok he'd have been robbed by now.'"
+      }
+    },
+    {
+      "id": "influencerin",
+      "titel": "The Influencer and the Reflector",
+      "schritte": [
+        {
+          "t": 0,
+          "wer": "influencerin",
+          "aktion": "pose"
+        },
+        {
+          "t": 0,
+          "wer": "influencerin",
+          "aktion": "sag",
+          "text": "'One more. The light was just perfect.' It's twelve noon. The light has been the same for hours."
+        },
+        {
+          "t": 4,
+          "wer": "reflektor_freund",
+          "aktion": "pose"
+        },
+        {
+          "t": 4,
+          "wer": "reflektor_freund",
+          "aktion": "sag",
+          "text": "He lifts the reflector. The reflector is as big as he is. He used to be bigger than the reflector, on the inside."
+        },
+        {
+          "t": 8,
+          "wer": "influencerin",
+          "aktion": "pose"
+        },
+        {
+          "t": 8,
+          "wer": "influencerin",
+          "aktion": "sag",
+          "text": "Click. Click. Click. 'Sunset in Bangi, hashtag blessed.'"
+        },
+        {
+          "t": 12,
+          "wer": "reflektor_freund",
+          "aktion": "pose"
+        },
+        {
+          "t": 12,
+          "wer": "reflektor_freund",
+          "aktion": "sag",
+          "text": "He looks at the sea. The sea looks back. Neither says anything."
+        },
+        {
+          "t": 17,
+          "wer": "influencerin",
+          "aktion": "pose"
+        },
+        {
+          "t": 17,
+          "wer": "influencerin",
+          "aktion": "sag",
+          "text": "'A bit to the left. No, YOUR left.' He goes right. It's correct. It's always the wrong thing that's correct."
+        }
+      ],
+      "ansprechen": [
+        "She, without looking at you: 'Can you get out of the shot? Thanks. You're in it. Still. Thanks.'",
+        "He, quietly: 'She's got 40,000 followers. I'm one of them. I never confirmed it.'",
+        "'Are you local? Do something local in the background.' You stand there. It's the most local thing you've got."
+      ]
+    },
+    {
+      "id": "pong_mittag",
+      "titel": "Pong's Lunch Nap",
+      "schritte": [
+        {
+          "t": 0,
+          "wer": "pong",
+          "aktion": "pose"
+        },
+        {
+          "t": 0,
+          "wer": "pong",
+          "aktion": "sag",
+          "text": "One p.m. Pong puts his feet on the desk, cap over his face. The board says: 'Lunch break. Incidents from 2 p.m.'"
+        },
+        {
+          "t": 6,
+          "wer": "pong",
+          "aktion": "pose"
+        },
+        {
+          "t": 6,
+          "wer": "pong",
+          "aktion": "sag",
+          "text": "Snoring. The whistle on its cord rises and falls with his belly."
+        },
+        {
+          "t": 26,
+          "wer": "pong",
+          "aktion": "pose"
+        },
+        {
+          "t": 26,
+          "wer": "pong",
+          "aktion": "sag",
+          "text": "In his sleep he whistles once. Briefly. Nobody knows who he's dreaming about."
+        },
+        {
+          "t": 29,
+          "wer": "pong",
+          "aktion": "pose"
+        },
+        {
+          "t": 29,
+          "wer": "pong",
+          "aktion": "sag",
+          "text": "Two p.m. Pong wakes up, puts the cap on, flips the board: 'Days without incident: {tage}'. The patrol walks again."
+        }
+      ],
+      "ansprechen": [
+        "You stand in front of Pong. Pong is asleep. You could do anything. You do nothing. That's the difference between you and Timo.",
+        "Pong, from under the cap: 'I'm asleep. No incident. Go.' He really is asleep. He says it in his sleep.",
+        "The mango from this morning is on the desk. Half eaten. Pong is dreaming about the other half."
+      ]
+    }
+  ]
+}

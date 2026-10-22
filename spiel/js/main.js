@@ -11,6 +11,7 @@ import { initLicht } from './licht.js';
 import { zielMarker, updateMarker } from './marker.js';
 import { ereignisSteuerung } from './ereignisse.js';
 import { createSpuren } from './spuren.js';
+import { normalizeSzenen, szenenDesTages, szenenAktiv, szeneSchritte, szeneAnsprechen, szenenWirkung, inStolperZone } from './szenen.js';
 import { setHuetteZiel, setHuette, setWegweiserText, coconut } from './props.js';
 import { mentorBarSpot } from './zone-huegel.js';
 import { createUI, isTouchDevice, hintSeen, markHint } from './ui.js';
@@ -24,7 +25,7 @@ import {
   initialState, normalizeKatalog, pickKunden, startDialog, advanceDialog, chooseOption, isArrested, newDay, moodFor,
   kundeStatus, nearestKunde, wanderStep, inspectCamera, kundeLookYaw, TALK_DIST, idSeed,
   normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE, gagFor, nextIdleGagDelay,
-  mergeTexte, mergeKundenKatalog, normalizeOptionen, toSave, fromSave, hatFortschritt, fillText, buyKokos, kokosSchutz, normalizeKokos, kokosGag, kokosWirkung, pickLine,
+  mergeTexte, mergeKundenKatalog, normalizeOptionen, toSave, fromSave, hatFortschritt, fillText, dayReport, buyKokos, kokosSchutz, normalizeKokos, kokosGag, kokosWirkung, pickLine,
   normalizeTutorial, tutorialStart, tutorialEvent, tutorialSkip,
   normalizeWoche, tagesziel, tagModifikator, hudZiel, finaleStufe, KUNDEN_PRO_TAG, kalibriereWoche, neueWoche, finaleKarte,
   normalizeEreignisse, ereignisFuerTag, ereignisKundenFaktor, ereignisZiviExtra, kundenFuerTag, ereignisFenster,
@@ -190,6 +191,45 @@ let texte = normalizeTexte(null);
 let abendTexte = normalizeAbend(null);
 let tutorialTexte = normalizeTutorial(null);
 let kokosTexte = normalizeKokos(null); // Mister Coconut (texte.json → kokosverkaeufer{})
+// ---------- Ambient-Szenen (data/szenen.json): Zeitplan/Zustand in szenen.js, hier Schritte auslösen und Wirkung anwenden ----------
+let szenen = normalizeSzenen(null);
+let szenenHeute = []; // Szenen des Tages (Chance deterministisch aus dem Seed)
+let szenenLauf = {}; // id → zuletzt abgespielte Sekunde (damit jeder Ablauf-Schritt einmal kommt)
+let szenenWirk = szenenWirkung([]);
+let szeneNah = null; // aktive Szene in Reichweite (E = ansprechen)
+async function loadSzenen() { const json = await fetchJson('./data/szenen.json'); szenen = normalizeSzenen(json); planeSzenen(); }
+// Szenen-Ort: Spot-Name (strand|markt|posten|pier|bar|liegen|dorf|…) oder {x,z,r} → Weltposition mit Radius
+const SZENE_ORT = (ort) => (ort && typeof ort === 'object' ? ort : { r: 5, ...({ strand: world.spots.mitte }[ort] || world.spots[ort] || world.spots.start) });
+function planeSzenen() { szenenHeute = szenenDesTages(szenen, { seed: game.seed, woche: game.woche, tag: game.tag }); szenenLauf = {}; }
+function updateSzenen(now) {
+  const aktive = szenenAktiv(szenenHeute, tagesuhr.t01);
+  const neu = {};
+  for (const { szene, seitSek } of aktive) {
+    const vorher = szenenLauf[szene.id];
+    for (const st of szeneSchritte(szene, vorher ?? -1, seitSek)) szenenSchritt(szene, st, now);
+    neu[szene.id] = seitSek;
+  }
+  for (const id of Object.keys(szenenLauf)) if (!(id in neu)) ui.hideBarks?.(); // Fensterende: Blasen weg
+  szenenLauf = neu;
+  szenenWirk = szenenWirkung(aktive, SZENE_ORT);
+  szeneNah = aktive.map((a) => a.szene).find((sz) => { const o = SZENE_ORT(sz.ort); return Math.hypot(o.x - state.x, o.z - state.z) < Math.max(4, o.r) && sz.ansprechen.length; }) || null;
+}
+// Schritt: sag = Erzähltext als Einblendung unten (+ optionaler Bark als Blase), bark = Blase an der Figur (Pong/Streife = P1,
+// sonst Anker am Ort, bis die Szenen-Figuren stehen), sound über sfx; pose/geh/warte warten auf die Figuren
+function szenenSchritt(szene, st, now, { halten = false } = {}) { // halten: Blase stehen lassen (Schnappschuss)
+  const anker = st.wer === 'pong' || st.wer === 'streife' ? (streifen[0]?.id || 'streife_p1') : `szene_${szene.id}_${st.wer}`;
+  if (st.aktion === 'sag' && st.text && mode === 'free') { ui.showPrompt(fillText(st.text, dayReport(game)), { small: true }); hinweisBis = now + Math.min(9000, 1000 + st.dauer * 1000); }
+  const blase = st.aktion === 'bark' ? st.bark || st.text : st.aktion === 'sag' ? st.bark : null;
+  if (blase) { ui.showBark(anker, blase, halten ? 999 : Math.min(4, st.dauer)); if (!anker.startsWith('streife')) szenenAnker[anker] = SZENE_ORT(szene.ort); try { audio?.babble?.(szene.figuren.find((f) => f.slug === st.wer)?.stimme || st.wer, blase, { pan: 0 }); } catch (e) { /* ohne Ton */ } }
+  if (st.aktion === 'sound' && st.text) sfx(st.text, { pan: 0, gain: 0.6 });
+}
+const szenenAnker = {}; // Bark-Anker ohne Figur: Position am Szenen-Ort
+const alleVerstecke = () => (szenenWirk.verstecke.length ? [...world.hideouts, ...szenenWirk.verstecke] : world.hideouts);
+function szeneAnreden() {
+  if (!szeneNah) return;
+  const text = szeneAnsprechen(szeneNah, lineIdx++);
+  if (text) showInfo({ id: 'szene', name: szeneNah.titel, x: SZENE_ORT(szeneNah.ort).x, z: SZENE_ORT(szeneNah.ort).z, obj: szeneNah.figuren.some((f) => f.slug === 'pong') ? streifen[0].group : player }, fillText(text, dayReport(game)));
+}
 let ereignisse = normalizeEreignisse(null); // Tages-Ereignisse (texte.json → ereignisse[])
 let woche = normalizeWoche(null); // Wochenbogen: Tagesziele + Finale (texte.json → woche{}), Ziel kalibriert am Kundenkatalog
 let wocheRoh = woche;
@@ -381,6 +421,7 @@ function placeBarks() {
   ui.placeBark('kokos', (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now);
   (barkeeperObj.userData.parts?.head || barkeeperObj).getWorldPosition(barkHead); barkHead.y += 0.9; barkHead.project(camera);
   ui.placeBark('barkeeper', (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now);
+  for (const [id, pos] of Object.entries(szenenAnker)) { barkHead.set(pos.x, 2.4, pos.z); barkHead.project(camera); ui.placeBark(id, (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now); }
   for (const s of streifen) {
     s.group.userData.parts.head.getWorldPosition(barkHead);
     barkHead.y += 0.9; barkHead.project(camera);
@@ -638,6 +679,7 @@ function makeStreife(def) {
 }
 const streifen = STREIFE_DEFS.map(makeStreife);
 const streifeAktiv = (s) => (game.tag || 1) >= s.abTag;
+const streifeSchlaeft = (s) => s.id === 'streife_p1' && szenenWirk.streife_p1 === 'schlaeft'; // Pongs Mittagsschlaf: P1 bleibt am Posten, sieht nichts
 const streifeSieht = () => streifen.some((st) => st.sees);
 let sightCooldown = 0;
 function applyCop(s) {
@@ -659,12 +701,19 @@ function updatePatrol(dt, now) {
   const busy = mode === 'dialog' || mode === 'mentor' || mode === 'info' || mode === 'card' || mode === 'arrest' || mode === 'bar';
   for (const s of streifen) {
     if (!streifeAktiv(s)) { s.sees = false; applyCop(s); continue; }
+    if (streifeSchlaeft(s)) { s.sees = false; if (s.patrol.mode !== 'patrol' || s.patrol.idx !== 1 || Math.hypot(s.patrol.x - s.route[0].x, s.patrol.z - s.route[0].z) > 0.3) s.patrol = { ...patrolStart(s.route), mode: 'patrol', wait: 1 }; s.patrol = { ...s.patrol, wait: 1, moving: false }; applyCop(s); continue; } // schläft am Posten (Startpunkt der Route)
     const sees = seesTarget(s.patrol, state, { range: kokosSchutz(game, tagesuhr.t01) ? 6 : 12 }); // Kokosnuss in der Hand: gilt als Tourist, halbe Sichtweite
-    s.sees = sees && !inHideout(state, world.hideouts);
+    s.sees = sees && !inHideout(state, alleVerstecke());
     // Verfolgung ab Heat 2: langsam (Sandalen), verliert den Spieler nach 6 s ohne Sicht oder im Versteck
-    const r = chaseStep(s.patrol, s.route, state, dt, { sees, heat: game.heat, hideouts: world.hideouts, schuhe: s.schuhe });
+    const r = chaseStep(s.patrol, s.route, state, dt, { sees, heat: game.heat, hideouts: alleVerstecke(), schuhe: s.schuhe });
     if (r.event === 'kante') { ui.showBark(s.id, 'These are new!', 2.5); try { audio?.babble?.('pong', 'These are new!', { pan: panFor(s.group) }); } catch (e) { /* ohne Ton */ } }
     s.patrol = r.st;
+    // Szene im Weg (Kinder, Ehepaar): läuft der Spieler mitten durch, stolpert die verfolgende Streife und verliert ihn
+    if (r.st.mode === 'chase' && inStolperZone(szenenWirk, state) && Math.hypot(r.st.x - state.x, r.st.z - state.z) < 7) {
+      s.patrol = { ...r.st, mode: 'return', lost: 0, kante: false, wait: 2, moving: false };
+      ui.showBark(s.id, 'Oof!', 2); try { audio?.bark?.('pong', 'sichtung', { pan: panFor(s.group) }); } catch (e) { /* ohne Ton */ }
+      if (mode === 'free') ui.showPrompt('Die Streife stolpert über die Szene — weg bist du.');
+    }
     if (r.event === 'chase_start') { sfx('pfeife'); try { audio?.bark?.('pong', 'verfolgung', { pan: panFor(s.group) }); } catch (e) { /* ohne Ton */ } ui.showPrompt('Die Streife hat dich gesehen — lauf! (oder ab ins Gedränge)'); }
     if (r.event === 'lost') { try { audio?.bark?.('pong', 'sichtung', { pan: panFor(s.group) }); } catch (e) { /* ohne Ton */ } if (mode === 'free') ui.showPrompt(null); }
     if (r.event === 'caught' && !busy && !isArrested(game)) {
@@ -722,7 +771,7 @@ function advanceMentor() {
 let joy = null;
 const touch = ui.createTouchControls({
   onJoystick: (dx, dy) => { joy = dx === null ? null : joystickInput(dx, dy, { radius: touch.radius }); if (joy) clickTarget = null; },
-  onTalk: () => { sfx('talk'); if (mode === 'dialog') confirmDialog(); else if (mode === 'mentor') advanceMentor(); else if (mode === 'info') endInfo(); else if (mode === 'bar') advanceBar(); else if (mode === 'kokos') kokosChoice(0); else if (nearK && mode === 'free') startTalk(nearK); else if (nearMentor && mode === 'free') startMentor(); else if (nearPoint && mode === 'free') usePoint(nearPoint); },
+  onTalk: () => { sfx('talk'); if (mode === 'dialog') confirmDialog(); else if (mode === 'mentor') advanceMentor(); else if (mode === 'info') endInfo(); else if (mode === 'bar') advanceBar(); else if (mode === 'kokos') kokosChoice(0); else if (nearK && mode === 'free') startTalk(nearK); else if (nearMentor && mode === 'free') startMentor(); else if (nearPoint && mode === 'free') usePoint(nearPoint); else if (szeneNah && mode === 'free') szeneAnreden(); },
   onLook: () => { sfx('talk'); if (nearK || mode === 'inspect') toggleInspect(); },
   onCamLeft: (down) => { keys.rotL = down; },
   onCamRight: (down) => { keys.rotR = down; },
@@ -741,6 +790,7 @@ window.addEventListener('keydown', (e) => {
   if (mode === 'kokos') { if (['Enter', 'Space', 'KeyE', 'Digit1'].includes(e.code)) kokosChoice(0); else if (e.code === 'Digit2') kokosChoice(1); else if (['Digit3', 'Escape'].includes(e.code)) kokosChoice(2); e.preventDefault(); return; }
   if (e.code === KEY_TALK && nearMentor && mode === 'free') { startMentor(); e.preventDefault(); return; }
   if (e.code === KEY_TALK && nearPoint && !nearK && mode === 'free') { usePoint(nearPoint); e.preventDefault(); return; }
+  if (e.code === KEY_TALK && szeneNah && !nearK && !nearMentor && mode === 'free') { szeneAnreden(); e.preventDefault(); return; }
   // E = immer ansprechen (ohne Kunden in Reichweite passiert nichts), F = hinschauen
   if (e.code === KEY_TALK) { if (nearK && mode === 'free') startTalk(nearK); e.preventDefault(); return; }
   if (e.code === KEY_LOOK && (nearK || mode === 'inspect')) { toggleInspect(); e.preventDefault(); return; }
@@ -834,6 +884,7 @@ function startChoice(i) {
     game = { ...game, ...saved };
     if (game.finale) applyFinale(game.finale);
     refreshKokos();
+    planeSzenen();
     spawnKunden(game.tag);
     for (const s of streifen) s.patrol = { ...patrolStart(s.route), mode: 'patrol' };
     tagesuhr = initialClock(); applyTageszeit(); placeMentor(false);
@@ -1049,6 +1100,7 @@ function setEreignisRequisite(ev, an) {
 function morgen() {
   zielGemeldet = false;
   refreshKokos();
+  planeSzenen();
   // Tagesereignis: Einblendung, Requisite (world.setEreignis, falls vorhanden), Sound (audio.ereignis, falls vorhanden)
   const ev = game.ereignis;
   ui.showPrompt(null);
@@ -1481,6 +1533,17 @@ function setupScene() {
     return;
   }
   if (SCENE === 'menue') { openMenu(); return; }
+  if (SCENE === 'szene') { // ?scene=szene&id=pong_mittag: Tag 2, Uhr in die Mitte des Fensters, Spieler am Ort, Szene läuft
+    const sz = szenen.find((x) => x.id === SCENE_ID) || szenen[0];
+    game = { ...game, tag: Math.max(game.tag, sz.ab_tag) }; szenenHeute = [sz]; szenenLauf = {};
+    tagesuhr = { t01: (sz.fenster.von + sz.fenster.bis) / 2 }; applyTageszeit(); refreshHud();
+    const ort = SZENE_ORT(sz.ort);
+    state = { ...state, x: ort.x + 2.5, z: ort.z + 3.5, yaw: Math.atan2(-2.5, -3.5), speed: 0 };
+    mode = 'free';
+    updateSzenen(0); for (const s of streifen) applyCop(s);
+    const erster = sz.schritte.find((st) => st.bark || (st.aktion === 'sag' && st.text)); if (erster) szenenSchritt(sz, { ...erster, dauer: 999 }, performance.now(), { halten: true });
+    return;
+  }
   if (SCENE === 'kokos') { // Verkäufer neben dem Schluffi am Wasser, Ruf-Blase, Kauf-Blase
     kokos = { ...kokos, x: state.x + 2.2, z: state.z + 2.5, yaw: -Math.PI / 2, moving: true, phase: 1.2 };
     applyKokos(0, 300); try { kokosFig.userData.setRuf?.(true); } catch (e) { /* ignorieren */ } applyKokos(0, 300);
@@ -1586,7 +1649,7 @@ function setupScene() {
 }
 
 if (SNAP) {
-  Promise.all([loadTexte(), loadStimmen(), loadKunden()]).then(() => {
+  Promise.all([loadTexte(), loadStimmen(), loadKunden(), loadSzenen()]).then(() => {
     const overview = AT === 'overview';
     setupScene();
     applyPose(state);
@@ -1614,7 +1677,7 @@ if (SNAP) {
     updateFade(mode === 'inspect' ? talking.npc : state);
     const shoot = () => {
       resize(); camera.updateMatrixWorld();
-      if (SCENE === 'badge' || SCENE === 'hint' || SCENE === 'bark' || SCENE === 'kokos') { const near = nearestKunde(state, kundenPos()); nearK = near ? near.ref : null; updateNearHint(); placeBarks(); }
+      if (SCENE === 'badge' || SCENE === 'hint' || SCENE === 'bark' || SCENE === 'kokos' || SCENE === 'szene') { const near = nearestKunde(state, kundenPos()); nearK = near ? near.ref : null; updateNearHint(); placeBarks(); }
       if (mode === 'dialog' || mode === 'mentor' || mode === 'info' || mode === 'bar' || mode === 'kokos') placeBubbleAtHead();
       renderer.render(scene, camera);
       requestAnimationFrame(() => { resize(); if (mode === 'dialog' || mode === 'mentor' || mode === 'info' || mode === 'bar' || mode === 'kokos') placeBubbleAtHead(); renderer.render(scene, camera); stats(); });
@@ -1625,7 +1688,7 @@ if (SNAP) {
 } else {
   resize();
   window.addEventListener('resize', resize);
-  Promise.all([loadTexte(), loadStimmen(), loadKunden()]).then(() => { const sv = readSave(); if (hatFortschritt(sv)) showStart(fromSave(sv)); else beginTutorial(); });
+  Promise.all([loadTexte(), loadStimmen(), loadKunden(), loadSzenen()]).then(() => { const sv = readSave(); if (hatFortschritt(sv)) showStart(fromSave(sv)); else beginTutorial(); });
   let last = performance.now();
   renderer.setAnimationLoop((now) => {
     const dt = Math.min(0.05, (now - last) / 1000);
@@ -1684,6 +1747,7 @@ if (SNAP) {
     spuren.update(now / 1000);
     for (const k of kunden) updateKundenExtras(k.group, now / 1000);
     updateTutorial(now);
+    updateSzenen(now);
     updatePatrol(dt, now);
     updateKokos(dt, now);
     spielerNuss.visible = kokosSchutz(game, tagesuhr.t01);

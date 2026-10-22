@@ -33,6 +33,7 @@ export const VOL = {
   ziel: 0.55, morgen: 0.5, woche_gut: 0.6, woche_fail: 0.5, woche_mittel: 0.5,
   schiffshorn_fern: 0.4, moewe_klaut: 0.5, party: 0.5, stromausfall: 0.45,
   regen: 0.3,
+  kinder_fern: 0.3, wasserpistole: 0.45, streit: 0.5, selfie: 0.45, schnarchen: 0.5, handtuch: 0.4, dose_oeffnen: 0.4,
   // Ambience-Details (relativ zum Ambience-Bus)
   moewe: 0.35, walla: 0.16, ruf: 0.3, funkspruch: 0.45, tuktuk: 0.22, klirren: 0.2, grillen: 0.1,
   frosch: 0.28, wasser: 0.2,
@@ -71,6 +72,7 @@ export const STIL = {
   zackig:    { wave: 'square',   glide: 0.0,   attack: 0.005, q: 2.5, vib: 0.0, jitter: 1, len: 0.7 },
   piepsig:   { wave: 'sine',     glide: 0.06,  attack: 0.015, q: 3.0, vib: 0.4, jitter: 4, len: 0.9 },
   cool:      { wave: 'triangle', glide: -0.03, attack: 0.04, q: 1.5, vib: 0.05, jitter: 1, len: 1.3 },
+  lallend:   { wave: 'triangle', glide: -0.22, attack: 0.07, q: 1.1, vib: 0.7, jitter: 6, len: 1.7 }, // Betrunkener: gedehnt, rutscht ab, wackelt
 };
 export const DEFAULT_STIMME = { tonhoehe: 1.0, tempo: 1.0, stil: 'schluffig', vibrato: 0.2, laut: 1.0 };
 /** Profil-Objekt (flach oder { charakter: {…} }) → vollständiges, geclamptes Profil */
@@ -696,6 +698,92 @@ const SFX = {
     const n = noise(); const nb = filt('bandpass', 1800, 2); const ng = gainEnv(cut, { a: 0.001, peak: 0.5, d: 0.03 }); // Klack
     n.connect(nb); nb.connect(ng); ng.connect(out); n.start(cut); n.stop(cut + 0.05);
     return 1.35;
+  },
+  // --- Ambient-Pack 1 ---
+  // Kinder fern: 3–5 kurze Kreischer (hoch, rutschen nach oben) und ein Lacher (Ha-ha-Pulse), alles durch Lowpass „weit weg“
+  kinder_fern(t, out) {
+    const lp = filt('lowpass', 2400, 0.7); const p = pan(Math.random() * 1.4 - 0.7); lp.connect(p); p.connect(out);
+    const n = 3 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < n; i++) {
+      const tt = t + i * (0.16 + Math.random() * 0.12), f0 = 900 + Math.random() * 500;
+      const o = osc('sawtooth', f0, tt); o.frequency.exponentialRampToValueAtTime(f0 * 1.6, tt + 0.08); o.frequency.exponentialRampToValueAtTime(f0 * 1.2, tt + 0.18);
+      const bp = filt('bandpass', 1800, 1.2); const g = gainEnv(tt, { a: 0.01, peak: 0.35, d: 0.1, hold: 0.08 });
+      o.connect(bp); bp.connect(g); g.connect(lp); o.start(tt); o.stop(tt + 0.25);
+    }
+    const tl = t + n * 0.2 + 0.1;
+    const o = osc('triangle', 620, tl); const am = ctx.createGain(); am.gain.value = 0.5;
+    const lfo = osc('square', 5.5, tl); const lg = ctx.createGain(); lg.gain.value = 0.5; lfo.connect(lg); lg.connect(am.gain);
+    const bp = filt('bandpass', 1100, 1.5); const g = gainEnv(tl, { a: 0.02, peak: 0.3, d: 0.25, hold: 0.6 });
+    o.connect(am); am.connect(bp); bp.connect(g); g.connect(lp); o.start(tl); lfo.start(tl); stopAt([o, lfo], tl + 0.95);
+    return n * 0.2 + 1.1;
+  },
+  // Wasserpistole: „pfft“ (Rauschen rutscht runter) plus ein Tropfen-Tick
+  wasserpistole(t, out) {
+    const n = noise(); const bp = filt('bandpass', 3200, 1.2); bp.frequency.exponentialRampToValueAtTime(1200, t + 0.18);
+    const g = gainEnv(t, { a: 0.004, peak: 0.55, d: 0.16 });
+    n.connect(bp); bp.connect(g); g.connect(out); n.start(t); n.stop(t + 0.25);
+    const o = osc('sine', 2600, t + 0.2); o.frequency.exponentialRampToValueAtTime(1500, t + 0.24);
+    const og = gainEnv(t + 0.2, { a: 0.001, peak: 0.3, d: 0.04 }); o.connect(og); og.connect(out); o.start(t + 0.2); o.stop(t + 0.3);
+    return 0.3;
+  },
+  // Streit: zwei gereizte Stimmen brabbeln gleichzeitig, die zweite fällt der ersten ins Wort; links/rechts auseinander
+  streit(t, out) {
+    const r = rng(Math.floor(Math.random() * 1e9));
+    const a = babblePlan({ tonhoehe: 0.85, tempo: 1.35, stil: 'knarzig', vibrato: 0.4, laut: 1.1 }, pseudoWords(r, 4) + '! ' + pseudoWords(r, 3) + '!', Math.floor(r() * 1e9));
+    const b = babblePlan({ tonhoehe: 1.35, tempo: 1.5, stil: 'quietschig', vibrato: 0.5, laut: 1.1 }, pseudoWords(r, 3) + '! ' + pseudoWords(r, 4) + '!', Math.floor(r() * 1e9));
+    const pa = pan(-0.45), pb = pan(0.45); pa.connect(out); pb.connect(out);
+    renderPlan(a, pa, t);
+    renderPlan(b, pb, t + Math.min(0.35, a.duration * 0.4)); // fällt ins Wort
+    return Math.max(a.duration, b.duration + 0.35);
+  },
+  // Selfie: zwei Verschluss-Klicks und ein kurzes Blitz-Fiepen (Kondensator lädt)
+  selfie(t, out) {
+    [[0, 1], [0.07, 0.7]].forEach(([dt, v]) => {
+      const tt = t + dt;
+      const n = noise(); const bp = filt('bandpass', 2400, 2.5); const g = gainEnv(tt, { a: 0.001, peak: 0.6 * v, d: 0.03 });
+      n.connect(bp); bp.connect(g); g.connect(out); n.start(tt); n.stop(tt + 0.05);
+      const o = osc('square', 1800, tt); const og = gainEnv(tt, { a: 0.001, peak: 0.25 * v, d: 0.02 }); o.connect(og); og.connect(out); o.start(tt); o.stop(tt + 0.04);
+    });
+    const o = osc('sine', 3000, t + 0.09); o.frequency.exponentialRampToValueAtTime(9000, t + 0.4);
+    const g = gainEnv(t + 0.09, { a: 0.02, peak: 0.12, d: 0.12, hold: 0.2 });
+    o.connect(g); g.connect(out); o.start(t + 0.09); o.stop(t + 0.5);
+    return 0.5;
+  },
+  // Schnarchen: Einatmen rasselt (Sägezahn mit 24-Hz-Rattern durch Lowpass, steigt), Ausatmen pfeift leise. Ein Zyklus.
+  schnarchen(t, out) {
+    const o = osc('sawtooth', 62, t); o.frequency.linearRampToValueAtTime(78, t + 0.9);
+    const am = ctx.createGain(); am.gain.value = 0.5; const rat = osc('square', 24, t); const rg = ctx.createGain(); rg.gain.value = 0.5; rat.connect(rg); rg.connect(am.gain);
+    const lp = filt('lowpass', 420, 2); lp.frequency.linearRampToValueAtTime(650, t + 0.9);
+    const g = gainEnv(t, { a: 0.15, peak: 0.6, d: 0.2, hold: 0.65 });
+    o.connect(am); am.connect(lp); lp.connect(g); g.connect(out); o.start(t); rat.start(t); stopAt([o, rat], t + 1.1);
+    const te = t + 1.25;
+    const n = noise(); const nl = filt('lowpass', 700, 0.7); const ng = gainEnv(te, { a: 0.1, peak: 0.22, d: 0.3, hold: 0.3 });
+    n.connect(nl); nl.connect(ng); ng.connect(out); n.start(te); n.stop(te + 0.8);
+    const w = osc('sine', 1300, te); w.frequency.exponentialRampToValueAtTime(1050, te + 0.6);
+    const wg = gainEnv(te, { a: 0.12, peak: 0.1, d: 0.25, hold: 0.25 }); w.connect(wg); wg.connect(out); w.start(te); w.stop(te + 0.7);
+    return 2.2;
+  },
+  // Handtuch-Wurf: zwei Flaps (Rauschen in Pulsen) und ein kurzer Wusch
+  handtuch(t, out) {
+    [[0, 1], [0.09, 0.8]].forEach(([dt, v]) => {
+      const tt = t + dt;
+      const n = noise(); const bp = filt('bandpass', 520, 0.7); const g = gainEnv(tt, { a: 0.006, peak: 0.6 * v, d: 0.07 });
+      n.connect(bp); bp.connect(g); g.connect(out); n.start(tt); n.stop(tt + 0.1);
+    });
+    const n = noise(); const bp = filt('bandpass', 2200, 1.2); bp.frequency.exponentialRampToValueAtTime(600, t + 0.3);
+    const g = gainEnv(t + 0.05, { a: 0.05, peak: 0.3, d: 0.2 });
+    n.connect(bp); bp.connect(g); g.connect(out); n.start(t + 0.05); n.stop(t + 0.4);
+    return 0.4;
+  },
+  // Dose öffnen: Klack der Lasche, dann Zischen, das ausläuft
+  dose_oeffnen(t, out) {
+    const o = osc('square', 2200, t); o.frequency.exponentialRampToValueAtTime(900, t + 0.02);
+    const g = gainEnv(t, { a: 0.001, peak: 0.45, d: 0.03 }); o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.05);
+    const n = noise(); const hp = filt('highpass', 3500, 0.7); const ng = gainEnv(t + 0.03, { a: 0.01, peak: 0.5, d: 0.35, hold: 0.08 });
+    n.connect(hp); hp.connect(ng); ng.connect(out); n.start(t + 0.03); n.stop(t + 0.5);
+    const n2 = noise(); const bp = filt('bandpass', 1400, 2); const g2 = gainEnv(t + 0.02, { a: 0.001, peak: 0.3, d: 0.03 });
+    n2.connect(bp); bp.connect(g2); g2.connect(out); n2.start(t + 0.02); n2.stop(t + 0.07);
+    return 0.5;
   },
   // Woche so lala: zwei Steel-Drum-Akkorde (Em → D), der zweite bleibt in der Luft hängen, kein Abschluss
   woche_mittel(t, out) {
@@ -1382,8 +1470,17 @@ export const EREIGNIS_SOUNDS = {
   troete: { start: ['sfx', 'party'] },
   klick:  { start: ['sfx', 'stromausfall', 'musik_aus'], ende: ['musik_an'] },
   stille: { start: [] },
+  // Ambient-Szenen (szenen.json → sound[]); je Aufruf einmal, die Szene wiederholt nach eigenem Takt
+  streit_duo:        { start: ['sfx', 'streit'] },
+  kinder_kreischen:  { start: ['sfx', 'kinder_fern'] },
+  wasserspritzer:    { start: ['sfx', 'wasserpistole'] },
+  handtuch_flattern: { start: ['sfx', 'handtuch'] },
+  lallen:            { start: ['bark', 'betrunkener', 'lallen'] }, // Gebrabbel im Stil des Betrunkenen (Bark-Situation lallen)
+  dose_oeffnen:      { start: ['sfx', 'dose_oeffnen'] },
+  selfie_klick:      { start: ['sfx', 'selfie'] },
+  schnarchen_pong:   { start: ['sfx', 'schnarchen'] },
 };
-/** Aktionen für einen Slug (rein, testbar): Liste aus ['sfx', name] | ['wetter', w] | ['musik_aus'] | ['musik_an'] */
+/** Aktionen für einen Slug (rein, testbar): Liste aus ['sfx', name] | ['wetter', w] | ['bark', slug, situation] | ['musik_aus'] | ['musik_an'] */
 export function ereignisAktionen(slug, phase = 'start') {
   const e = EREIGNIS_SOUNDS[slug];
   if (!e) return null;
@@ -1392,6 +1489,7 @@ export function ereignisAktionen(slug, phase = 'start') {
   for (let i = 0; i < a.length; i++) {
     if (a[i] === 'sfx') out.push(['sfx', a[++i]]);
     else if (a[i] === 'wetter') out.push(['wetter', a[++i]]);
+    else if (a[i] === 'bark') { out.push(['bark', a[i + 1], a[i + 2]]); i += 2; }
     else out.push([a[i]]);
   }
   return out;
@@ -1402,8 +1500,9 @@ export function ereignis(slug, phase = 'start', opts) {
   const acts = ereignisAktionen(slug, phase);
   if (!acts) { if (!warned.has('ereignis:' + slug)) { warned.add('ereignis:' + slug); console.warn('audio: unbekanntes Ereignis', slug); } return 0; }
   let d = 0;
-  for (const [art, arg] of acts) {
+  for (const [art, arg, arg2] of acts) {
     if (art === 'sfx') d = Math.max(d, sfx(arg, opts));
+    else if (art === 'bark') { const r = bark(arg, arg2, opts); if (r) d = Math.max(d, r.dauer); }
     else if (art === 'wetter') ambience.setWetter(arg);
     else if (art === 'musik_aus') { clearTimeout(musikAusTimer); musikAusTimer = setTimeout(() => { musikAusTimer = null; music.stop(); }, 1100); } // der Klack kommt nach 1,1 s, dann bricht die Musik ab
     else if (art === 'musik_an') { clearTimeout(musikAusTimer); musikAusTimer = null; music.start(); }

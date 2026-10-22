@@ -1,5 +1,5 @@
 {
-  "_schema": "Stimmen und Barks (kurze englische Ausrufe, 1–5 Wörter, Lebowski-/Surfer-Ton) für Sprechblasen und das Gebrabbel (Animal-Crossing-Stil). Eigentümer: Content. LOOKUP: slug = zuordnung[kundeId] ?? kundeId; profil = stimmen[slug]?.charakter ?? stimmen.default.charakter. Feste Slugs: default (Fallback), spieler (der Schluffi), mentor. stimmen{slug} = charakter {tonhoehe 0.5–2.0 (1.0 = mittlere Männerstimme ~220 Hz, 0.6 Bass, 1.6 Oma/Kind), tempo 0.6–1.6 (1.0 = ~8 Silben/s), stil (schluffig|brummig|knarzig|quietschig|zackig|piepsig|cool), vibrato 0–1 (nervös = hoch), laut 0.5–1.2 (relative Lautstärke), duo (optional, Boolean: true = Duo-Gebrabbel, dieselben Silben zweimal, zweite Stimme ×1.1 Tonhöhe und 40 ms später, für Paare; fehlt = eine Stimme)} und barks {situation: []}. Situationen bei Kunden: gruss (Spieler kommt in Reichweite), kauf (Verkauf abgeschlossen), ablehnung (Spieler lehnt ab oder Kunde will nicht), zivi_verdaechtig (Spieler schaut genau hin / Kunde merkt Misstrauen; bei Zivis die Tarnung, bei Harmlosen Verwirrung); mentor hat stattdessen gruss, lektion, nachschub, abschied, abend (an der Bar); barkeeper (Nong, Nicht-Kunde) hat gruss, zwischenruf, letzte_runde, gute_nacht; pong (Polizist, Nicht-Kunde) hat pfiff, sichtung, verfolgung, mango_gnaedig, mango_schon, mango_keine, verhaftung; haendler (Markt-Ambience, keine Figur) hat nur ruf; kokosverkaeufer (laufende Figur am Strand, Nicht-Kunde) hat ruf (beim Auf- und Ablaufen), gruss, kauf, ablehnung, besonderes (Running Gag: will dein Konkurrent werden); funk (Polizeifunk am Posten, keine Figur) hat nur spruch; default und spieler haben keine barks. zuordnung{kundeId: slug} verbindet kunden.json mit einer Stimme (gleiche Info als Feld stimme in kunden.json; zuordnung gewinnt bei Widerspruch). Barks werden zufällig gewählt, nie zweimal hintereinander dieselbe; Satzzeichen steuern das Gebrabbel (? = Tonhöhe hoch, ! = lauter, … = Pause). Apostrophe sind gerade (').",
+  "_schema": "Stimmen und Barks (kurze englische Ausrufe, 1–5 Wörter, Lebowski-/Surfer-Ton) für Sprechblasen und das Gebrabbel (Animal-Crossing-Stil). Eigentümer: Content. LOOKUP: slug = zuordnung[kundeId] ?? kundeId; profil = stimmen[slug]?.charakter ?? stimmen.default.charakter. Feste Slugs: default (Fallback), spieler (der Schluffi), mentor. stimmen{slug} = charakter {tonhoehe 0.5–2.0 (1.0 = mittlere Männerstimme ~220 Hz, 0.6 Bass, 1.6 Oma/Kind), tempo 0.6–1.6 (1.0 = ~8 Silben/s), stil (schluffig|brummig|knarzig|quietschig|zackig|piepsig|cool|lallend), vibrato 0–1 (nervös = hoch), laut 0.5–1.2 (relative Lautstärke), duo (optional, Boolean: true = Duo-Gebrabbel, dieselben Silben zweimal, zweite Stimme ×1.1 Tonhöhe und 40 ms später, für Paare; fehlt = eine Stimme)} und barks {situation: []}. Situationen bei Kunden: gruss (Spieler kommt in Reichweite), kauf (Verkauf abgeschlossen), ablehnung (Spieler lehnt ab oder Kunde will nicht), zivi_verdaechtig (Spieler schaut genau hin / Kunde merkt Misstrauen; bei Zivis die Tarnung, bei Harmlosen Verwirrung); mentor hat stattdessen gruss, lektion, nachschub, abschied, abend (an der Bar); barkeeper (Nong, Nicht-Kunde) hat gruss, zwischenruf, letzte_runde, gute_nacht; pong (Polizist, Nicht-Kunde) hat pfiff, sichtung, verfolgung, mango_gnaedig, mango_schon, mango_keine, verhaftung; haendler (Markt-Ambience, keine Figur) hat nur ruf; kokosverkaeufer (laufende Figur am Strand, Nicht-Kunde) hat ruf (beim Auf- und Ablaufen), gruss, kauf, ablehnung, besonderes (Running Gag: will dein Konkurrent werden); funk (Polizeifunk am Posten, keine Figur) hat nur spruch; Szenen-Figuren aus szenen.json (keine Kunden, direkt per Slug): ehefrau, ehemann (streit, ansprechen), kind (rennen, ansprechen), werfer (werfen, ansprechen), betrunkener (lallen, ansprechen), influencerin (foto, ansprechen), reflektor (halten, ansprechen). default und spieler haben keine barks. zuordnung{kundeId: slug} verbindet kunden.json mit einer Stimme (gleiche Info als Feld stimme in kunden.json; zuordnung gewinnt bei Widerspruch). Barks werden zufällig gewählt, nie zweimal hintereinander dieselbe; Satzzeichen steuern das Gebrabbel (? = Tonhöhe hoch, ! = lauter, … = Pause). Apostrophe sind gerade (').",
 
   "zuordnung": {
     "stammkunde_1": "stammkunde",
@@ -239,6 +239,55 @@
         "kauf": ["Five coins, one heaven.", "Drink, my friend.", "Straw included!", "Good choice. Only choice.", "Coconut power!"],
         "ablehnung": ["Tomorrow, my friend.", "No coconut, no problem.", "I walk. You think.", "Okay okay okay.", "Your loss, my friend."],
         "besonderes": ["Teach me, my friend.", "Partner? Fifty-fifty?", "Coconuts. You have… that.", "Same business, my friend!", "I learn fast!"]
+      }
+    },
+    "ehefrau": {
+      "charakter": { "tonhoehe": 1.3, "tempo": 1.2, "stil": "knarzig", "vibrato": 0.3, "laut": 1.1 },
+      "barks": {
+        "streit": ["You said WIFI.", "Sea has no wifi.", "Since SIX, Harald!", "Twenty years.", "Typical."],
+        "ansprechen": ["Are you from the hotel?", "No signal?", "See.", "Reserved.", "For the Müllers."]
+      }
+    },
+    "ehemann": {
+      "charakter": { "tonhoehe": 0.75, "tempo": 0.8, "stil": "brummig", "vibrato": 0.1, "laut": 1.1 },
+      "barks": {
+        "streit": ["I said SEA.", "Going diving.", "Quiet down there.", "Hm.", "Leave the boy."],
+        "ansprechen": ["Twenty years.", "Got anything for ears?", "YOU see.", "Breakfast.", "We were first."]
+      }
+    },
+    "kind": {
+      "charakter": { "tonhoehe": 1.6, "tempo": 1.5, "stil": "quietschig", "vibrato": 0.2, "laut": 1.2 },
+      "barks": {
+        "rennen": ["WATER WAR!", "My shoe!", "Hands up, cop!", "Got ice cream?!", "You're dumb!"],
+        "ansprechen": ["Ice cream?", "What have you got?", "Mum's ALWAYS right.", "Splash!", "Then you're dumb."]
+      }
+    },
+    "werfer": {
+      "charakter": { "tonhoehe": 0.85, "tempo": 0.9, "stil": "zackig", "vibrato": 0.0, "laut": 1.0 },
+      "barks": {
+        "werfen": ["Reserved.", "Reserved. Reserved.", "For the Müllers.", "Seven. Enough.", "Breakfast."],
+        "ansprechen": ["Reserved.", "We were first.", "And tomorrow.", "No towel, no lounger.", "That's regulated."]
+      }
+    },
+    "betrunkener": {
+      "charakter": { "tonhoehe": 0.85, "tempo": 0.7, "stil": "lallend", "vibrato": 0.8, "laut": 1.1 },
+      "barks": {
+        "lallen": ["BAAANGKOK, baaaby!", "Bangkok has… a BEEEACH?", "Naaailed it.", "Best friend… Chef.", "Brooooo."],
+        "ansprechen": ["BAAANGKOK Bay!", "They got… EVERYTHING.", "Which waaay's Bangkok?", "Thought sooo.", "Bro… BRO."]
+      }
+    },
+    "influencerin": {
+      "charakter": { "tonhoehe": 1.25, "tempo": 1.2, "stil": "cool", "vibrato": 0.0, "laut": 1.0 },
+      "barks": {
+        "foto": ["One more!", "Hashtag blessed.", "YOUR left.", "Perfect light.", "Again."],
+        "ansprechen": ["Out of the shot?", "Still in it.", "Do something local.", "Thanks. Thanks.", "Are you local?"]
+      }
+    },
+    "reflektor": {
+      "charakter": { "tonhoehe": 0.8, "tempo": 0.7, "stil": "brummig", "vibrato": 0.1, "laut": 0.6 },
+      "barks": {
+        "halten": ["Still holding.", "Three hours.", "Left? Right?", "…", "Okay."],
+        "ansprechen": ["Forty thousand.", "I'm one of them.", "Never confirmed it.", "Still holding.", "Help."]
       }
     },
     "mentor": {

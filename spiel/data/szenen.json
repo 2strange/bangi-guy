@@ -1,0 +1,910 @@
+{
+  "_schema": "Ambient-Szenen (Leben ohne Spielerzwang). Eigentümer: Content. szenen[] je Eintrag: id, titel, fenster{von, bis} (Spieluhr HH:MM, Tag 06:00–24:00), optional tage[] (fehlt = jeden Tag), chance 0–1 (je Tag aus dem Seed gewürfelt), ab_tag (Default 2, nie Tutorial-Tag), ort (Spot: strand|markt|posten|pier|bar|liegen|dorf|huegel|reisfeld|hain oder {x,z,r}), figuren[] {slug (Figur, Basis für den Figurenbau), start (Spot oder {x,z}), stimme (Slug in stimmen.json; fehlt = slug), rolle (Doku), aussehen (wie kunden.json)}, schritte[] {t (Sekunden seit Szenenstart), wer (figuren-slug | streife), aktion: pose (pose = Name) | sag (text = Sprechblase; optional bark = kurzer EN-Ausruf, den die Stimme dazu spricht) | bark | geh (ziel) | warte | sound, dauer}, ende (fenster | schritte), loop (true = Schritte wiederholen, bis das Fenster endet), ansprechen[] (Zeilen, wenn der Spieler eine Figur der Szene anspricht, zufällig), folge (optionale Wirkung beim Ansprechen, z. B. abends_haengematte_belegt), wirkung{} (geprüfte Schlüssel: streife_p1 'schlaeft', streife_stolpert (laufende Verfolgung bricht ab, wenn der Spieler durch den Ort läuft), verstecke[] ({spot|x,z, r} zusätzliche Verstecke im Fenster), liegen_belegt, kunden_faktor, preis_faktor), kommentar{wer: mentor|barkeeper, text} (abends an der Bar), requisite[] (Kulissen-Slugs), sound[] (Audio-Slugs). Grundregel: Keine Szene bestraft den Spieler. Sie geben Deckung, Fenster, Lacher.",
+  "szenen": [
+    {
+      "id": "ehepaar",
+      "titel": "Das streitende Ehepaar",
+      "fenster": {
+        "von": "10:00",
+        "bis": "18:00"
+      },
+      "chance": 1.0,
+      "ab_tag": 2,
+      "ort": "liegen",
+      "figuren": [
+        {
+          "slug": "ehe_sie",
+          "start": "liegen",
+          "stimme": "ehefrau",
+          "rolle": "Ehefrau, 50, Pauschalreise, Beschwerdeführerin",
+          "aussehen": {
+            "schuhe": "sandale",
+            "hemd": "hawaii",
+            "hose": "rock",
+            "hautton": "sonnenbrand",
+            "bart": "keiner",
+            "brille": "sonnenbrille",
+            "haare": "kurz",
+            "accessoire": "handy",
+            "extras": [
+              "strohhut",
+              "bauchtasche",
+              "zeitschrift"
+            ],
+            "stimmung_start": "misstrauisch",
+            "mimik": "Mund immer in Bewegung, Augenbrauen zusammen, Blick auf das Handy ohne Empfang. Beim Höhepunkt: Zeitschrift zusammengerollt wie eine Waffe."
+          }
+        },
+        {
+          "slug": "ehe_er",
+          "start": "liegen",
+          "stimme": "ehemann",
+          "rolle": "Ehemann, 55, hat den Urlaub gebucht und bereut nichts, laut",
+          "aussehen": {
+            "schuhe": "sandale",
+            "hemd": "polo_sauber",
+            "hose": "shorts",
+            "hautton": "sonnenbrand",
+            "bart": "schnauzer",
+            "brille": "lesebrille",
+            "haare": "glatze",
+            "accessoire": "bierdose",
+            "extras": [
+              "socken",
+              "schnorchel_auf_stirn"
+            ],
+            "stimmung_start": "zufrieden",
+            "mimik": "Zufrieden bis zur Provokation, Augen halb zu, Schnorchel auf der Stirn seit Tag eins. Beim Streit: zuckt nur mit der Dose."
+          }
+        }
+      ],
+      "schritte": [
+        {
+          "t": 0,
+          "wer": "ehe_sie",
+          "aktion": "pose",
+          "pose": "handy_hochhalten",
+          "dauer": 4
+        },
+        {
+          "t": 0,
+          "wer": "ehe_sie",
+          "aktion": "sag",
+          "text": "„Du hast gesagt, es gibt WLAN.“",
+          "dauer": 4,
+          "bark": "You said WIFI."
+        },
+        {
+          "t": 4,
+          "wer": "ehe_er",
+          "aktion": "pose",
+          "pose": "dose_heben",
+          "dauer": 4
+        },
+        {
+          "t": 4,
+          "wer": "ehe_er",
+          "aktion": "sag",
+          "text": "„Ich hab gesagt, es gibt Meer.“",
+          "dauer": 4,
+          "bark": "I said SEA."
+        },
+        {
+          "t": 8,
+          "wer": "ehe_sie",
+          "aktion": "pose",
+          "pose": "zeitschrift_rollen",
+          "dauer": 4
+        },
+        {
+          "t": 8,
+          "wer": "ehe_sie",
+          "aktion": "sag",
+          "text": "„Das Meer hat auch kein WLAN.“",
+          "dauer": 4,
+          "bark": "Sea has no wifi."
+        },
+        {
+          "t": 12,
+          "wer": "ehe_er",
+          "aktion": "pose",
+          "pose": "schnorchel_runter",
+          "dauer": 5
+        },
+        {
+          "t": 12,
+          "wer": "ehe_er",
+          "aktion": "sag",
+          "text": "„Dann geh ich jetzt tauchen. Da ist es leise.“",
+          "dauer": 5,
+          "bark": "Going diving."
+        },
+        {
+          "t": 17,
+          "wer": "ehe_sie",
+          "aktion": "pose",
+          "pose": "hinterherrufen",
+          "dauer": 4
+        },
+        {
+          "t": 17,
+          "wer": "ehe_sie",
+          "aktion": "sag",
+          "text": "„Das Handtuch liegt seit sechs da, Harald! SECHS!“",
+          "dauer": 4,
+          "bark": "Since SIX, Harald!"
+        },
+        {
+          "t": 21,
+          "wer": "ehe_er",
+          "aktion": "pose",
+          "pose": "zurueckkommen_nass",
+          "dauer": 10
+        },
+        {
+          "t": 21,
+          "wer": "ehe_er",
+          "aktion": "sag",
+          "text": "Er kommt zurück, nass, mit einer Muschel. Sie nimmt die Muschel. Zehn Sekunden Frieden.",
+          "dauer": 10
+        }
+      ],
+      "ende": "fenster",
+      "loop": true,
+      "ansprechen": [
+        "Sie: „Sind Sie vom Hotel? Das WLAN geht nicht.“ Er: „Lass den Jungen, der verkauft Sonnenbrillen.“ Sie: „Der hat gar keine Sonnenbrillen.“ Er: „Siehst du, deswegen geht das WLAN nicht.“",
+        "Beide gleichzeitig: „Haben Sie Empfang?“ Du hast keinen. Sie: „Siehst du.“ Er: „Siehst DU.“",
+        "Er, zu dir, leise: „Zwanzig Jahre. Zwanzig. Hast du was gegen Ohren?“"
+      ],
+      "wirkung": {
+        "streife_stolpert": true
+      },
+      "requisite": [
+        "liege_doppel",
+        "handtuch_deutsch",
+        "muschel"
+      ],
+      "sound": [
+        "streit_duo"
+      ],
+      "kommentar": {
+        "wer": "barkeeper",
+        "text": "„Das Paar vom Hotel war da. Sie wollte WLAN, er wollte Ruhe. Ich hab beiden ein leeres Glas gegeben. Beide zufrieden.“"
+      }
+    },
+    {
+      "id": "kinder",
+      "titel": "Kinder, die rumrennen",
+      "fenster": {
+        "von": "09:00",
+        "bis": "17:00"
+      },
+      "chance": 1.0,
+      "ab_tag": 2,
+      "ort": "strand",
+      "figuren": [
+        {
+          "slug": "kind_1",
+          "start": "strand",
+          "stimme": "kind",
+          "rolle": "Anführerin, 8, Wasserpistole, kennt keine Gnade",
+          "aussehen": {
+            "schuhe": "barfuss",
+            "hemd": "tanktop",
+            "hose": "badehose",
+            "hautton": "mittel",
+            "bart": "keiner",
+            "brille": "keine",
+            "haare": "lang",
+            "accessoire": "wasserpistole",
+            "extras": [
+              "schwimmfluegel",
+              "sand_im_gesicht"
+            ],
+            "stimmung_start": "zufrieden",
+            "mimik": "Mund weit offen, Augen weit offen, alles weit offen. Lacht beim Schießen."
+          }
+        },
+        {
+          "slug": "kind_2",
+          "start": "strand",
+          "stimme": "kind",
+          "rolle": "Mitläufer, 6, rennt immer eine Sekunde hinterher",
+          "aussehen": {
+            "schuhe": "flipflop",
+            "hemd": "ohne",
+            "hose": "badehose",
+            "hautton": "hell",
+            "bart": "keiner",
+            "brille": "keine",
+            "haare": "kurz",
+            "accessoire": "wasserpistole",
+            "extras": [
+              "sonnencreme_weiss_nase",
+              "eis_tropft"
+            ],
+            "stimmung_start": "zufrieden",
+            "mimik": "Zunge raus beim Rennen, weiße Nase, verliert dauernd einen Flip-Flop."
+          }
+        },
+        {
+          "slug": "kind_3",
+          "start": "strand",
+          "stimme": "kind",
+          "rolle": "Die Kleine, 4, hat keine Pistole, hat einen Eimer, trifft trotzdem",
+          "aussehen": {
+            "schuhe": "barfuss",
+            "hemd": "tanktop",
+            "hose": "badehose",
+            "hautton": "dunkel",
+            "bart": "keiner",
+            "brille": "keine",
+            "haare": "lockig",
+            "accessoire": "eimer",
+            "extras": [
+              "schwimmring_ente"
+            ],
+            "stimmung_start": "neutral",
+            "mimik": "Ernst wie ein Beamter, Eimer voll Wasser, wartet auf den Moment."
+          }
+        }
+      ],
+      "schritte": [
+        {
+          "t": 0,
+          "wer": "kind_1",
+          "aktion": "pose",
+          "pose": "rennen_kreis",
+          "dauer": 8
+        },
+        {
+          "t": 0,
+          "wer": "kind_1",
+          "aktion": "sag",
+          "text": "Drei Kinder rennen im Kreis. Nicht irgendwo hin. Im Kreis.",
+          "dauer": 8,
+          "bark": "WATER WAR!"
+        },
+        {
+          "t": 8,
+          "wer": "kind_2",
+          "aktion": "pose",
+          "pose": "flipflop_verlieren",
+          "dauer": 3
+        },
+        {
+          "t": 8,
+          "wer": "kind_2",
+          "aktion": "sag",
+          "text": "„WARTET! MEIN SCHUH!“ Keiner wartet.",
+          "dauer": 3,
+          "bark": "My shoe!"
+        },
+        {
+          "t": 11,
+          "wer": "kind_3",
+          "aktion": "pose",
+          "pose": "eimer_kippen",
+          "dauer": 3
+        },
+        {
+          "t": 11,
+          "wer": "kind_3",
+          "aktion": "sag",
+          "text": "Die Kleine kippt den Eimer über den Nächstbesten. Der Nächstbeste ist, wer gerade da ist.",
+          "dauer": 3
+        },
+        {
+          "t": 14,
+          "wer": "streife",
+          "aktion": "pose",
+          "pose": "stolpern",
+          "dauer": 5
+        },
+        {
+          "t": 14,
+          "wer": "streife",
+          "aktion": "sag",
+          "text": "Die Streife läuft durch. Die Streife stolpert über Kind zwei, der seinen Schuh sucht. Die Streife steht wieder auf, langsam, in Sandalen.",
+          "dauer": 5
+        },
+        {
+          "t": 19,
+          "wer": "kind_1",
+          "aktion": "pose",
+          "pose": "pistole_auf_streife",
+          "dauer": 4
+        },
+        {
+          "t": 19,
+          "wer": "kind_1",
+          "aktion": "sag",
+          "text": "„POLIZEI! HÄNDE HOCH!“ Die Kinder haben Pong entwaffnet. Pong hatte nichts dabei.",
+          "dauer": 4,
+          "bark": "Hands up, cop!"
+        }
+      ],
+      "ende": "fenster",
+      "loop": true,
+      "ansprechen": [
+        "„Hast du Eis?“ „Nein.“ „Was hast du dann?“ „… nichts.“ „Dann bist du doof.“ Sie rennen weiter.",
+        "Kind drei schaut dich an, schaut auf den Eimer, schaut dich an. Du gehst einen Schritt zurück. Richtig so.",
+        "„Mama sagt, du bist der Typ, der am Strand rumsteht.“ „Mama hat recht.“ „Mama hat IMMER recht.“ Wasserpistole, mitten ins Gesicht."
+      ],
+      "wirkung": {
+        "streife_stolpert": true,
+        "verstecke": [
+          {
+            "spot": "strand",
+            "r": 4
+          }
+        ]
+      },
+      "requisite": [
+        "wasserpistole",
+        "eimer",
+        "schwimmring_ente",
+        "sandburg_kaputt"
+      ],
+      "sound": [
+        "kinder_kreischen",
+        "wasserspritzer"
+      ],
+      "kommentar": {
+        "wer": "mentor",
+        "text": "„Die Kinder haben Pong heute dreimal umgehauen. Dreimal. Die Zukunft dieser Insel ist in guten, nassen Händen.“"
+      }
+    },
+    {
+      "id": "handtuch_werfer",
+      "titel": "Die Handtuch-Werfer um sechs",
+      "fenster": {
+        "von": "06:00",
+        "bis": "07:00"
+      },
+      "chance": 0.7,
+      "ab_tag": 2,
+      "ort": "liegen",
+      "figuren": [
+        {
+          "slug": "werfer_1",
+          "start": "liegen",
+          "stimme": "werfer",
+          "rolle": "Deutscher Frühaufsteher im Bademantel, wirft Handtücher wie Dartpfeile",
+          "aussehen": {
+            "schuhe": "sandale",
+            "hemd": "kittel",
+            "hose": "lang",
+            "hautton": "hell",
+            "bart": "keiner",
+            "brille": "keine",
+            "haare": "glatze",
+            "accessoire": null,
+            "extras": [
+              "socken",
+              "bademantel",
+              "handtuchstapel",
+              "kaffeebecher"
+            ],
+            "stimmung_start": "neutral",
+            "mimik": "Konzentriert wie ein Sportschütze. Jedes Handtuch ein Treffer. Kein Lächeln, das kommt erst beim Frühstück."
+          }
+        },
+        {
+          "slug": "werfer_2",
+          "start": "liegen",
+          "stimme": "ehefrau",
+          "rolle": "Seine Frau, hält den Stapel und zählt mit",
+          "aussehen": {
+            "schuhe": "sandale",
+            "hemd": "kittel",
+            "hose": "lang",
+            "hautton": "hell",
+            "bart": "keiner",
+            "brille": "lesebrille",
+            "haare": "weiss",
+            "accessoire": null,
+            "extras": [
+              "bademantel",
+              "lockenwickler"
+            ],
+            "stimmung_start": "misstrauisch",
+            "mimik": "Zählt mit den Lippen. Nickt bei jedem Treffer."
+          }
+        }
+      ],
+      "schritte": [
+        {
+          "t": 0,
+          "wer": "werfer_1",
+          "aktion": "pose",
+          "pose": "handtuch_werfen",
+          "dauer": 3
+        },
+        {
+          "t": 0,
+          "wer": "werfer_1",
+          "aktion": "sag",
+          "text": "Sechs Uhr. Ein Handtuch fliegt. Trifft die Liege ganz vorn. Das war die gute.",
+          "dauer": 3,
+          "bark": "Reserved."
+        },
+        {
+          "t": 3,
+          "wer": "werfer_2",
+          "aktion": "pose",
+          "pose": "stapel_reichen",
+          "dauer": 3
+        },
+        {
+          "t": 3,
+          "wer": "werfer_2",
+          "aktion": "sag",
+          "text": "„Die daneben auch. Für die Müllers.“",
+          "dauer": 3,
+          "bark": "For the Müllers."
+        },
+        {
+          "t": 6,
+          "wer": "werfer_1",
+          "aktion": "pose",
+          "pose": "handtuch_werfen",
+          "dauer": 6
+        },
+        {
+          "t": 6,
+          "wer": "werfer_1",
+          "aktion": "sag",
+          "text": "Zweites Handtuch. Drittes. Viertes. Die Müllers kommen um zwei.",
+          "dauer": 6,
+          "bark": "Reserved. Reserved."
+        },
+        {
+          "t": 12,
+          "wer": "werfer_2",
+          "aktion": "pose",
+          "pose": "zaehlen",
+          "dauer": 4
+        },
+        {
+          "t": 12,
+          "wer": "werfer_2",
+          "aktion": "sag",
+          "text": "„Sieben. Das reicht. Frühstück.“ Sie gehen. Die Liegen bleiben leer bis vierzehn Uhr.",
+          "dauer": 4,
+          "bark": "Breakfast."
+        }
+      ],
+      "ende": "fenster",
+      "loop": true,
+      "ansprechen": [
+        "„Die ist reserviert.“ Du hast nichts gesagt. „Die auch.“",
+        "Er, ohne dich anzusehen: „Wir waren zuerst da. Gestern auch. Und vorgestern.“ Sie: „Und morgen.“",
+        "„Haben Sie auch ein Handtuch? Nein? Dann haben Sie auch keine Liege. So ist das geregelt.“"
+      ],
+      "wirkung": {
+        "liegen_belegt": true,
+        "verstecke": [
+          {
+            "spot": "liegen",
+            "r": 3
+          }
+        ]
+      },
+      "requisite": [
+        "handtuch_deutsch",
+        "liege_reihe",
+        "kaffeebecher"
+      ],
+      "sound": [
+        "handtuch_flattern"
+      ]
+    },
+    {
+      "id": "betrunkener",
+      "titel": "Der Betrunkene in Bangkok",
+      "fenster": {
+        "von": "12:00",
+        "bis": "20:00"
+      },
+      "chance": 1.0,
+      "ab_tag": 2,
+      "ort": "bar",
+      "figuren": [
+        {
+          "slug": "chad",
+          "start": "bar",
+          "stimme": "betrunkener",
+          "rolle": "Amerikaner, 24, College-Shirt, glaubt seit drei Tagen, er sei in Bangkok",
+          "aussehen": {
+            "schuhe": "flipflop",
+            "hemd": "trikot",
+            "hose": "shorts",
+            "hautton": "sonnenbrand",
+            "bart": "keiner",
+            "brille": "sonnenbrille",
+            "haare": "kurz",
+            "accessoire": "bierdose",
+            "extras": [
+              "cap_rueckwaerts",
+              "blumenkranz",
+              "bierdose_zweite"
+            ],
+            "stimmung_start": "zufrieden",
+            "mimik": "Augen in zwei Richtungen, Grinsen in einer. Sonnenbrille schief seit Dienstag. Kippt beim Reden nach hinten und fängt sich jedes Mal, erstaunt, dass es klappt."
+          }
+        }
+      ],
+      "schritte": [
+        {
+          "t": 0,
+          "wer": "chad",
+          "aktion": "pose",
+          "pose": "an_tresen_lehnen",
+          "dauer": 5
+        },
+        {
+          "t": 0,
+          "wer": "chad",
+          "aktion": "sag",
+          "text": "„BANGKOK, BABY! Beste Stadt der Welt!“ Nong korrigiert ihn nicht. Nong korrigiert nie jemanden.",
+          "dauer": 5,
+          "bark": "BANGKOK, BABY!"
+        },
+        {
+          "t": 5,
+          "wer": "chad",
+          "aktion": "pose",
+          "pose": "dose_heben",
+          "dauer": 5
+        },
+        {
+          "t": 5,
+          "wer": "chad",
+          "aktion": "sag",
+          "text": "„Ich liebe diese Stadt. Wo ist der Strand? Ist das der Strand? Bangkok hat einen STRAND?“",
+          "dauer": 5,
+          "bark": "Bangkok has a BEACH?"
+        },
+        {
+          "t": 10,
+          "wer": "chad",
+          "aktion": "pose",
+          "pose": "kippen_fangen",
+          "dauer": 4
+        },
+        {
+          "t": 10,
+          "wer": "chad",
+          "aktion": "sag",
+          "text": "Er kippt nach hinten. Er fängt sich. Er feiert, dass er sich gefangen hat.",
+          "dauer": 4,
+          "bark": "Nailed it."
+        },
+        {
+          "t": 14,
+          "wer": "chad",
+          "aktion": "pose",
+          "pose": "moewe_anreden",
+          "dauer": 5
+        },
+        {
+          "t": 14,
+          "wer": "chad",
+          "aktion": "sag",
+          "text": "„Chef! Chef, du bist mein bester Freund hier.“ Die Möwe schaut ihn an wie eine Pommes.",
+          "dauer": 5,
+          "bark": "Best friend, Chef."
+        },
+        {
+          "t": 19,
+          "wer": "chad",
+          "aktion": "pose",
+          "pose": "einschlafen_tresen",
+          "dauer": 8
+        },
+        {
+          "t": 19,
+          "wer": "chad",
+          "aktion": "sag",
+          "text": "Ab achtzehn Uhr schläft er auf dem Tresen. Ab zwanzig Uhr in deiner Hängematte.",
+          "dauer": 8
+        }
+      ],
+      "ende": "fenster",
+      "loop": true,
+      "ansprechen": [
+        "„Bro! BRO! Weißt du, wo wir sind?“ „Bangi Bay.“ „BANGKOK Bay! Wusst ich's.“",
+        "„Hast du… du weißt schon… ich bin in BANGKOK, Mann, hier gibt's ALLES.“ Er hat kein Geld mehr. Er hatte Geld. Chef hat es.",
+        "„Mein Flug geht morgen. Von Bangkok. Wo ist Bangkok von hier?“ Du zeigst aufs Meer. Er nickt. „Dacht ich mir.“"
+      ],
+      "wirkung": {},
+      "requisite": [
+        "bierdosen_haufen",
+        "blumenkranz"
+      ],
+      "sound": [
+        "lallen",
+        "dose_oeffnen"
+      ],
+      "folge": {
+        "abends_haengematte_belegt": true
+      },
+      "kommentar": {
+        "wer": "barkeeper",
+        "text": "„Der Amerikaner schläft in deiner Hängematte. Er glaubt, das ist Bangkok. Lass ihn. In Bangkok wäre er längst ausgeraubt.“"
+      }
+    },
+    {
+      "id": "influencerin",
+      "titel": "Die Influencerin und der Reflektor",
+      "fenster": {
+        "von": "11:00",
+        "bis": "16:00"
+      },
+      "chance": 0.7,
+      "ab_tag": 2,
+      "ort": "strand",
+      "figuren": [
+        {
+          "slug": "influencerin",
+          "start": "strand",
+          "stimme": "influencerin",
+          "rolle": "Influencerin, 26, fotografiert den Sonnenuntergang, mittags, seit drei Stunden",
+          "aussehen": {
+            "schuhe": "barfuss",
+            "hemd": "tanktop",
+            "hose": "rock",
+            "hautton": "hell",
+            "bart": "keiner",
+            "brille": "sonnenbrille",
+            "haare": "lang",
+            "accessoire": "handy",
+            "extras": [
+              "riesenhut",
+              "ringlicht_klein",
+              "pose_dauerhaft"
+            ],
+            "stimmung_start": "zufrieden",
+            "mimik": "Gesicht nur in drei Winkeln. Lächeln an, Lächeln aus, zwischen den Fotos tot. Beim Freund: Augenbrauen wie eine Chefin."
+          }
+        },
+        {
+          "slug": "reflektor_freund",
+          "start": "strand",
+          "stimme": "reflektor",
+          "rolle": "Ihr Freund, 27, hält den Reflektor, seit drei Stunden, in Turnschuhen; er ist kein Zivi, er ist nur traurig",
+          "aussehen": {
+            "schuhe": "turnschuh",
+            "hemd": "polo_sauber",
+            "hose": "chino",
+            "hautton": "hell",
+            "bart": "stoppel",
+            "brille": "keine",
+            "haare": "kurz",
+            "accessoire": "reflektor",
+            "extras": [
+              "rucksack_voll_kabel",
+              "schweiss"
+            ],
+            "stimmung_start": "neutral",
+            "mimik": "Leer. Blick in die Ferne, wo das Leben ist. Arme zittern vom Reflektor. Wenn sie 'noch eins' sagt, schließt er für eine Sekunde die Augen."
+          }
+        }
+      ],
+      "schritte": [
+        {
+          "t": 0,
+          "wer": "influencerin",
+          "aktion": "pose",
+          "pose": "pose_steg",
+          "dauer": 4
+        },
+        {
+          "t": 0,
+          "wer": "influencerin",
+          "aktion": "sag",
+          "text": "„Noch eins. Das Licht war gerade perfekt.“ Es ist zwölf Uhr mittags. Das Licht ist seit Stunden dasselbe.",
+          "dauer": 4,
+          "bark": "One more!"
+        },
+        {
+          "t": 4,
+          "wer": "reflektor_freund",
+          "aktion": "pose",
+          "pose": "reflektor_heben",
+          "dauer": 4
+        },
+        {
+          "t": 4,
+          "wer": "reflektor_freund",
+          "aktion": "sag",
+          "text": "Er hebt den Reflektor. Der Reflektor ist so groß wie er. Er war mal größer als der Reflektor, innerlich.",
+          "dauer": 4,
+          "bark": "Still holding."
+        },
+        {
+          "t": 8,
+          "wer": "influencerin",
+          "aktion": "pose",
+          "pose": "foto",
+          "dauer": 4
+        },
+        {
+          "t": 8,
+          "wer": "influencerin",
+          "aktion": "sag",
+          "text": "Klick. Klick. Klick. „Sonnenuntergang in Bangi, hashtag blessed.“",
+          "dauer": 4,
+          "bark": "Hashtag blessed."
+        },
+        {
+          "t": 12,
+          "wer": "reflektor_freund",
+          "aktion": "pose",
+          "pose": "blick_ins_meer",
+          "dauer": 5
+        },
+        {
+          "t": 12,
+          "wer": "reflektor_freund",
+          "aktion": "sag",
+          "text": "Er schaut aufs Meer. Das Meer schaut zurück. Beide sagen nichts.",
+          "dauer": 5
+        },
+        {
+          "t": 17,
+          "wer": "influencerin",
+          "aktion": "pose",
+          "pose": "pose_wechseln",
+          "dauer": 4
+        },
+        {
+          "t": 17,
+          "wer": "influencerin",
+          "aktion": "sag",
+          "text": "„Ein bisschen links. Nein, DEIN links.“ Er geht nach rechts. Es ist richtig. Es ist immer das Falsche, das richtig ist.",
+          "dauer": 4,
+          "bark": "YOUR left."
+        }
+      ],
+      "ende": "fenster",
+      "loop": true,
+      "ansprechen": [
+        "Sie, ohne dich anzusehen: „Kannst du kurz aus dem Bild? Danke. Du bist drin. Immer noch. Danke.“",
+        "Er, leise: „Sie hat 40.000 Follower. Ich bin einer davon. Ich hab's nie bestätigt.“",
+        "„Bist du local? Mach mal was Locales im Hintergrund.“ Du stehst. Das ist das Localste, was du hast."
+      ],
+      "wirkung": {
+        "verstecke": [
+          {
+            "spot": "strand",
+            "r": 2
+          }
+        ]
+      },
+      "requisite": [
+        "reflektor",
+        "ringlicht_klein",
+        "stativ"
+      ],
+      "sound": [
+        "selfie_klick"
+      ]
+    },
+    {
+      "id": "pong_mittag",
+      "titel": "Pongs Mittagsschlaf",
+      "fenster": {
+        "von": "13:00",
+        "bis": "14:00"
+      },
+      "chance": 1.0,
+      "ab_tag": 2,
+      "ort": "posten",
+      "figuren": [
+        {
+          "slug": "pong",
+          "start": "posten",
+          "stimme": "pong",
+          "rolle": "Pong, Polizist, schläft mit den Füßen auf dem Tisch",
+          "aussehen": {
+            "schuhe": "sandale",
+            "hemd": "uniform_versteckt",
+            "hose": "lang",
+            "hautton": "mittel",
+            "bart": "schnauzer",
+            "brille": "keine",
+            "haare": "kurz",
+            "accessoire": null,
+            "extras": [
+              "muetze_im_gesicht",
+              "fuesse_auf_tisch",
+              "pfeife_am_band"
+            ],
+            "stimmung_start": "neutral",
+            "mimik": "Mütze über dem Gesicht, Mund darunter offen, ein Sandalenriemen baumelt im Takt des Schnarchens."
+          }
+        }
+      ],
+      "schritte": [
+        {
+          "t": 0,
+          "wer": "pong",
+          "aktion": "pose",
+          "pose": "fuesse_hoch",
+          "dauer": 6
+        },
+        {
+          "t": 0,
+          "wer": "pong",
+          "aktion": "sag",
+          "text": "Dreizehn Uhr. Pong legt die Füße auf den Tisch, die Mütze übers Gesicht. Die Tafel sagt: „Mittagspause. Vorfälle ab 14 Uhr.“",
+          "dauer": 6,
+          "bark": "Incidents at two."
+        },
+        {
+          "t": 6,
+          "wer": "pong",
+          "aktion": "pose",
+          "pose": "schnarchen",
+          "dauer": 20
+        },
+        {
+          "t": 6,
+          "wer": "pong",
+          "aktion": "sag",
+          "text": "Schnarchen. Die Pfeife am Band hebt und senkt sich mit dem Bauch.",
+          "dauer": 20
+        },
+        {
+          "t": 26,
+          "wer": "pong",
+          "aktion": "pose",
+          "pose": "im_schlaf_pfeifen",
+          "dauer": 3
+        },
+        {
+          "t": 26,
+          "wer": "pong",
+          "aktion": "sag",
+          "text": "Im Schlaf pfeift er einmal. Kurz. Niemand weiß, wen er träumt.",
+          "dauer": 3,
+          "bark": "*tweet*"
+        },
+        {
+          "t": 29,
+          "wer": "pong",
+          "aktion": "pose",
+          "pose": "aufwachen",
+          "dauer": 5
+        },
+        {
+          "t": 29,
+          "wer": "pong",
+          "aktion": "sag",
+          "text": "Vierzehn Uhr. Pong wacht auf, setzt die Mütze auf, dreht die Tafel um: „Tage ohne Vorfall: {tage}“. Die Streife läuft wieder.",
+          "dauer": 5,
+          "bark": "Back on duty."
+        }
+      ],
+      "ende": "fenster",
+      "loop": true,
+      "ansprechen": [
+        "Du stehst vor Pong. Pong schläft. Du könntest alles tun. Du tust nichts. Das ist der Unterschied zwischen dir und Timo.",
+        "Pong, unter der Mütze: „Ich schlafe. Kein Vorfall. Geh.“ Er schläft wirklich. Er sagt das im Schlaf.",
+        "Die Mango vom Vormittag liegt auf dem Tisch. Angebissen. Pong träumt von der zweiten Hälfte."
+      ],
+      "wirkung": {
+        "streife_p1": "schlaeft"
+      },
+      "requisite": [
+        "tafel_mittagspause",
+        "fuesse_auf_tisch"
+      ],
+      "sound": [
+        "schnarchen_pong"
+      ]
+    }
+  ]
+}

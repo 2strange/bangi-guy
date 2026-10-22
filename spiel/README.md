@@ -209,6 +209,18 @@ Standbild (für die PNGs in `shots/`).
   Meshes zusammengeführt — mit `?stats=1` lässt sich der Draw-Call-Stand ablesen, das ist der erste Hebel, wenn
   es auf einem Laptop ruckelt. Pixel-Ratio ist auf 1.5 gedeckelt.
 
+## Ambient-Szenen
+`data/szenen.json` beschreibt kleine Szenen: Uhrzeit-Fenster (`fenster.von/bis` als Spieluhr-Zeit), Ort (Spot-Name oder
+`{x,z,r}`), `chance` je Tag (deterministisch aus dem Spielstand-Seed), `ab_tag` (nie Tag 1), optionale `tage`, Figuren und
+eine Schrittfolge (`sag` = Erzähltext unten + optionaler Bark als Blase, `bark`, `pose`, `geh`, `warte`, `sound`; `loop`
+wiederholt sie im Fenster, `ende: schritte` beendet die Szene nach dem letzten Schritt), `ansprechen[]` (E am Ort) und eine
+Wirkung aufs Spiel: `streife_p1: "schlaeft"` (Pong bleibt am Posten und sieht nichts), `streife_stolpert` (läuft der Spieler
+bei einer Verfolgung durch den Ort, stolpert die Streife und verliert ihn), zusätzliche `verstecke`, `liegen_belegt`,
+`kunden_faktor`, `preis_faktor` (die letzten drei werden gelesen, aber noch nicht angewendet). Zeitplan, Schritt-Auslösung
+und gesammelte Wirkung sind reine Logik in `js/szenen.js` (getestet, auch gegen die Datei); main.js zeigt Texte und Blasen
+und wendet die Wirkung an; die Szenen-Figuren selbst folgen. Code-Default: **Pongs Mittagsschlaf** 13–14 Uhr.
+`?snap=1&scene=szene&id=pong_mittag`.
+
 ## Kokos-Verkäufer
 Ein Kokos-Verkäufer läuft am Wasser entlang den ganzen Strand auf und ab (Verleih ↔ Bauzaun), weicht Liegen, Kundschaft
 und dem Schluffi landeinwärts aus, macht Pausen und ruft alle 6–10 s „Co-co-nut-juice!“ (Blase, Ton mit Richtung und
