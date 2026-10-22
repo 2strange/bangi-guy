@@ -1002,11 +1002,20 @@ test('Rotation: über 7 Tage kommt jeder Kunde des echten Katalogs mindestens ei
 });
 
 import { buyKokos, KOKOS_PREIS } from '../js/game.js';
-test('Kokosnuss: 5 Münzen, Zähler hoch, ohne Geld nichts; Texte unter ui.kokos', () => {
+import { kokosSchutz, KOKOS_SCHUTZ_S, normalizeKokos, kokosGag, DEFAULT_KOKOS, DAY_LENGTH as DLK } from '../js/game.js';
+test('Kokosnuss: Preis aus den Daten, Zähler hoch, 60 s Tourist-Schutz, ohne Geld nichts; Running Gag je Tag, Datei lädt', () => {
   assert.equal(KOKOS_PREIS, 5);
-  const r = buyKokos({ ...initialState(), geld: 12 });
+  const r = buyKokos({ ...initialState(), geld: 12 }, 5, 0.1);
   assert.equal(r.result, 'gekauft'); assert.equal(r.state.geld, 7); assert.equal(r.state.kokos, 1);
+  assert.equal(kokosSchutz(r.state, 0.1), true); assert.equal(kokosSchutz(r.state, 0.1 + 59 / DLK), true); assert.equal(kokosSchutz(r.state, 0.1 + 61 / DLK), false, 'nach 60 s leer getrunken');
+  assert.equal(kokosSchutz(initialState(), 0.5), false); assert.equal(KOKOS_SCHUTZ_S, 60);
   assert.equal(buyKokos(r.state).state.kokos, 2);
   const k = buyKokos({ ...initialState(), geld: 4 }); assert.equal(k.result, 'kein_geld'); assert.equal(k.state.geld, 4);
-  assert.equal(nT(null).kokos.ruf, 'Co-co-nut-juice!'); assert.equal(nT({ ui: { kokos: { kaufen: 'Buy' } } }).kokos.kaufen, 'Buy');
+  const K = normalizeKokos({ kokosverkaeufer: { name: 'Mr. C', preis_kokosnuss: 7, gruss: ['Hi'], running_gag: [{ tag: 2, text: 'Zwei' }, { tag: 1, text: 'Eins', wirkung: { preis_faktor: 0.95 } }, { tag: 'x', text: 'kaputt' }] } });
+  assert.equal(K.name, 'Mr. C'); assert.equal(K.preis, 7); assert.deepEqual(K.gruss, ['Hi']); assert.deepEqual(K.kauf, DEFAULT_KOKOS.kauf);
+  assert.equal(kokosGag(K, 1).text, 'Eins'); assert.deepEqual(kokosGag(K, 1).wirkung, { preis_faktor: 0.95 }); assert.equal(kokosGag(K, 2).text, 'Zwei'); assert.equal(kokosGag(K, 9).text, 'Zwei', 'ab Tag 8 die letzte Zeile');
+  assert.deepEqual(normalizeKokos(null), normalizeKokos({ kokosverkaeufer: {} }));
+  const echt = normalizeKokos(JSON.parse(readFileSync(new URL('../data/texte.json', import.meta.url), 'utf8')));
+  assert.equal(echt.preis, 5); assert.ok(echt.running_gag.length >= 7 && echt.gruss.length >= 1);
+  assert.equal(nT(null).dialog.kokosnuss, 'Kokosnuss ({preis})'); assert.equal(nT(null).dialog.besonderes, 'Was Besonderes');
 });

@@ -212,9 +212,11 @@ Standbild (für die PNGs in `shots/`).
 ## Kokos-Verkäufer
 Ein Kokos-Verkäufer läuft am Wasser entlang den ganzen Strand auf und ab (Verleih ↔ Bauzaun), weicht Liegen, Kundschaft
 und dem Schluffi landeinwärts aus, macht Pausen und ruft alle 6–10 s „Co-co-nut-juice!“ (Blase, Ton mit Richtung und
-Abstand). Er hinterlässt Fußspuren. **E** bei ihm: Kokosnuss für 5 Münzen (🥥 im HUD, reiner Flavor) – danach fragt er
-laut, ob man „was Besonderes“ will. Laufweg und Ruf sind reine Logik in `js/logic.js` (`kokosStep`, `kokosRuf`,
-getestet), Texte unter `ui.kokos{}`. `?snap=1&scene=kokos`.
+Abstand, Megafon-Pose so lang wie der Ruf). Er hinterlässt Fußspuren. **E** bei ihm (Mister Coconut, Daten in
+`texte.json → kokosverkaeufer{}`): Gruß → „Kokosnuss (5)“ / „Was Besonderes“ / „Weiter“. Die Kokosnuss kostet 5 Münzen
+(🥥 im HUD) und macht einen 60 s lang zum Touristen: die Streife sieht nur halb so weit (`kokosSchutz`, getestet). „Was
+Besonderes“ ist sein Running Gag – eine Zeile pro Tag, er will dein Konkurrent werden. Laufweg und Ruf sind reine Logik
+in `js/logic.js` (`kokosStep`, `kokosRuf`, getestet), Ruf alle 12–20 s. `?snap=1&scene=kokos`.
 
 ## Strandliegen
 Die Hotel-Liegen haben ein hochgestelltes Rückenteil und einen Sitzpunkt (`userData.sitz`); wer den Anker einer Liege

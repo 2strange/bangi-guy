@@ -304,7 +304,7 @@ export const DEFAULT_TEXTE = {
   polizei: ' ({anZivis} an die Polizei 🙈)',
   titel: { feierabend: 'Feierabend.', verhaftet: 'VERHAFTET.' },
   optionen: { tag_beenden: 'Tag beenden', weiter: 'Weiterbummeln', neuer_tag: 'Neuer Tag' },
-  dialog: { was_laeuft: 'Was läuft?', verkaufen: 'Verkaufen', mehr_verlangen: 'Mehr verlangen', lieber_nicht: 'Lieber nicht', weiter: 'Weiter', hinschauen: 'Genau hinschauen', beenden: 'Beenden' },
+  dialog: { was_laeuft: 'Was läuft?', verkaufen: 'Verkaufen', mehr_verlangen: 'Mehr verlangen', lieber_nicht: 'Lieber nicht', weiter: 'Weiter', hinschauen: 'Genau hinschauen', beenden: 'Beenden', kokosnuss: 'Kokosnuss ({preis})', besonderes: 'Was Besonderes' },
   verhandeln: { angenommen: ['Okay, okay. Aber nur heute.', 'Teuer. Aber du guckst so ehrlich.'], weg: ['Zu teuer, Mann. Ich frag den Typ am Pier.', 'Nee. Dafür geh ich lieber schwimmen.'] },
   heat_label: { 0: 'kalt', 1: 'lauwarm', 2: 'heiß', 3: 'FAHNDUNG' },
   // Optionen-Menü (⚙): Oberflächen-Beschriftungen, Content kann sie unter ui.menue{} übersetzen
@@ -312,8 +312,7 @@ export const DEFAULT_TEXTE = {
   // Startkarte bei vorhandenem Spielstand
   start: { titel: 'Bangi Beach', stand: 'Spielstand: Tag {tag} · {geld} Münzen · {ware} Beutel', weiter: 'Weiter', neu: 'Neues Spiel' },
   hud: { tag: 'Tag', heat: 'Heat', ware: 'Ware', geld: 'Kasse', mangos: 'Mangos', ziel: 'Ziel' },
-  // Kokos-Verkäufer (E): Kokosnuss für 5 Münzen, Gag „was Besonderes“
-  kokos: { name: 'Kokos-Verkäufer', ruf: 'Co-co-nut-juice!', frage: 'Kokosnuss? Fünf Münzen. Frisch vom Baum, der Baum war gestern noch dran.', kaufen: 'Kaufen', nein: 'Nein danke', gekauft: 'Hier. Trinken, dann denken. {kokos} im Beutel.', kein_geld: 'Fünf Münzen, Mann. FÜNF. Das ist eine Hand.', besonderes: 'ODER WILLST DU WAS BESONDERES?!' },
+
   // Karte nach dem Finale: weiterspielen (Tag 8 ff.) oder die Woche neu starten
   finale: { titel: 'Die Woche ist rum.', kasse: 'Kasse: {geld} Münzen · Ziel: {muenzen}', weiterspielen: 'Weiterspielen', neue_woche: 'Neue Woche' },
   reveal_gags: [],
@@ -327,7 +326,7 @@ export function normalizeTexte(json) {
   const pick = (key) => (u[key] !== undefined ? u[key] : t[key]);
   const obj = (v) => (v && typeof v === 'object' ? v : {});
   const te = obj(t.tagesende);
-  const op = obj(pick('optionen')), ti = obj(pick('titel')), di = obj(pick('dialog')), hl = obj(pick('heat_label')), me = obj(pick('menue')), sta = obj(pick('start')), vh = obj(pick('verhandeln')), hu = obj(pick('hud')), fi = obj(pick('finale')), kk = obj(pick('kokos'));
+  const op = obj(pick('optionen')), ti = obj(pick('titel')), di = obj(pick('dialog')), hl = obj(pick('heat_label')), me = obj(pick('menue')), sta = obj(pick('start')), vh = obj(pick('verhandeln')), hu = obj(pick('hud')), fi = obj(pick('finale'));
   const tagesende = {};
   for (const l of LAGEN) tagesende[l] = strList(te[l], DEFAULT_TEXTE.tagesende[l]);
   const strMap = (src, defaults) => Object.fromEntries(Object.keys(defaults).map((k) => [k, str(src[k], defaults[k])]));
@@ -347,7 +346,6 @@ export function normalizeTexte(json) {
     verhandeln: { angenommen: strList(vh.angenommen, DEFAULT_TEXTE.verhandeln.angenommen), weg: strList(vh.weg, DEFAULT_TEXTE.verhandeln.weg) },
     hud: strMap(hu, DEFAULT_TEXTE.hud),
     finale: strMap(fi, DEFAULT_TEXTE.finale),
-    kokos: strMap(kk, DEFAULT_TEXTE.kokos),
   };
 }
 
@@ -879,11 +877,34 @@ export const POSTEN_DEFAULT = { x: 20, z: -84, r: 15 };
 export const inPostenSicht = (pos, posten = POSTEN_DEFAULT) => Math.hypot(pos.x - posten.x, pos.z - posten.z) <= posten.r;
 export const MANGO_PREIS = 10;
 export const KOKOS_PREIS = 5;
-// Kokosnuss beim Strandverkäufer: nur Flavor (Zähler), keine Wirkung
-export function buyKokos(state, preis = KOKOS_PREIS) {
+export const KOKOS_SCHUTZ_S = 60; // mit Kokosnuss in der Hand gilt man 60 s als Tourist: die Streife sieht nur halb so weit
+// Kokosnuss beim Strandverkäufer: Zähler + Tourist-Schutz (kokosSchutzBis als Uhr-t)
+export function buyKokos(state, preis = KOKOS_PREIS, t01 = null) {
   if (state.geld < preis) return { state, result: 'kein_geld' };
-  return { state: { ...state, geld: state.geld - preis, kokos: (state.kokos || 0) + 1 }, result: 'gekauft' };
+  const schutz = Number.isFinite(t01) ? { kokosSchutzBis: t01 + KOKOS_SCHUTZ_S / DAY_LENGTH } : {};
+  return { state: { ...state, geld: state.geld - preis, kokos: (state.kokos || 0) + 1, ...schutz }, result: 'gekauft' };
 }
+export const kokosSchutz = (state, t01) => Number.isFinite(state?.kokosSchutzBis) && t01 < state.kokosSchutzBis;
+// Content-Block kokosverkaeufer{}: Name, Preis, Sätze, Running Gag je Tag
+export const DEFAULT_KOKOS = {
+  name: 'Mister Coconut', preis: KOKOS_PREIS, ruf: 'Co-co-nut-juice!',
+  gruss: ['Kokosnuss? Fünf Münzen. Frisch vom Baum, der Baum war gestern noch dran.'],
+  kauf: ['Hier. Trinken, dann denken.'], kein_geld: ['Fünf Münzen, Mann. FÜNF. Das ist eine Hand.'], ablehnung: ['Morgen dann. Der Baum wartet.'],
+  running_gag: [{ tag: 1, text: 'Was Besonderes? … Ich denk drüber nach.', wirkung: {} }],
+};
+export function normalizeKokos(json) {
+  const k = json && typeof json === 'object' && json.kokosverkaeufer && typeof json.kokosverkaeufer === 'object' ? json.kokosverkaeufer : {};
+  const D = DEFAULT_KOKOS;
+  const gags = (Array.isArray(k.running_gag) ? k.running_gag : []).filter((g) => g && typeof g === 'object' && Number.isFinite(g.tag) && typeof g.text === 'string' && g.text.trim())
+    .map((g) => ({ tag: g.tag, text: g.text, wirkung: g.wirkung && typeof g.wirkung === 'object' ? g.wirkung : {} })).sort((a, b) => a.tag - b.tag);
+  return {
+    name: str(k.name, D.name), preis: Number.isFinite(k.preis_kokosnuss) && k.preis_kokosnuss > 0 ? Math.round(k.preis_kokosnuss) : D.preis, ruf: str(k.ruf, D.ruf),
+    gruss: strList(k.gruss, D.gruss), kauf: strList(k.kauf, D.kauf), kein_geld: strList(k.kein_geld, D.kein_geld), ablehnung: strList(k.ablehnung, D.ablehnung),
+    running_gag: gags.length ? gags : D.running_gag,
+  };
+}
+/** Running Gag des Tages: Zeile mit tag === Tag, sonst die letzte (ab Tag 8 wiederholt sich das Ende) */
+export const kokosGag = (K, tag) => K.running_gag.find((g) => g.tag === tag) || K.running_gag[K.running_gag.length - 1];
 // Mango am Markt-Stand kaufen (Geld −, Mango +); zu wenig Geld → unverändert
 export function buyMango(state, preis = MANGO_PREIS) {
   if (state.geld < preis) return { state, result: 'kein_geld' };

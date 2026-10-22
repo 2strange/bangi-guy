@@ -639,7 +639,7 @@ test('Fußspuren: alle 0,8 Einheiten eine Spur, links/rechts wechselnd, quer zur
 });
 
 import { KOKOS, kokosStart, kokosStep, kokosRuf } from '../js/logic.js';
-test('Kokos-Verkäufer: läuft am Wasser von West nach Ost und zurück, pausiert an den Enden und unterwegs, weicht Hindernissen landeinwärts aus, ruft alle 6–10 s', () => {
+test('Kokos-Verkäufer: läuft am Wasser von West nach Ost und zurück, pausiert an den Enden und unterwegs, weicht Hindernissen landeinwärts aus, ruft alle 12–20 s', () => {
   let st = kokosStart();
   assert.equal(st.x, KOKOS.west); assert.ok(Math.abs(st.z - (shoreZ(KOKOS.west) - KOKOS.abstand)) < 1e-9);
   let maxX = -1e9, minX = 1e9, pausen = 0, warMoving = false, umkehr = 0, lastDir = 1;
@@ -660,7 +660,7 @@ test('Kokos-Verkäufer: läuft am Wasser von West nach Ost und zurück, pausiert
   assert.ok(minZ < -1.2, `Umweg landeinwärts ${minZ.toFixed(2)}`); assert.ok(Math.abs(zEnde) < 0.3, 'danach wieder am Wasser');
   // Ruf: 6–10 s Abstand
   let r = kokosStart(); const zeiten = [];
-  for (let i = 0; i < 60 * 60; i++) { r = kokosStep(r, 1 / 60); const q = kokosRuf(r); r = q.st; if (q.ruf) zeiten.push(r.zeit); }
-  assert.ok(zeiten.length >= 5 && zeiten.length <= 10, `Rufe ${zeiten.length}`);
+  for (let i = 0; i < 60 * 120; i++) { r = kokosStep(r, 1 / 60); const q = kokosRuf(r); r = q.st; if (q.ruf) zeiten.push(r.zeit); }
+  assert.ok(zeiten.length >= 5 && zeiten.length <= 10, `Rufe in 2 min: ${zeiten.length}`);
   for (let i = 1; i < zeiten.length; i++) { const dt = zeiten[i] - zeiten[i - 1]; assert.ok(dt >= KOKOS.rufMin - 0.05 && dt <= KOKOS.rufMax + 0.05, `Abstand ${dt.toFixed(2)}`); }
 });

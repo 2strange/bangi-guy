@@ -24,7 +24,7 @@ import {
   initialState, normalizeKatalog, pickKunden, startDialog, advanceDialog, chooseOption, isArrested, newDay, moodFor,
   kundeStatus, nearestKunde, wanderStep, inspectCamera, kundeLookYaw, TALK_DIST, idSeed,
   normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE, gagFor, nextIdleGagDelay,
-  mergeTexte, mergeKundenKatalog, normalizeOptionen, toSave, fromSave, hatFortschritt, fillText, buyKokos, KOKOS_PREIS,
+  mergeTexte, mergeKundenKatalog, normalizeOptionen, toSave, fromSave, hatFortschritt, fillText, buyKokos, kokosSchutz, normalizeKokos, kokosGag, pickLine,
   normalizeTutorial, tutorialStart, tutorialEvent, tutorialSkip,
   normalizeWoche, tagesziel, tagModifikator, hudZiel, finaleStufe, KUNDEN_PRO_TAG, kalibriereWoche, neueWoche, finaleKarte,
   normalizeEreignisse, ereignisFuerTag, ereignisKundenFaktor, ereignisZiviExtra, kundenFuerTag, ereignisFenster,
@@ -121,7 +121,7 @@ ui.setHud(game);
 // Die Spiellogik ruft nur Einzeiler-Hooks; ohne Modul bleibt alles stumm.
 let audio = null;
 const SFX = { talk: 'ui_klick', kasse: 'kasse', alarm: 'heat', ablehnung: 'ablehnen', look: 'hinschauen', feierabend: 'ui_klick', verhaftet: 'verhaftet', ausverkauft: 'ausverkauft', schritt: 'schritt_sand', tuten: 'tuten', tuktuk: 'tuktuk_abwuergen' };
-const sfx = (name, opts) => { try { audio?.sfx?.(SFX[name] || name, opts); } catch (e) { /* ohne Ton weiter */ } };
+const sfx = (name, opts) => { try { return audio?.sfx?.(SFX[name] || name, opts) ?? 0; } catch (e) { return 0; } }; // Rückgabe: Dauer in s (Gesang), sonst 0
 const muteBtn = ui.createMuteButton((m) => { optionen = { ...optionen, ton: !m }; saveOptionen(); try { audio?.setMuted?.(m); } catch (e) { /* ignorieren */ } });
 let paintMusic = null;
 function applyAudioOptionen() {
@@ -189,6 +189,7 @@ async function fetchJson(url) { try { const res = await fetch(url, { cache: 'no-
 let texte = normalizeTexte(null);
 let abendTexte = normalizeAbend(null);
 let tutorialTexte = normalizeTutorial(null);
+let kokosTexte = normalizeKokos(null); // Mister Coconut (texte.json → kokosverkaeufer{})
 let ereignisse = normalizeEreignisse(null); // Tages-Ereignisse (texte.json → ereignisse[])
 let woche = normalizeWoche(null); // Wochenbogen: Tagesziele + Finale (texte.json → woche{}), Ziel kalibriert am Kundenkatalog
 let wocheRoh = woche;
@@ -333,6 +334,7 @@ async function loadTexte() {
   posten7 = normalizePosten7(json);
   abendTexte = normalizeAbend(json);
   tutorialTexte = normalizeTutorial(json);
+  kokosTexte = normalizeKokos(json);
   ereignisse = normalizeEreignisse(json);
   wocheRoh = normalizeWoche(json); applyWoche();
   game = { ...game, texte };
@@ -468,39 +470,44 @@ function updateKokos(dt, now) {
   kokos = kokosStep(kokos, dt, hind);
   const r = kokosRuf(kokos); kokos = r.st;
   if (r.ruf) {
-    ui.showBark('kokos', texte.kokos.ruf, 2.4);
+    ui.showBark('kokos', kokosTexte.ruf, 2.4);
     const dist = Math.hypot(kokos.x - state.x, kokos.z - state.z);
-    kokosTon(Math.max(0, 1 - dist / 35));
-    try { kokosFig.userData.setRuf?.(true); } catch (e) { /* ohne Ruf-Pose */ }
-    kokosRufBis = now + 1800;
+    kokosRufen(now, Math.max(0, 1 - dist / 25)); // von weitem zu hören
   }
   if (kokosRufBis && now > kokosRufBis) { kokosRufBis = 0; try { kokosFig.userData.setRuf?.(false); } catch (e) { /* ignorieren */ } }
   if (kokos.moving) { const h = { s: kokosSpur }; spurLegen(h, 's', vorher, kokos, kokos.yaw, 'flipflop', now / 1000); kokosSpur = h.s; }
   applyKokos(dt);
 }
 const kokosHindernisse = () => kunden.filter((k) => k.group.visible).map((k) => ({ x: k.npc.x, z: k.npc.z, r: 0.8 }));
-// gesungener Strandruf (audio.gesang, echter Clip sobald geladen), gain = nur Abstand
-function kokosTon(gain) { try { if (audio?.gesang) audio.gesang('kokos_ruf', { pan: panFor(kokosFig), gain }); else sfx('kokos_ruf', { pan: panFor(kokosFig), gain }); } catch (e) { /* ohne Ton */ } }
+// gesungener Strandruf (sfx leitet an audio.gesang weiter, echter Clip sobald geladen), gain = nur Abstand; Megafon-Pose so lang wie der Ruf
+function kokosRufen(now, gain) {
+  const d = sfx('kokos_ruf', { pan: panFor(kokosFig), gain });
+  try { kokosFig.userData.setRuf?.(true); } catch (e) { /* ohne Ruf-Pose */ }
+  kokosRufBis = now + (Number.isFinite(d) && d > 0 ? d : 2.2) * 1000;
+}
 // Kauf: kleine Blase mit Kaufen/Nein; danach der Gag „was Besonderes“ als lauter Ruf
 let kokosDialog = false;
 function startKokos() {
-  const T = texte.kokos;
-  talking = { id: 'kokos', group: kokosFig, def: { id: 'kokos', name: T.name }, npc: { x: kokos.x, z: kokos.z, yaw: kokos.yaw } };
+  const K = kokosTexte, D = texte.dialog;
+  talking = { id: 'kokos', group: kokosFig, def: { id: 'kokosverkaeufer', name: K.name, stimme: 'kokosverkaeufer' }, npc: { x: kokos.x, z: kokos.z, yaw: kokos.yaw } };
   for (const key in keys) keys[key] = false;
   clickTarget = null; mode = 'kokos'; kokosDialog = true;
   ui.showPrompt(null);
-  ui.showBubble({ text: T.frage, options: [T.kaufen, T.nein] }, T.name, 0);
+  ui.showBubble({ text: pickLine(K.gruss, lineIdx++), options: [fillText(D.kokosnuss, { preis: K.preis }), D.besonderes, D.weiter] }, K.name, 0);
+  try { audio?.bark?.('kokosverkaeufer', 'gruss', { pan: panFor(kokosFig) }); } catch (e) { /* ohne Ton */ }
 }
 function kokosChoice(i) {
   if (!kokosDialog) return;
-  const T = texte.kokos;
+  const K = kokosTexte, D = texte.dialog;
   kokosDialog = false;
-  if (i === 0) {
-    const r = buyKokos(game, KOKOS_PREIS);
+  const antwort = (text, bark) => { ui.showBubble({ text, options: [D.weiter] }, K.name, 0); mode = 'info'; try { if (bark) audio?.bark?.('kokosverkaeufer', bark, { pan: panFor(kokosFig) }); } catch (e) { /* ohne Ton */ } };
+  if (i === 0) { // Kokosnuss kaufen: 60 s Tourist-Schutz (Streife sieht halb so weit)
+    const r = buyKokos(game, K.preis, tagesuhr.t01);
     game = r.state; refreshHud();
-    if (r.result === 'gekauft') { sfx('kasse'); ui.showBubble({ text: fillText(T.gekauft, { kokos: game.kokos }), options: ['Weiter'] }, T.name, 0); mode = 'info'; }
-    else { sfx('ablehnung'); ui.showBubble({ text: T.kein_geld, options: ['Weiter'] }, T.name, 0); mode = 'info'; }
-    setTimeout(() => { ui.showBark('kokos', T.besonderes, 3); kokosTon(1); try { kokosFig.userData.setRuf?.(true); } catch (e) { /* ignorieren */ } kokosRufBis = performance.now() + 1800; }, 900); // Gag: fragt laut nach „was Besonderem“
+    if (r.result === 'gekauft') { sfx('kasse'); antwort(pickLine(K.kauf, lineIdx++), 'kauf'); }
+    else { sfx('ablehnung'); antwort(pickLine(K.kein_geld, lineIdx++), 'ablehnung'); }
+  } else if (i === 1) { // Running Gag: er will dein Konkurrent werden, eine Zeile pro Tag
+    antwort(kokosGag(K, game.tag).text, 'gruss');
   } else { ui.hideBubble(); talking = null; mode = 'free'; }
 }
 function pongSay(situation) {
@@ -644,7 +651,7 @@ function updatePatrol(dt, now) {
   const busy = mode === 'dialog' || mode === 'mentor' || mode === 'info' || mode === 'card' || mode === 'arrest' || mode === 'bar';
   for (const s of streifen) {
     if (!streifeAktiv(s)) { s.sees = false; applyCop(s); continue; }
-    const sees = seesTarget(s.patrol, state);
+    const sees = seesTarget(s.patrol, state, { range: kokosSchutz(game, tagesuhr.t01) ? 6 : 12 }); // Kokosnuss in der Hand: gilt als Tourist, halbe Sichtweite
     s.sees = sees && !inHideout(state, world.hideouts);
     // Verfolgung ab Heat 2: langsam (Sandalen), verliert den Spieler nach 6 s ohne Sicht oder im Versteck
     const r = chaseStep(s.patrol, s.route, state, dt, { sees, heat: game.heat, hideouts: world.hideouts, schuhe: s.schuhe });
@@ -723,7 +730,7 @@ window.addEventListener('keydown', (e) => {
   if (mode === 'mentor') { if (['Enter', 'Space', 'KeyE', 'Digit1'].includes(e.code)) advanceMentor(); else if (e.code === 'Escape') advanceMentor(); e.preventDefault(); return; }
   if (mode === 'info') { if (['Enter', 'Space', 'KeyE', 'Digit1', 'Escape'].includes(e.code)) endInfo(); e.preventDefault(); return; }
   if (mode === 'bar') { if (['Enter', 'Space', 'KeyE', 'Digit1'].includes(e.code)) advanceBar(0); else if (['Digit2', 'Escape'].includes(e.code)) advanceBar(1); e.preventDefault(); return; }
-  if (mode === 'kokos') { if (['Enter', 'Space', 'KeyE', 'Digit1'].includes(e.code)) kokosChoice(0); else if (['Digit2', 'Escape'].includes(e.code)) kokosChoice(1); e.preventDefault(); return; }
+  if (mode === 'kokos') { if (['Enter', 'Space', 'KeyE', 'Digit1'].includes(e.code)) kokosChoice(0); else if (e.code === 'Digit2') kokosChoice(1); else if (['Digit3', 'Escape'].includes(e.code)) kokosChoice(2); e.preventDefault(); return; }
   if (e.code === KEY_TALK && nearMentor && mode === 'free') { startMentor(); e.preventDefault(); return; }
   if (e.code === KEY_TALK && nearPoint && !nearK && mode === 'free') { usePoint(nearPoint); e.preventDefault(); return; }
   // E = immer ansprechen (ohne Kunden in Reichweite passiert nichts), F = hinschauen
@@ -1248,7 +1255,7 @@ function updateNearHint() {
     ui.showPrompt(txt); ui.showBadge(null); ui.pulseButtons({ talk: true }); return;
   }
   if (!nearK && nearPoint) {
-    const txt = nearPoint.id === 'kokos' ? `${texte.kokos.name} — E: Kokosnuss (${KOKOS_PREIS} Münzen)` : nearPoint.id === 'mango_stand' ? 'Mango-Stand — E: Mango kaufen (10 Münzen)' : nearPoint.id === 'tuktuk' ? `Tuk-Tuk — E: zur Bar (${TUKTUK_PREIS_MANGOS} Mangos oder ${TUKTUK_PREIS_GELD} Münzen)` : (game.mangos > 0 ? 'Pong — E: Mango abgeben (1 Mango = 1 Gnade)' : 'Pong — E: ansprechen');
+    const txt = nearPoint.id === 'kokos' ? `${kokosTexte.name} — E: Kokosnuss (${kokosTexte.preis} Münzen)` : nearPoint.id === 'mango_stand' ? 'Mango-Stand — E: Mango kaufen (10 Münzen)' : nearPoint.id === 'tuktuk' ? `Tuk-Tuk — E: zur Bar (${TUKTUK_PREIS_MANGOS} Mangos oder ${TUKTUK_PREIS_GELD} Münzen)` : (game.mangos > 0 ? 'Pong — E: Mango abgeben (1 Mango = 1 Gnade)' : 'Pong — E: ansprechen');
     ui.showPrompt(txt); ui.showBadge(null); ui.pulseButtons({ talk: true }); return;
   }
   if (!nearK) { ui.showPrompt(null); ui.showBadge(null); ui.pulseButtons(null); return; }
@@ -1467,7 +1474,7 @@ function setupScene() {
   if (SCENE === 'kokos') { // Verkäufer neben dem Schluffi am Wasser, Ruf-Blase, Kauf-Blase
     kokos = { ...kokos, x: state.x + 2.2, z: state.z + 2.5, yaw: -Math.PI / 2, moving: true, phase: 1.2 };
     kokosGangT = 0.3; applyKokos(0); try { kokosFig.userData.setRuf?.(true); } catch (e) { /* ignorieren */ } applyKokos(0);
-    ui.showBark('kokos', texte.kokos.ruf, 999);
+    ui.showBark('kokos', kokosTexte.ruf, 999);
     startKokos();
     return;
   }

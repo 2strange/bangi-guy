@@ -407,7 +407,7 @@ export function zoneMix(pos, defs = {}, { strandMin = 0.2, heckeZ = -24, fade = 
 
 // ---------- Kokos-Verkäufer: läuft am Wasser entlang den Strand auf und ab (Verleih ↔ Bauzaun), weicht landeinwärts aus,
 // macht Pausen und ruft alle 6–10 s. Reine Logik, Darstellung in main.js ----------
-export const KOKOS = { west: -46, ost: 60, abstand: 2.4, speed: 1.6, pauseAlle: 16, pauseDauer: 2.5, rufMin: 6, rufMax: 10, umweg: 2.2 };
+export const KOKOS = { west: -46, ost: 60, abstand: 2.4, speed: 1.6, pauseAlle: 16, pauseDauer: 2.5, rufMin: 12, rufMax: 20, umweg: 2.2 }; // Ruf alle 12–20 s: öfter nervt
 export function kokosStart(o = KOKOS) {
   return { x: o.west, z: shoreZ(o.west) - o.abstand, yaw: Math.PI / 2, dir: 1, wait: 0, phase: 0, moving: false, gelaufen: 0, umweg: 0, zeit: 0, rufAt: o.rufMin };
 }

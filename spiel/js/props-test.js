@@ -11,7 +11,7 @@
 // ?what=bauch → Schluffi von vorn und von der Seite (Bauch unterm Hemd)
 // ?what=liege → Strandliegen mit Kunden in der Pose „liegestuhl“ (userData.sitz), dazu der schlafende Surfer
 // ?what=kletterer → Kokos-Kletterer außen am Stamm (amStamm), von zwei Seiten
-// ?what=kokos → Kokos-Verkäufer: links gehend, Mitte rufend (setRuf), rechts rufend von der Seite
+// ?what=kokos → Kokos-Verkäufer: gehend, rufend (setRuf), Machetenhieb (gag verkauf), Brauen-Scheibenwischer (gag besonderes) + Bangi-Kokos
 import * as THREE from 'three';
 import { toonMesh, textTexture } from './toon.js';
 import { schluffi, runner, sandal, sneaker, pose, POSES, buildNong, updateNong, setNongMood, kundenExtras, updateKundenExtras, buildKokosVerkaeufer } from './figures.js';
@@ -79,11 +79,13 @@ if (WHAT === 'feet') {
   });
   camera.position.set(0, 5.5, 9);
   camera.lookAt(0, 3.2, 0);
-} else if (WHAT === 'kokos') {
-  [[-3.4, 0.25, false], [0, 0.1, true], [3.4, -Math.PI / 2 + 0.2, true]].forEach(([x, yaw, ruf]) => {
-    const v = buildKokosVerkaeufer(); v.position.set(x, 0, 0); v.rotation.y = yaw; v.userData.setRuf(ruf); v.userData.update(0.3); scene.add(v);
-  });
-  camera.position.set(0, 2.6, 8.5);
+} else if (WHAT === 'kokos') { // gehend · rufend · Machetenhieb (Mitte des Gags) · Brauen hoch (Besonderes) mit Bangi-Kokos
+  [[-4.8, 0.25, (v) => v.userData.update(0.3)],
+   [-1.6, 0.1, (v) => { v.userData.setRuf(true); v.userData.update(0.3); }],
+   [1.6, 0.3, (v) => { v.userData.gag('verkauf', 0); v.userData.update(0.7); }],
+   [4.8, -0.2, (v) => { v.userData.setBangiKokos(true); v.userData.gag('besonderes', 0); v.userData.update(0.1); }],
+  ].forEach(([x, yaw, fn]) => { const v = buildKokosVerkaeufer(); v.position.set(x, 0, 0); v.rotation.y = yaw; fn(v); scene.add(v); });
+  camera.position.set(0, 2.8, 10.5);
   camera.lookAt(0, 1.5, 0);
 } else if (WHAT === 'shoes') {
   const items = [[sandal(0xf0b98a, 'L'), -2.4], [sandal(0xf0b98a, 'R'), -0.8], [sneaker(0xe8463a, 'L'), 0.8], [sneaker(0xe8463a, 'R'), 2.4]];

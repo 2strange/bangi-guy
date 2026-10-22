@@ -113,6 +113,7 @@ function normalize(o) {
     lids: o.lids ?? null,
     brows: o.brows ?? null,
     stirnstreifen: !!o.stirnstreifen,
+    goldzahn: !!o.goldzahn,
     beardColor: cssColor(o.beardColor, weiss ? '#f1f1f4' : '#6b4423'),
     browColor: weiss ? '#d8d8e0' : null,
   };
@@ -434,6 +435,11 @@ function paint(kind, mood, o) {
     strokePath(ctx, [[874, 560], [834, 680]], 8);
   }
   mouth(ctx, kind, mood, m, K.line);
+  if (o.goldzahn && (mood === 'zufrieden' || mood === 'reveal' || mood === 'neutral')) { // ein Goldzahn im Dauerlächeln
+    ctx.fillStyle = '#f1c232'; ctx.strokeStyle = INK; ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.roundRect(m.x + m.w * 0.12, m.y - 4, 44, 36, 8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.arc(m.x + m.w * 0.12 + 12, m.y + 6, 5, 0, Math.PI * 2); ctx.fill();
+  }
   if (o.wrinkles) wrinkles(ctx, eyes, r, m);
   if (mood === 'erschrocken') sweatDrop(ctx, Math.min(S - 60, eyes[1][0] + r * 1.55), eyes[1][1] - r * 0.3);
   return c;
@@ -441,7 +447,7 @@ function paint(kind, mood, o) {
 
 const canvasCache = new Map();
 const texCache = new Map();
-const key = (kind, mood, o) => `${kind}|${mood}|${o.skin}|${o.beard}|${o.glasses}|${o.wrinkles ? 1 : 0}|${o.seed}|${o.look ? o.look.join(',') : ''}|${o.lids ? o.lids.join(',') : ''}|${o.brows ? o.brows.join(',') : ''}|${o.stirnstreifen ? 'S' : ''}|${o.beardColor}|${o.browColor ?? ''}`;
+const key = (kind, mood, o) => `${kind}|${mood}|${o.skin}|${o.beard}|${o.glasses}|${o.wrinkles ? 1 : 0}|${o.seed}|${o.look ? o.look.join(',') : ''}|${o.lids ? o.lids.join(',') : ''}|${o.brows ? o.brows.join(',') : ''}|${o.stirnstreifen ? 'S' : ''}${o.goldzahn ? 'G' : ''}|${o.beardColor}|${o.browColor ?? ''}`;
 
 /** Rohes Canvas (gecacht) — für 2D-Vorschauen oder eigene Texturen. */
 export function faceCanvas(kind, mood = 'neutral', opts = {}) {
