@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   initialState, normalizeKunde, normalizeKatalog, pickLine, sell, decline, isArrested, newDay, heatLabel,
   startDialog, advanceDialog, chooseOption, moodFor, nearestKunde, wanderStep, inspectCamera, kundeLookYaw,
-  START_WARE, MAX_WARE, MAX_HEAT, pickKunden, idSeed, harmloseFuerTag, KUNDEN_MIN_HARMLOS, KUNDEN_PRO_TAG, besucherWahl, besucherStep,
+  START_WARE, MAX_WARE, MAX_HEAT, pickKunden, idSeed, harmloseFuerTag, KUNDEN_MIN_HARMLOS, KUNDEN_PRO_TAG, besucherWahl, besucherStep, verpfeifen,
   DEFAULT_TEXTE, normalizeTexte, fillText, dayReport, soldOutDialog, isSoldOut, assignOutfits, outfitKey, variantCount, lageFor, dayEndCard, normalizeGags, gagFor, nextIdleGagDelay, ZIVI_BESCHLAGNAHMT,
   normalizeStimmen, stimmeSlug, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, applyMentorAktion, mentorBesucht,
@@ -885,6 +885,10 @@ test('Neue Woche und Finale-Karte: Start auf Tag 1 mit Wochenzähler +1; Tag 7 e
   for (let i = 0; i < 60; i++) b = besucherStep(b, 0.1);
   assert.equal(b.status, 'wartet'); assert.equal(b.moving, false); assert.ok(Math.abs(b.z - 3) < 0.35);
   assert.equal(besucherStep(b, 0.1).status, 'wartet'); assert.equal(besucherStep(b, 0.1, { docked: true }).status, 'weg'); assert.equal(besucherStep({ ...b, status: 'weg' }, 1, { docked: false }).status, 'weg');
+  // Verpfeifen (Dieb-Szene): einmal am Tag Heat −1, danach wirkungslos; nie unter 0
+  const v1 = verpfeifen({ ...initialState(), heat: 2 }); assert.equal(v1.gewirkt, true); assert.equal(v1.state.heat, 1); assert.equal(v1.state.folgen.verpfiffen, true);
+  const v2 = verpfeifen(v1.state); assert.equal(v2.gewirkt, false); assert.equal(v2.state.heat, 1);
+  assert.equal(verpfeifen({ ...initialState(), heat: 0, folgen: { abends_haengematte_belegt: true } }).state.heat, 0); assert.equal(verpfeifen({ ...initialState(), folgen: { abends_haengematte_belegt: true } }).state.folgen.abends_haengematte_belegt, true, 'andere Folgen bleiben');
   assert.equal(fromSave(toSave(n)).woche, 2); assert.equal(fromSave(toSave({ ...s, woche: 'x' })).woche, 1);
   assert.equal(nT(null).hud.tag, 'Tag'); assert.equal(nT({ ui: { hud: { tag: 'Day' } } }).hud.tag, 'Day');
   // Content-Schema für Titel/Intro/Ende/Info (ui.titelbild, ui.intro[], ui.ende, ui.info{abschnitte, steuerung}) landet auf den Code-Schlüsseln

@@ -622,6 +622,11 @@ export function finaleKarte(state, woche, texte = null) {
   const text = (Array.isArray(eigene) && eigene.length ? eigene : (woche.finale?.[erfolg ? 'gut' : 'fail']?.text || []).slice(0, 2)).map((z) => fillText(z, { muenzen: woche.ziel.muenzen }));
   return { titel: erfolg ? T.titel_erfolg : T.titel, zeilen: [woche.titel, fillText(T.kasse, { geld: state.geld, muenzen: woche.ziel.muenzen }), ...text], buttons: [erfolg ? T.zur_huette : T.neu_versuchen], neueWocheIdx: erfolg ? -1 : 0, stufe, erfolg };
 }
+/** Verpfeifen (Szene „Dieb“, folge verpfiffen): einmal am Tag Heat −1; folgen.verpfiffen merkt es sich bis zum Morgen */
+export function verpfeifen(state) {
+  if (state.folgen?.verpfiffen) return { state, gewirkt: false };
+  return { state: { ...state, heat: Math.max(0, (state.heat || 0) - 1), folgen: { ...(state.folgen || {}), verpfiffen: true } }, gewirkt: true };
+}
 /** Fähren-Besucher: n Harmlose, die heute nicht am Strand stehen, deterministisch nach Fähren-Nummer gedreht */
 export function besucherWahl(katalog, heuteIds = [], n = 1, nr = 0) {
   const pool = katalog.filter((k) => !k.zivi && !heuteIds.includes(k.id) && k.figuren !== 2);

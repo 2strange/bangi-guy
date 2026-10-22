@@ -12,7 +12,7 @@ import { zielMarker, updateMarker } from './marker.js';
 import { ereignisSteuerung } from './ereignisse.js';
 import { createSpuren } from './spuren.js';
 import { normalizeSzenen, szenenDesTages, szenenAktiv, szeneSchritte, szeneAnsprechen, szenenWirkung, inStolperZone, zeitT } from './szenen.js';
-import { buildAmbientFigur, stolpern, handtuchAufLiege, handtuchRolle, handtuchPlan, sandburgKaputt, bierdosenHaufen } from './ambient.js';
+import { buildAmbientFigur, stolpern, handtuchAufLiege, handtuchRolle, handtuchPlan, sandburgKaputt, bierdosenHaufen, handtasche } from './ambient.js';
 import { setHuetteZiel, setHuette, setWegweiserText, coconut, lounger } from './props.js';
 import { feuerwerk } from './feuerwerk.js';
 import { mentorBarSpot } from './zone-huegel.js';
@@ -21,7 +21,7 @@ import { prepareGags, playGag, stopGag } from './gags.js';
 import {
   inputToDir, dirToTarget, stepPlayer, followCamera, waddlePose, CAM_OFFSET, DEFAULT_CAM_YAW, isOccluder, joystickInput, rotateDir,
   ANCHORS, assignAnchors, zoneMix, patrolStart, seesTarget, chaseStep, inHideout, CHASE_SPEED, PATROL_SPEED, WORLD, BUILDING_POS, STREIFE_P2_ROUTE,
-  CAM_PITCH, clampPitch, spurSchritt, imSand, kokosStart, kokosStep, kokosRuf, ballStep, shoreZ,
+  CAM_PITCH, clampPitch, spurSchritt, imSand, kokosStart, kokosStep, kokosRuf, ballStep, shoreZ, WALK_SPEED,
 } from './logic.js';
 import { LANES as PIER_LANES, FERRY_SPAWN } from './zone-pier-layout.js';
 import { DORF_SPOTS } from './zone-dorf-layout.js';
@@ -32,9 +32,9 @@ import {
   normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE, gagFor, nextIdleGagDelay,
   mergeTexte, mergeKundenKatalog, normalizeOptionen, toSave, fromSave, hatFortschritt, fillText, dayReport, buyKokos, kokosSchutz, normalizeKokos, kokosGag, kokosWirkung, pickLine,
   normalizeTutorial, tutorialStart, tutorialEvent, tutorialSkip,
-  normalizeWoche, tagesziel, tagModifikator, hudZiel, finaleStufe, harmloseFuerTag, kalibriereWoche, neueWoche, finaleKarte, besucherWahl, besucherStep, KOPF_WAHL,
+  normalizeWoche, tagesziel, tagModifikator, hudZiel, finaleStufe, harmloseFuerTag, kalibriereWoche, neueWoche, finaleKarte, besucherWahl, besucherStep, KOPF_WAHL, verpfeifen,
   normalizeEreignisse, ereignisFuerTag, ereignisKundenFaktor, ereignisZiviExtra, kundenFuerTag, ereignisFenster,
-  normalizeStimmen, barksFor, pickBark,
+  normalizeStimmen, barksFor, pickBark, DAY_LENGTH,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
   normalizePosten7, buyMango, giveMango, mangoText, pongText, inPostenSicht, patrolSpotted, normalizeKunde, arrestNow, tukTukRide, TUKTUK_PREIS_MANGOS, TUKTUK_PREIS_GELD,
   initialClock, clockStep, clockLabel, phaseFor, abendBeginnt, nachtBeginnt, barBeendetTag, inBar, normalizeAbend, zwischenrufLine, STREIFE_P2_AB_TAG, lichtT, barAbend, guteNacht, sonnenuntergangLine, einschlafenLine,
@@ -229,7 +229,11 @@ const SZENE_AUFSTELLUNG = {
   handtuch_werfer: { werfer_1: { dx: -2, dz: -9.5, yaw: 0 }, werfer_2: { dx: 0, dz: -9.5, yaw: 0.3 } }, // Hotelseite, Blick auf die Liegen
   betrunkener: { chad: { dx: 2, dz: -3.3, yaw: Math.PI } }, // am Tresen
   influencerin: { influencerin: { dx: 0, dz: 2, yaw: Math.PI }, reflektor_freund: { dx: 1.6, dz: 1.5, yaw: -Math.PI / 2 } }, // Rücken zum Meer
+  dieb_tasche: { dieb: { dx: -9, dz: 1.5, yaw: Math.PI / 2 } }, // Schläferin liegt auf der freien Liege (Aufbau)
+  dieb_kamera: { dieb: { dx: -8, dz: 3, yaw: Math.PI / 2 }, tourist_kamera: { dx: 2.5, dz: -1, yaw: 0.6 } },
 };
+const SZENE_COLLIDER = { kind_1: 0.35, kind_2: 0.32, kind_3: 0.3, reflektor_freund: 0.9, dieb: 0.5 }; // sonst 0.6
+const DIEB_TEMPO = { schleichen: 1.8, rennen: WALK_SPEED * 1.6 };
 const KINDER_KREIS = { r: 2.5, w: 1.0 }; // Radius, Winkelgeschwindigkeit (rad/s)
 const MEER_WEG = 9; // ehe_er „geht tauchen“: so weit Richtung Meer (+z)
 function szeneAufbauen(szene) {
@@ -238,15 +242,32 @@ function szeneAufbauen(szene) {
   const F = szenenFiguren[szene.id] = { _req: [], _plan: null };
   for (const fig of szene.figuren) {
     if (fig.slug === 'pong') continue; // Pong ist die Markt-Figur (pongPose)
-    let g = null; try { g = buildAmbientFigur(fig.slug, fig.aussehen); } catch (e) { g = null; }
+    let g = null; try { g = buildAmbientFigur(fig.slug, fig.aussehen); } catch (e) { if (SNAP) throw e; g = null; } // Schnappschuss: Baufehler sichtbar machen
     if (!g) continue;
     const a = auf[fig.slug] || { dx: 0, dz: 0, yaw: 0 };
     const start = fig.start ? SZENE_ORT(fig.start) : o;
     const f = { slug: fig.slug, stimme: fig.stimme, g, x: start.x + (a.dx || 0), z: start.z + (a.dz || 0), yaw: a.yaw || 0, ziel: null, speed: 1.2, kreis: a.kreis !== undefined ? { cx: o.x, cz: o.z, ang: a.kreis } : null, stehtBis: 0, yawZiel: null, geworfen: false };
     f.x0 = f.x; f.z0 = f.z; f.yaw0 = f.yaw;
     f.seit = performance.now() / 1000; g.scale.setScalar(0.01); // wächst in 0,6 s auf, statt ins Bild zu poppen
+    f.collider = { x: f.x, z: f.z, r: SZENE_COLLIDER[fig.slug] || 0.6 }; colliders.push(f.collider);
     g.position.set(f.x, 0, f.z); g.rotation.y = f.yaw; szenenGroup.add(g); F[fig.slug] = f;
   }
+  // Dieb-Szenen: Beute vorab setzen; Schläferin liegt auf der freien Liege, ihre Tasche steht daneben; die Kamera des Touristen ist die Beute
+  if (F.dieb) { try { F.dieb.g.userData.setBeute?.(szene.id === 'dieb_kamera' ? 'kamera' : 'tasche'); } catch (e) { /* ohne Beute */ } F.dieb.speed = DIEB_TEMPO.schleichen; }
+  if (F.schlaeferin) {
+    const L = world.liegenAlle?.[2]; // Liege 3 (ohne Kunden-Anker) bleibt für Szenen frei
+    try {
+      if (L) {
+        const { offsetY, offsetZ = 0 } = figurePose(F.schlaeferin.g, 'liegestuhl');
+        const sitz = new THREE.Vector3(L.obj.userData.sitz.x, L.obj.userData.sitz.y, L.obj.userData.sitz.z); L.obj.localToWorld(sitz);
+        const yaw = L.obj.rotation.y;
+        Object.assign(F.schlaeferin, { x: sitz.x + Math.sin(yaw) * offsetZ, z: sitz.z + Math.cos(yaw) * offsetZ, y: sitz.y + offsetY, yaw });
+        F.schlaeferin.x0 = F.schlaeferin.x; F.schlaeferin.z0 = F.schlaeferin.z;
+      }
+      const tasche = handtasche(); tasche.position.set(F.schlaeferin.x - 1.1, 0, F.schlaeferin.z + 0.3); tasche.rotation.y = 0.4; F._req.push(tasche); F._beute = tasche;
+    } catch (e) { /* ohne Liege */ }
+  }
+  if (F.tourist_kamera) F._beute = F.tourist_kamera.g.userData.ambient?.props?.kamera || null;
   try { // Requisiten mit Baustein
     if (szene.requisite.includes('sandburg_kaputt')) { const r = sandburgKaputt(); r.position.set(o.x + 3.6, 0, o.z + 2.8); F._req.push(r); }
     if (szene.requisite.includes('bierdosen_haufen') && F.chad) { const r = bierdosenHaufen(); r.position.set(F.chad.x + 0.9, 0, F.chad.z + 0.4); F._req.push(r); }
@@ -256,8 +277,9 @@ function szeneAufbauen(szene) {
 }
 function szeneAbbauen(id) {
   const F = szenenFiguren[id]; if (!F) return;
-  for (const [k, f] of Object.entries(F)) { if (k.startsWith('_')) continue; szenenGroup.remove(f.g); delete szenenAnker[`szene_${id}_${k}`]; }
+  for (const [k, f] of Object.entries(F)) { if (k.startsWith('_')) continue; szenenGroup.remove(f.g); delete szenenAnker[`szene_${id}_${k}`]; const ci = colliders.indexOf(f.collider); if (ci >= 0) colliders.splice(ci, 1); }
   for (const r of F._req) szenenGroup.remove(r);
+  for (const s of streifen) if (s.jagd?.id === id) { s.jagd = null; s.patrol = { ...s.patrol, mode: 'return', lost: 0, kante: false }; } // Jagd vorbei: zurück auf die Route
   delete szenenFiguren[id];
 }
 const rollen = []; // fliegende Handtuch-Rollen { g, von, nach, t0, dauer, liege, farben }
@@ -290,7 +312,9 @@ function updateSzenenFiguren(t, dt) {
       if (d <= step) { f.x = f.ziel.x; f.z = f.ziel.z; f.ziel = null; f.yaw = f.yawRuhe ?? f.yaw; } else { f.x += dx / d * step; f.z += dz / d * step; f.yaw = Math.atan2(dx, dz); }
     }
     if (f.yawZiel) f.yaw = Math.atan2(f.yawZiel.x - f.x, f.yawZiel.z - f.z);
-    f.g.position.set(f.x, 0, f.z); f.g.rotation.y = f.yaw;
+    f.g.position.set(f.x, f.y || 0, f.z); f.g.rotation.y = f.yaw;
+    if (f.collider) { f.collider.x = f.x; f.collider.z = f.z; }
+    if (f.slug === 'dieb' && f.g.userData.ambient?.greifMoment && F._beute && !F._geklaut) { F._geklaut = true; F._beute.visible = false; } // Griff: die Beute wechselt zum Dieb
     if (f.seit !== undefined) { const u = Math.min(1, (t - f.seit) / 0.6); f.g.scale.setScalar(0.01 + 0.99 * u * u * (3 - 2 * u)); if (u >= 1) f.seit = undefined; }
     try { f.g.userData.update?.(t); } catch (e) { /* Figur ohne update */ }
     if (f.g.userData.ambient?.wurfMoment) { if (!f.geworfen) { f.geworfen = true; handtuchWerfen(f); } } else f.geworfen = false;
@@ -298,6 +322,20 @@ function updateSzenenFiguren(t, dt) {
   updateRollen(t);
 }
 const naechsteStreife = (pos, max = 14) => streifen.filter(streifeAktiv).map((s) => ({ s, d: Math.hypot(s.patrol.x - pos.x, s.patrol.z - pos.z) })).filter((x) => x.d <= max).sort((a, b) => a.d - b.d)[0]?.s || null;
+function streifeJagt(s, id, f, t, dauer) { // Dieb-Szene: Streife verlässt die Route und rennt hinter dem Dieb her (sichtbar, erfolglos), danach zurück
+  s.jagd = { id, f, bis: t + dauer };
+  s.patrol = { ...s.patrol, mode: 'patrol', wait: 0, lost: 0, kante: false };
+  sfx('pfeife'); try { audio?.bark?.('pong', 'verfolgung', { pan: panFor(s.group) }); } catch (e) { /* ohne Ton */ }
+}
+const diebAktiv = () => Object.values(szenenFiguren).some((F) => F.dieb);
+function streifeJagdSchritt(s, dt, t) { // Rückgabe true = Streife ist mit der Jagd beschäftigt
+  if (!s.jagd) return false;
+  const f = s.jagd.f;
+  if (t > s.jagd.bis || !szenenFiguren[s.jagd.id]?.dieb) { s.jagd = null; s.patrol = { ...s.patrol, mode: 'return', lost: 0, kante: false }; return false; }
+  const dx = f.x - s.patrol.x, dz = f.z - s.patrol.z, d = Math.hypot(dx, dz) || 1, step = Math.min(CHASE_SPEED * 1.1 * dt, Math.max(0, d - 1.2));
+  s.patrol = { ...s.patrol, x: s.patrol.x + dx / d * step, z: s.patrol.z + dz / d * step, yaw: Math.atan2(dx, dz), moving: step > 0, phase: (s.patrol.phase || 0) + step * (Math.PI * 2 / 1.6) };
+  return true;
+}
 function streifeStolpert(s, t, dauer = 5) { // fällt hin (ambient.js), bleibt liegen, steht auf; eine Verfolgung ist damit vorbei
   s.stolper = { t0: t, dauer };
   s.patrol = { ...s.patrol, mode: s.patrol.mode === 'chase' ? 'return' : s.patrol.mode, wait: dauer, moving: false, lost: 0, kante: false };
@@ -361,10 +399,13 @@ function szenenSchritt(szene, st, now, { halten = false } = {}) { // halten: Bla
       if (st.pose === 'schnorchel_runter') { F.ziel = { x: F.x0, z: F.z0 + MEER_WEG }; F.yawRuhe = 0; } // geht tauchen
       if (st.pose === 'zurueckkommen_nass') { F.ziel = { x: F.x0, z: F.z0 }; F.yawRuhe = F.yaw0; }
       if (st.pose === 'handtuch_werfen') F.geworfen = false;
+      if (st.pose === 'schleichen') { const opfer = szenenFiguren[szene.id]?.schlaeferin || szenenFiguren[szene.id]?.tourist_kamera; if (opfer) { F.ziel = { x: opfer.x - 1.4, z: opfer.z + 0.4 }; F.speed = DIEB_TEMPO.schleichen; F.yawRuhe = Math.atan2(opfer.x - F.x, opfer.z - F.z); } }
+      if (st.pose === 'rennen') F.speed = DIEB_TEMPO.rennen;
     } else if (st.wer === 'pong') { try { world.markt?.pongPose?.(st.pose, t, st.dauer); } catch (e) { /* ohne Markt */ } }
     else if (st.wer === 'streife' && st.pose === 'stolpern') { const s = naechsteStreife(o, 14); if (s && !s.stolper) streifeStolpert(s, t, st.dauer); }
   }
   if (st.aktion === 'geh' && F && st.ziel) { const z = SZENE_ORT(st.ziel); F.ziel = { x: z.x, z: z.z }; }
+  if (st.aktion === 'geh' && st.wer === 'streife') { const s = naechsteStreife(o, 45), dieb = szenenFiguren[szene.id]?.dieb; if (s && dieb) streifeJagt(s, szene.id, dieb, t, st.dauer); } // Pong rennt dem Dieb hinterher
   if (st.aktion === 'sound' && st.text) sfx(st.text, { pan: F ? panFor(F.g) : 0, gain: 0.6 });
 }
 const szenenAnker = {}; // Bark-Anker: { obj } (Figurkopf) oder { x, z } (Ort)
@@ -375,7 +416,11 @@ function szeneAnreden() {
   if (!text) return;
   const F = Object.entries(szenenFiguren[szeneNah.id] || {}).find(([k]) => !k.startsWith('_'))?.[1] || null;
   const obj = F ? F.g : szeneNah.figuren.some((f) => f.slug === 'pong') && world.markt?.pong ? world.markt.pong : player;
-  if (szeneNah.folge) game = { ...game, folgen: { ...(game.folgen || {}), ...szeneNah.folge } }; // z. B. abends_haengematte_belegt (Einschlaf-Zeile)
+  if (szeneNah.folge) { // z. B. abends_haengematte_belegt (Einschlaf-Zeile); verpfiffen = einmal am Tag Heat −1
+    const folge = { ...szeneNah.folge };
+    if (folge.verpfiffen) { const r = verpfeifen(game); if (r.gewirkt) { game = r.state; refreshHud(); sfx('ziel'); } delete folge.verpfiffen; }
+    game = { ...game, folgen: { ...(game.folgen || {}), ...folge } };
+  }
   showInfo({ id: 'szene', name: szeneNah.titel, x: SZENE_ORT(szeneNah.ort).x, z: SZENE_ORT(szeneNah.ort).z, obj }, fillText(text, dayReport(game)));
 }
 let ereignisse = normalizeEreignisse(null); // Tages-Ereignisse (texte.json → ereignisse[])
@@ -853,7 +898,7 @@ function makeStreife(def) {
 }
 const streifen = STREIFE_DEFS.map(makeStreife);
 const streifeAktiv = (s) => (game.tag || 1) >= s.abTag;
-const streifeSchlaeft = (s) => s.id === 'streife_p1' && szenenWirk.streife_p1 === 'schlaeft'; // Pongs Mittagsschlaf: P1 bleibt am Posten, sieht nichts
+const streifeSchlaeft = (s) => s.id === 'streife_p1' && szenenWirk.streife_p1 === 'schlaeft' && !diebAktiv(); // Pongs Mittagsschlaf: P1 bleibt am Posten, sieht nichts (Dieb-Szenen: er jagt stattdessen)
 const streifeSieht = () => streifen.some((st) => st.sees);
 let sightCooldown = 0;
 function applyCop(s) {
@@ -876,7 +921,9 @@ function updatePatrol(dt, now) {
   for (const s of streifen) {
     if (!streifeAktiv(s)) { s.sees = false; applyCop(s); continue; }
     if (streifeSchlaeft(s)) { s.sees = false; if (s.patrol.mode !== 'patrol' || s.patrol.idx !== 1 || Math.hypot(s.patrol.x - s.route[0].x, s.patrol.z - s.route[0].z) > 0.3) s.patrol = { ...patrolStart(s.route), mode: 'patrol', wait: 1 }; s.patrol = { ...s.patrol, wait: 1, moving: false }; applyCop(s); continue; } // schläft am Posten (Startpunkt der Route)
-    const sees = seesTarget(s.patrol, state, { range: kokosSchutz(game, tagesuhr.t01) ? 6 : 12 }); // Kokosnuss in der Hand: gilt als Tourist, halbe Sichtweite
+    if (streifeJagdSchritt(s, dt, now / 1000)) { s.sees = false; applyCop(s); continue; } // rennt dem Dieb hinterher
+    const beschaeftigt = szenenWirk.streife_p1 === 'schlaeft' && diebAktiv(); // Dieb-Szene: die Streife hat anderes zu tun
+    const sees = !beschaeftigt && seesTarget(s.patrol, state, { range: kokosSchutz(game, tagesuhr.t01) ? 6 : 12 }); // Kokosnuss in der Hand: gilt als Tourist, halbe Sichtweite
     s.sees = sees && !inHideout(state, alleVerstecke());
     // Verfolgung ab Heat 2: langsam (Sandalen), verliert den Spieler nach 6 s ohne Sicht oder im Versteck
     const r = chaseStep(s.patrol, s.route, state, dt, { sees, heat: game.heat, hideouts: alleVerstecke(), schuhe: s.schuhe });
@@ -1866,7 +1913,7 @@ function setupScene() {
   if (SCENE === 'szene') { // ?scene=szene&id=pong_mittag: Tag 2, Uhr in die Mitte des Fensters, Spieler am Ort, Szene läuft
     const sz = szenen.find((x) => x.id === SCENE_ID) || szenen[0];
     game = { ...game, tag: Math.max(game.tag, sz.ab_tag) }; szenenHeute = [sz]; szenenLauf = {};
-    tagesuhr = { t01: (sz.fenster.von + sz.fenster.bis) / 2 }; applyTageszeit(); refreshHud();
+    tagesuhr = { t01: q('bei') ? sz.fenster.von + parseFloat(q('bei')) / DAY_LENGTH : (sz.fenster.von + sz.fenster.bis) / 2 }; applyTageszeit(); refreshHud(); // &bei=Sekunden seit Fensterbeginn
     const ort = SZENE_ORT(sz.ort);
     mode = 'free';
     updateSzenen(0); updateSzenenFiguren(performance.now() / 1000, 0.5);
@@ -1881,6 +1928,8 @@ function setupScene() {
       const s = streifen[0]; s.patrol = { ...s.patrol, x: ort.x - 4, z: ort.z + 0.5, yaw: Math.PI / 2, mode: 'patrol' }; streifeStolpert(s, performance.now() / 1000 - 1.2, 5); applyCop(s);
       stolpern(s.group, 1.2 / 5);
     }
+    for (const s of streifen) if (s.jagd) { s.patrol = { ...s.patrol, x: s.jagd.f.x - 3.5, z: s.jagd.f.z + 1.5, moving: true }; streifeJagdSchritt(s, 0.3, performance.now() / 1000); applyCop(s); } // Dieb-Jagd: Streife dicht hinter dem Dieb
+    for (const f of figs) { f.seit = undefined; f.g.scale.setScalar(1); } // kein Aufwachsen im Standbild
     return;
   }
   if (SCENE === 'kokos') { // Verkäufer neben dem Schluffi am Wasser, Ruf-Blase, Kauf-Blase
