@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import {
   syllables, babblePlan, normalizeStimme, normalizeStimmen, STIL, DEFAULT_STIMME, slugFor, pickBark, bark,
   musicPattern, PROGRESSION, BARS, STEPS_PER_BAR, BPM, stepSeconds, nextGullDelay, rng, hashStr, midiToFreq, SFX_NAMES,
-  babble, sfx, setMuted, isMuted, ambience, music, stimmeFor, setStimmen, normalizePan,
+  babble, sfx, setMuted, isMuted, ambience, music, stimmeFor, setStimmen, normalizePan, VOL,
   ZONES, normalizeZones, pseudoWords, nextRufDelay, nextFunkDelay, sputterTimes, normalizeSfxOpts,
   MOODS, normalizeMood, nextBpm, setMood, getMood, cricketBurst, nextClinkDelay, frogCall, nextFrogDelay, JINGLES,
   WETTER, normalizeWetter, nextDropDelay, duoPlan, DUO_TONHOEHE, DUO_VERSATZ, EREIGNIS_SOUNDS, ereignisAktionen, ereignis,
@@ -218,8 +218,10 @@ test('ohne WebAudio: alles no-op, nichts wirft, babble liefert trotzdem die Daue
   for (const n of ['kasse', 'ablehnen', 'heat', 'verhaftet', 'ausverkauft', 'schritt_sand', 'ui_klick', 'hinschauen', 'pfeife', 'mango', 'funk', 'tuten', 'tuktuk_abwuergen', 'gaehnen',
     'ui_oeffnen', 'ui_schliessen', 'ui_umschalten', 'ui_schritt', 'ziel', 'morgen', 'woche_gut', 'woche_fail', 'woche_mittel',
     'schiffshorn_fern', 'moewe_klaut', 'party', 'stromausfall',
-    'kinder_fern', 'wasserpistole', 'streit', 'selfie', 'schnarchen', 'handtuch', 'dose_oeffnen']) assert.ok(SFX_NAMES.includes(n), n);
-  assert.equal(SFX_NAMES.length, 34);
+    'kinder_fern', 'wasserpistole', 'streit', 'selfie', 'schnarchen', 'handtuch', 'dose_oeffnen', 'feuerwerk']) assert.ok(SFX_NAMES.includes(n), n);
+  assert.equal(SFX_NAMES.length, 35);
+  // Stimmen dürfen nicht wieder leise werden (Hörtest): Voice-Bus hoch, Clips extra, Kokos extra
+  assert.ok(VOL.voice >= 0.85 && VOL.clip >= 1.5 && VOL.kokos >= 1.3, JSON.stringify({ voice: VOL.voice, clip: VOL.clip, kokos: VOL.kokos }));
   for (const n of SFX_NAMES) assert.equal(sfx(n), 0);
   assert.equal(sfx('gibtsnicht'), 0);
   assert.equal(sfx('tuktuk_abwuergen', { gain: 0.5, pan: -0.3 }), 0, 'Optionen ohne Audio: no-op');

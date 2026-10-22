@@ -25,7 +25,9 @@ export const VOL = {
   sfx: 0.8,
   ambience: 0.3,
   music: 0.18,      // Standard der Musik, sehr leise unter der Ambience
-  voice: 0.55,
+  voice: 0.9,       // Stimmen (Gebrabbel + Clips); Clips bekommen zusätzlich VOL.clip
+  clip: 1.7,        // echte Sprach-Clips sind leise gemastert → kräftig anheben, der Limiter fängt Spitzen
+  kokos: 1.5,       // Kokos-Ruf muss über den Strand tragen
   // einzelne Effekte relativ zum SFX-Bus
   kasse: 0.8, ablehnen: 0.6, heat: 0.55, verhaftet: 0.5, ausverkauft: 0.6, schritt_sand: 0.18, ui_klick: 0.35, hinschauen: 0.4,
   pfeife: 0.45, mango: 0.6, funk: 0.4, tuten: 0.55, tuktuk_abwuergen: 0.5, gaehnen: 0.5,
@@ -33,7 +35,7 @@ export const VOL = {
   ziel: 0.55, morgen: 0.5, woche_gut: 0.6, woche_fail: 0.5, woche_mittel: 0.5,
   schiffshorn_fern: 0.4, moewe_klaut: 0.5, party: 0.5, stromausfall: 0.45,
   regen: 0.3,
-  kinder_fern: 0.3, wasserpistole: 0.45, streit: 0.5, selfie: 0.45, schnarchen: 0.5, handtuch: 0.4, dose_oeffnen: 0.4,
+  kinder_fern: 0.3, wasserpistole: 0.45, streit: 0.5, selfie: 0.45, schnarchen: 0.5, handtuch: 0.4, dose_oeffnen: 0.4, feuerwerk: 0.6,
   // Ambience-Details (relativ zum Ambience-Bus)
   moewe: 0.35, walla: 0.16, ruf: 0.3, funkspruch: 0.45, tuktuk: 0.22, klirren: 0.2, grillen: 0.1,
   frosch: 0.28, wasser: 0.2,
@@ -774,6 +776,25 @@ const SFX = {
     const g = gainEnv(t + 0.05, { a: 0.05, peak: 0.3, d: 0.2 });
     n.connect(bp); bp.connect(g); g.connect(out); n.start(t + 0.05); n.stop(t + 0.4);
     return 0.4;
+  },
+  // Feuerwerk: drei Raketen — Pfeifen hoch, Knall (dumpf + Druckwelle), Knistern aus vielen kleinen Ticks; versetzt, gepannt
+  feuerwerk(t, out) {
+    [[0, -0.5], [1.1, 0.4], [2.0, -0.1]].forEach(([dt, pp]) => {
+      const t0 = t + dt, p = pan(pp); p.connect(out);
+      const w = osc('sine', 500, t0); w.frequency.exponentialRampToValueAtTime(2600, t0 + 0.75);
+      const wg = gainEnv(t0, { a: 0.05, peak: 0.18, d: 0.15, hold: 0.55 }); w.connect(wg); wg.connect(p); w.start(t0); w.stop(t0 + 0.85);
+      const tb = t0 + 0.8;
+      const n = noise(); const lp = filt('lowpass', 900, 0.7); lp.frequency.exponentialRampToValueAtTime(150, tb + 0.4);
+      const ng = gainEnv(tb, { a: 0.003, peak: 0.9, d: 0.45 }); n.connect(lp); lp.connect(ng); ng.connect(p); n.start(tb); n.stop(tb + 0.6);
+      const th = osc('sine', 90, tb); th.frequency.exponentialRampToValueAtTime(28, tb + 0.3);
+      const tg = gainEnv(tb, { a: 0.003, peak: 0.7, d: 0.35 }); th.connect(tg); tg.connect(p); th.start(tb); th.stop(tb + 0.45);
+      for (let i = 0; i < 14; i++) {
+        const tc = tb + 0.1 + Math.random() * 0.9;
+        const c = noise(); const hp = filt('highpass', 3000 + Math.random() * 3000, 0.8); const cg = gainEnv(tc, { a: 0.001, peak: 0.25 + Math.random() * 0.25, d: 0.02 + Math.random() * 0.03 });
+        c.connect(hp); hp.connect(cg); cg.connect(p); c.start(tc); c.stop(tc + 0.08);
+      }
+    });
+    return 4.0;
   },
   // Dose öffnen: Klack der Lasche, dann Zischen, das ausläuft
   dose_oeffnen(t, out) {
@@ -1619,7 +1640,7 @@ export const clipStatus = (id) => { const st = clips.get(id); return st === unde
  * Echten Ausruf abspielen. id aus dem Manifest, stimme = Slug/Profil fürs Pitch (und fürs Gebrabbel-Fallback).
  * Gibt { dauer, echt } zurück (echt=false → Gebrabbel-Fallback lief), null bei unbekannter id.
  */
-export function ausruf(id, stimme = 'default', opts = {}) {
+export function ausruf(id, stimme = 'default', opts = {}, boost = 1) {
   const entry = ausrufe.find((e) => e.id === id);
   if (!entry) return null;
   const profil = typeof stimme === 'string' ? stimmeFor(stimme) : normalizeStimme(stimme);
@@ -1630,7 +1651,7 @@ export function ausruf(id, stimme = 'default', opts = {}) {
   stopBabble();
   const { gain, pan: panPos } = normalizeSfxOpts(opts);
   const src = ctx.createBufferSource(); src.buffer = st; src.playbackRate.value = clipRate(profil, entry.tonhoehe_aufnahme);
-  const g = ctx.createGain(); g.gain.value = profil.laut * gain;
+  const g = ctx.createGain(); g.gain.value = profil.laut * gain * VOL.clip * boost;
   if (panPos) { const p = pan(panPos); src.connect(p); p.connect(g); } else src.connect(g);
   g.connect(bus.voice);
   const t0 = now() + 0.01, dauer = st.duration / src.playbackRate.value;
@@ -1672,13 +1693,13 @@ export function gesang(id, opts = {}) {
   const g = GESAENGE[id];
   if (!g) return null;
   const entry = ausrufe.find((e) => e.id === id);
-  if (entry && ready() && voiceMode !== 'tts' && typeof ensureClip(entry) !== 'string') return ausruf(id, g.stimme, opts);
+  if (entry && ready() && voiceMode !== 'tts' && typeof ensureClip(entry) !== 'string') return ausruf(id, g.stimme, opts, VOL.kokos);
   const profil = stimmeFor(g.stimme);
   const plan = gesangPlan(profil, g.silben);
   if (!ready() || voiceMode === 'tts') return { dauer: plan.duration, echt: false };
   stopBabble();
   const { gain, pan: panPos } = normalizeSfxOpts(opts);
-  const out = ctx.createGain(); out.gain.value = profil.laut * gain; out.connect(bus.voice);
+  const out = ctx.createGain(); out.gain.value = profil.laut * gain * VOL.kokos; out.connect(bus.voice);
   const t0 = now() + 0.02;
   const nodes = panPos ? (() => { const p = pan(panPos); p.connect(out); return renderPlan(plan, p, t0); })() : renderPlan(plan, out, t0);
   speaking = { gain: out, nodes, until: t0 + plan.duration };
