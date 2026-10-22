@@ -128,6 +128,7 @@ function applyAudioOptionen() {
 }
 let audioStarted = false;
 function startAudio() {
+  try { audio?.preloadAusrufe?.('alle'); } catch (e) { /* ohne Clips */ } // Clips dekodieren, sobald eine Geste da ist
   if (!audio) return;
   try {
     if (!audio.ambience?.isPlaying?.()) { audio.ambience?.start?.(); audio.music?.start?.(); }
@@ -150,7 +151,7 @@ function updateAmbience(now) {
 }
 import('./audio.js').then((m) => {
   audio = m;
-  try { audio.initAudio?.(); audio.loadStimmen?.(); } catch (e) { /* ignorieren */ }
+  try { audio.initAudio?.(); audio.loadStimmen?.(); audio.loadAusrufe?.(); } catch (e) { /* ignorieren */ } // Ausrufe: Manifest + data/ausrufe.json
   const el = document.getElementById('mute');
   if (el) el.style.display = 'block';
   const mb = document.getElementById('music');
@@ -1054,15 +1055,17 @@ const fadeRay = new THREE.Raycaster(); fadeRay.camera = camera;
 const tmpV = new THREE.Vector3();
 const tmpSphere = new THREE.Sphere();
 const FADE_OPACITY = 0.25;
-function fadeMesh(m) {
-  if (faded.has(m) || !m.isMesh) return;
+const FADE_OPACITY_PALME = 0.1; // Palmenkrone/-stamm über dem Spieler: fast weg, sonst färbt der grüne Schleier die Figur
+function fadeMesh(m, op = FADE_OPACITY) {
+  if (!m.isMesh) return;
+  if (faded.has(m)) { for (const c of (Array.isArray(m.material) ? m.material : [m.material])) { if (c.isShaderMaterial) c.uniforms.opacity.value = op; else c.opacity = op; } return; }
   const orig = m.material;
   faded.set(m, orig);
   const mats = Array.isArray(orig) ? orig : [orig];
   const clones = mats.map((mat) => {
     const c = mat.clone();
     c.transparent = true;
-    if (c.isShaderMaterial) c.uniforms.opacity.value = FADE_OPACITY; else c.opacity = FADE_OPACITY;
+    if (c.isShaderMaterial) c.uniforms.opacity.value = op; else c.opacity = op;
     c.depthWrite = false;
     return c;
   });
@@ -1112,7 +1115,7 @@ function updateFade(focus) {
       if (tmpSphere.distanceToPoint(camPos) < 2.5) groups.add(o);
     });
   }
-  for (const grp of groups) grp.traverse((m) => { if (m.isMesh) { fadeMesh(m); keep.add(m); } });
+  for (const grp of groups) { const op = grp.userData.crown ? FADE_OPACITY_PALME : FADE_OPACITY; grp.traverse((m) => { if (m.isMesh) { fadeMesh(m, op); keep.add(m); } }); }
   unfadeAll(keep);
   // beim Hinschauen den Spieler ganz ausblenden (inkl. Schatten) — halbtransparente Hüllen würden zu Matsch
   player.visible = mode !== 'inspect';
