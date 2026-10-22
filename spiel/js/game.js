@@ -258,11 +258,15 @@ export function kundeLookYaw(k, player, maxDist = 7, maxTurn = 1.0) {
 }
 
 // ---------- Auswahl der Kundschaft für den Strand: n Kunden, davon mindestens minZivi Zivis (falls vorhanden) ----------
-export const KUNDEN_PRO_TAG = 7;
+export const KUNDEN_PRO_TAG = 6;      // Harmlose pro Tag (Grundwert, Zivis kommen obendrauf)
+export const KUNDEN_MIN_HARMLOS = 6;  // nie weniger Harmlose, egal welches Ereignis/Wetter
+/** Zahl der Harmlosen für einen Tag: Grundwert × Faktoren (Wochentag, Ereignis, Kokos), nie unter dem Minimum */
+export const harmloseFuerTag = (faktor = 1) => Math.max(KUNDEN_MIN_HARMLOS, Math.round(KUNDEN_PRO_TAG * (Number.isFinite(faktor) && faktor > 0 ? faktor : 1)));
+// n = Zahl der Harmlosen (Zivis kommen obendrauf, minZivi Stück); reichen die Harmlosen nicht, füllen weitere Zivis auf
 export function pickKunden(katalog, n = KUNDEN_PRO_TAG, minZivi = 2, day = 1) {
   const zivis = katalog.filter((k) => k.zivi);
   const others = katalog.filter((k) => !k.zivi);
-  const take = Math.min(n, katalog.length);
+  const take = Math.min(n + Math.min(minZivi, zivis.length), katalog.length);
   // Zivis rotieren pro Tag (Tag 1: z1+z2, Tag 2: z2+z3, …), damit man über die Tage alle Fallen sieht
   const zCount = Math.min(minZivi, take, zivis.length);
   const start = zivis.length ? ((day - 1) % zivis.length + zivis.length) % zivis.length : 0;
@@ -308,13 +312,17 @@ export const DEFAULT_TEXTE = {
   verhandeln: { angenommen: ['Okay, okay. Aber nur heute.', 'Teuer. Aber du guckst so ehrlich.'], weg: ['Zu teuer, Mann. Ich frag den Typ am Pier.', 'Nee. Dafür geh ich lieber schwimmen.'] },
   heat_label: { 0: 'kalt', 1: 'lauwarm', 2: 'heiß', 3: 'FAHNDUNG' },
   // Optionen-Menü (⚙): Oberflächen-Beschriftungen, Content kann sie unter ui.menue{} übersetzen
-  menue: { titel: 'Optionen', sprache: 'Textsprache', beschlagnahme: 'Zivi nimmt die Ware ab', musik: 'Musik', ton: 'Ton', an: 'an', aus: 'aus', schliessen: 'Schließen', hinweis: 'Stimmen bleiben Englisch.' },
+  menue: { titel: 'Optionen', sprache: 'Textsprache', beschlagnahme: 'Zivi nimmt die Ware ab', musik: 'Musik', ton: 'Ton', an: 'an', aus: 'aus', schliessen: 'Schließen', hinweis: 'Stimmen bleiben Englisch.', info: 'Hilfe', anzeigen: 'Anzeigen' },
   // Startkarte bei vorhandenem Spielstand
-  start: { titel: 'Bangi Beach', stand: 'Spielstand: Tag {tag} · {geld} Münzen · {ware} Beutel', weiter: 'Weiter', neu: 'Neues Spiel' },
+  start: { titel: 'Bangi Beach', untertitel: '', stand: 'Spielstand: Tag {tag} · {geld} Münzen · {ware} Beutel', weiter: 'Weiter', neu: 'Neues Spiel', info: 'Info' }, // Content: ui.titelbild{titel, untertitel, neues_spiel, weiter, info}
+  // Intro nach „Neues Spiel“: Kamerafahrt zur Hütte mit Zielschild, dann zum Startstrand; Content: ui.intro[] (eine Zeile nach der anderen)
+  intro: { zeilen: ['Das ist dein Ziel.'], hinweis: 'Enter überspringt' },
+  // Info-Seite (Titel → Info, ⚙ → Hilfe)
+  info: { titel: 'Bangi Beach — so geht’s', zurueck: 'Zurück', zeilen: ['Du verkaufst Beutel am Strand. Sandalen kaufen, Turnschuhe sind Zivis: lieber nicht.', 'Laufen: WASD oder Pfeile, Shift rennt, Klick läuft hin. Kamera: Q/E drehen (R geht auch), Mausrad neigt.', 'F: ansprechen und genau hinschauen (Schuhe, Hemd, Kram) — das Gespräch läuft mit Blick aufs Gesicht.', 'Heat steigt bei falschen Kunden und vor der Streife; im Gedränge und in Verstecken verliert sie dich.', 'Abends in die Bar: der Mentor redet, der Heat kühlt. Bis Sonntag die Hütte am Weststrand bezahlen.'] },
   hud: { tag: 'Tag', heat: 'Heat', ware: 'Ware', geld: 'Kasse', mangos: 'Mangos', ziel: 'Ziel' },
 
   // Karte nach dem Finale: weiterspielen (Tag 8 ff.) oder die Woche neu starten
-  finale: { titel: 'Die Woche ist rum.', kasse: 'Kasse: {geld} Münzen · Ziel: {muenzen}', weiterspielen: 'Weiterspielen', neue_woche: 'Neue Woche' },
+  finale: { titel: 'Die Woche ist rum.', titel_erfolg: 'Die Hütte ist deine.', kasse: 'Kasse: {geld} Münzen · Ziel: {muenzen}', neu_versuchen: 'Schade – neu versuchen', zur_huette: 'Zur Hütte', neu: 'Neues Spiel', hinweis: 'Neues Spiel: Enter oder Reden-Knopf', fail_zeilen: [], erfolg_zeilen: [] }, // Content: ui.ende{fail{titel, zeilen[], button}, erfolg{…}}
   reveal_gags: [],
 };
 const strList = (v, fallback) => (Array.isArray(v) && v.length && v.every((x) => typeof x === 'string' && x.trim()) ? v : fallback);
@@ -330,7 +338,7 @@ export function normalizeTexte(json) {
   const tagesende = {};
   for (const l of LAGEN) tagesende[l] = strList(te[l], DEFAULT_TEXTE.tagesende[l]);
   const strMap = (src, defaults) => Object.fromEntries(Object.keys(defaults).map((k) => [k, str(src[k], defaults[k])]));
-  return {
+  return mergeTitelEnde({
     ausverkauft: strList(t.ausverkauft, DEFAULT_TEXTE.ausverkauft),
     ausverkauft_kunde: strList(pick('ausverkauft_kunde'), DEFAULT_TEXTE.ausverkauft_kunde),
     tagesende,
@@ -346,7 +354,25 @@ export function normalizeTexte(json) {
     verhandeln: { angenommen: strList(vh.angenommen, DEFAULT_TEXTE.verhandeln.angenommen), weg: strList(vh.weg, DEFAULT_TEXTE.verhandeln.weg) },
     hud: strMap(hu, DEFAULT_TEXTE.hud),
     finale: strMap(fi, DEFAULT_TEXTE.finale),
-  };
+    intro: { zeilen: strList(Array.isArray(pick('intro')) ? pick('intro') : obj(pick('intro')).zeilen, DEFAULT_TEXTE.intro.zeilen), hinweis: str(obj(pick('intro')).hinweis, DEFAULT_TEXTE.intro.hinweis) },
+    info: normalizeInfo(obj(pick('info'))),
+  }, u);
+}
+// Info-Seite: ui.info{titel, abschnitte[{ueberschrift, text}], steuerung[{taste, text}], schliessen} (Content) oder {titel, zeilen[], zurueck} (Code)
+function normalizeInfo(inf) {
+  const D = DEFAULT_TEXTE.info;
+  const abs = (Array.isArray(inf.abschnitte) ? inf.abschnitte : []).filter((a) => a && typeof a === 'object' && typeof a.text === 'string' && a.text.trim()).map((a) => (typeof a.ueberschrift === 'string' && a.ueberschrift.trim() ? `${a.ueberschrift}: ${a.text}` : a.text));
+  const st = (Array.isArray(inf.steuerung) ? inf.steuerung : []).filter((a) => a && typeof a === 'object' && typeof a.text === 'string' && a.text.trim()).map((a) => (typeof a.taste === 'string' && a.taste.trim() ? `${a.taste} — ${a.text}` : a.text));
+  const zeilen = abs.length || st.length ? [...abs, ...st] : strList(inf.zeilen, D.zeilen);
+  return { titel: str(inf.titel, D.titel), zurueck: str(inf.schliessen, str(inf.zurueck, D.zurueck)), zeilen };
+}
+// Titelbild und Endscreens aus dem Content-Schema (ui.titelbild, ui.ende) über die Code-Schlüssel legen
+function mergeTitelEnde(out, u) {
+  const tb = u.titelbild && typeof u.titelbild === 'object' ? u.titelbild : {}, en = u.ende && typeof u.ende === 'object' ? u.ende : {};
+  const ef = en.fail && typeof en.fail === 'object' ? en.fail : {}, eg = en.erfolg && typeof en.erfolg === 'object' ? en.erfolg : {};
+  out.start = { ...out.start, titel: str(tb.titel, out.start.titel), untertitel: str(tb.untertitel, out.start.untertitel), neu: str(tb.neues_spiel, out.start.neu), weiter: str(tb.weiter, out.start.weiter), info: str(tb.info, out.start.info) };
+  out.finale = { ...out.finale, titel: str(ef.titel, out.finale.titel), neu_versuchen: str(ef.button, out.finale.neu_versuchen), titel_erfolg: str(eg.titel, out.finale.titel_erfolg), zur_huette: str(eg.button, out.finale.zur_huette), fail_zeilen: strList(ef.zeilen, []), erfolg_zeilen: strList(eg.zeilen, []) };
+  return out;
 }
 
 // ---------- Sprache: zweite Datei je Quelle (texte.en.json, kunden.en.json), Deep-Merge mit DE als Fallback ----------
@@ -563,7 +589,7 @@ export function wochenziel(katalog, woche, o = WOCHENZIEL) {
   const tage = woche ? woche.tage : DEFAULT_WOCHE.tage;
   let erloes = 0;
   for (const t of tage) {
-    const n = KUNDEN_PRO_TAG * (t.modifikator?.kunden_faktor || 1);
+    const n = harmloseFuerTag(t.modifikator?.kunden_faktor || 1);
     const harmlos = pickKunden(katalog, n, 2, t.tag).filter((k) => !k.zivi);
     erloes += harmlos.reduce((a, k) => a + k.zahlt, 0) * o.quote - o.kostenProTag;
   }
@@ -584,12 +610,35 @@ export function kalibriereWoche(woche, katalog, o = WOCHENZIEL) {
 export function neueWoche(state) {
   return { ...initialState(), woche: (state.woche || 1) + 1, tageOhneVorfall: state.tageOhneVorfall || 0 };
 }
-/** Karte nach dem Finale: bei fail steht „Neue Woche“ vorn (vorausgewählt) */
+/** Karte nach Tag 7: die Woche ist immer vorbei. Erfolg (Kasse ≥ Ziel) → ein Knopf zum Erfolgs-Tableau; sonst „Schade – neu versuchen“ (neue Woche). */
 export function finaleKarte(state, woche, texte = null) {
   const T = (texte || DEFAULT_TEXTE).finale;
   const stufe = state.finale || finaleStufe(state, woche);
-  const buttons = stufe === 'fail' ? [T.neue_woche, T.weiterspielen] : [T.weiterspielen, T.neue_woche];
-  return { titel: T.titel, zeilen: [woche.titel, fillText(T.kasse, { geld: state.geld, muenzen: woche.ziel.muenzen })], buttons, neueWocheIdx: stufe === 'fail' ? 0 : 1, stufe };
+  const erfolg = stufe === 'gut';
+  const eigene = erfolg ? T.erfolg_zeilen : T.fail_zeilen; // Endscreen-Zeilen (ui.ende), sonst die Story-Zeilen der Woche
+  const text = (Array.isArray(eigene) && eigene.length ? eigene : (woche.finale?.[erfolg ? 'gut' : 'fail']?.text || []).slice(0, 2)).map((z) => fillText(z, { muenzen: woche.ziel.muenzen }));
+  return { titel: erfolg ? T.titel_erfolg : T.titel, zeilen: [woche.titel, fillText(T.kasse, { geld: state.geld, muenzen: woche.ziel.muenzen }), ...text], buttons: [erfolg ? T.zur_huette : T.neu_versuchen], neueWocheIdx: erfolg ? -1 : 0, stufe, erfolg };
+}
+/** Fähren-Besucher: n Harmlose, die heute nicht am Strand stehen, deterministisch nach Fähren-Nummer gedreht */
+export function besucherWahl(katalog, heuteIds = [], n = 1, nr = 0) {
+  const pool = katalog.filter((k) => !k.zivi && !heuteIds.includes(k.id) && k.figuren !== 2);
+  if (!pool.length) return [];
+  const out = [];
+  for (let i = 0; i < Math.min(n, pool.length); i++) out.push(pool[(nr * 2 + i) % pool.length]);
+  return out;
+}
+/** Besucher-Schritt: läuft die Punkte einmal ab (status runde), wartet am Ende (wartet) und fährt mit der nächsten Fähre (weg) */
+export function besucherStep(npc, dt, { docked = false, pauseTime = 1.0, arrive = 0.3 } = {}) {
+  if (npc.status === 'weg') return { ...npc, moving: false };
+  if (npc.status === 'wartet') return { ...npc, moving: false, status: docked ? 'weg' : 'wartet' };
+  if (!npc.points || npc.points.length < 2) return { ...npc, moving: false, status: 'wartet' };
+  if (npc.pause > 0) return { ...npc, pause: Math.max(0, npc.pause - dt), moving: false };
+  const idx = Math.min(npc.idx ?? 1, npc.points.length - 1);
+  const p = npc.points[idx];
+  const dx = p.x - npc.x, dz = p.z - npc.z, d = Math.hypot(dx, dz);
+  if (d <= arrive) return idx >= npc.points.length - 1 ? { ...npc, idx, moving: false, status: 'wartet' } : { ...npc, idx: idx + 1, pause: pauseTime, moving: false };
+  const step = Math.min(d, npc.speed * dt);
+  return { ...npc, idx, x: npc.x + (dx / d) * step, z: npc.z + (dz / d) * step, yaw: Math.atan2(dx, dz), moving: true, status: 'runde' };
 }
 
 // ---------- Tutorial Tag 1 (data/texte.json → tutorial{}): geführte Schritte, folgen dem Spieler, überspringbar ----------

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   initialState, normalizeKunde, normalizeKatalog, pickLine, sell, decline, isArrested, newDay, heatLabel,
   startDialog, advanceDialog, chooseOption, moodFor, nearestKunde, wanderStep, inspectCamera, kundeLookYaw,
-  START_WARE, MAX_WARE, MAX_HEAT, pickKunden, idSeed,
+  START_WARE, MAX_WARE, MAX_HEAT, pickKunden, idSeed, harmloseFuerTag, KUNDEN_MIN_HARMLOS, KUNDEN_PRO_TAG, besucherWahl, besucherStep,
   DEFAULT_TEXTE, normalizeTexte, fillText, dayReport, soldOutDialog, isSoldOut, assignOutfits, outfitKey, variantCount, lageFor, dayEndCard, normalizeGags, gagFor, nextIdleGagDelay, ZIVI_BESCHLAGNAHMT,
   normalizeStimmen, stimmeSlug, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, applyMentorAktion, mentorBesucht,
@@ -210,23 +210,26 @@ test('kundeLookYaw: schaut nur in der Nähe zum Spieler, mit Anschlag', () => {
   close(kundeLookYaw(k, { x: 0, z: -5 }), 1.0, 1e-9, 'Anschlag');
 });
 
-test('pickKunden: 7 Kunden pro Tag, 2 Zivis, die pro Tag rotieren; Katalogreihenfolge bleibt', () => {
+test('pickKunden: 6 Harmlose pro Tag plus 2 Zivis obendrauf, die pro Tag rotieren; Katalogreihenfolge bleibt', () => {
   const kat = [
     { id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }, { id: 'e' }, { id: 'f' }, { id: 'g' },
     { id: 'z1', zivi: true }, { id: 'z2', zivi: true }, { id: 'z3', zivi: true },
   ];
   const p = pickKunden(kat);
-  assert.equal(p.length, 7);
+  assert.equal(p.length, 8, '6 Harmlose + 2 Zivis');
   assert.equal(p.filter((k) => k.zivi).length, 2);
-  assert.deepEqual(p.map((k) => k.id), ['a', 'b', 'c', 'd', 'e', 'z1', 'z2']);
+  assert.deepEqual(p.map((k) => k.id), ['a', 'b', 'c', 'd', 'e', 'f', 'z1', 'z2']);
+  assert.equal(pickKunden(kat, 3).filter((k) => !k.zivi).length, 3, 'n zählt nur Harmlose'); assert.equal(pickKunden(kat, 3).length, 5);
+  assert.equal(pickKunden(kat, 20).length, 10, 'mehr als der Katalog geht nicht');
+  assert.equal(harmloseFuerTag(0.6), KUNDEN_MIN_HARMLOS, 'Regen drückt nie unter das Minimum'); assert.equal(harmloseFuerTag(1.4), Math.round(KUNDEN_PRO_TAG * 1.4)); assert.equal(harmloseFuerTag(), KUNDEN_PRO_TAG);
   assert.deepEqual(pickKunden(kat, 7, 2, 2).filter((k) => k.zivi).map((k) => k.id), ['z2', 'z3'], 'Tag 2');
   assert.deepEqual(pickKunden(kat, 7, 2, 3).filter((k) => k.zivi).map((k) => k.id), ['z1', 'z3'], 'Tag 3 (zyklisch, Katalogreihenfolge)');
   assert.deepEqual(pickKunden(kat, 7, 2, 4).filter((k) => k.zivi).map((k) => k.id), ['z1', 'z2'], 'Tag 4 = Tag 1');
   // alle drei Zivis kommen innerhalb von drei Tagen dran
   const seen = new Set([1, 2, 3].flatMap((d) => pickKunden(kat, 7, 2, d).filter((k) => k.zivi).map((k) => k.id)));
   assert.deepEqual([...seen].sort(), ['z1', 'z2', 'z3']);
-  const p6 = pickKunden(kat, 6, 2);
-  assert.deepEqual(p6.map((k) => k.id), ['a', 'b', 'c', 'd', 'z1', 'z2']);
+  const p4 = pickKunden(kat, 4, 2);
+  assert.deepEqual(p4.map((k) => k.id), ['a', 'b', 'c', 'd', 'z1', 'z2']);
   // kleiner Katalog: alles nehmen
   assert.equal(pickKunden([{ id: 'x' }, { id: 'y', zivi: true }], 6, 2).length, 2);
   // keine Zivis vorhanden: trotzdem n Kunden
@@ -845,7 +848,7 @@ test('Wochenziel-Kalibrierung: Erlös = Σ Tage (Preise der Harmlosen × Quote �
     { id: 'z1', zivi: true, zahlt: 70 }, { id: 'z2', zivi: true, zahlt: 70 },
   ] });
   const W = normalizeWoche({ woche: { tage: [{ tag: 1 }, { tag: 2, modifikator: { kunden_faktor: 2 } }] } });
-  // Tag 1: 7 gezogen = alle 5 Harmlosen (150) + 2 Zivis; Tag 2 (×2): wieder alle 5 Harmlosen → 2 × (150 × 0.9 − 10) = 250
+  // Tag 1: 6 Harmlose gewünscht = alle 5 (150) + 2 Zivis; Tag 2 (×2): wieder alle 5 Harmlosen → 2 × (150 × 0.9 − 10) = 250
   const z = wochenziel(kat, W);
   assert.equal(z.erloes, 250); assert.equal(z.muenzen, 200, '70 % von 250 = 175 → 200'); assert.equal(z.mittel_ab, 100, '60 % von 200 = 120 → 100');
   assert.equal(WOCHENZIEL.anteil, 0.7);
@@ -861,19 +864,37 @@ test('Wochenziel-Kalibrierung: Erlös = Σ Tage (Preise der Harmlosen × Quote �
   assert.ok(e.muenzen >= 400 && e.muenzen <= 1000, `Ziel ${e.muenzen} (Erlös ${e.erloes})`);
   assert.equal(e.muenzen % 50, 0); assert.ok(e.mittel_ab < e.muenzen);
 });
-test('Neue Woche und Finale-Karte: Start auf Tag 1 mit Wochenzähler +1; bei fail steht „Neue Woche“ vorn; Spielstand nimmt woche mit', () => {
+test('Neue Woche und Finale-Karte: Start auf Tag 1 mit Wochenzähler +1; Tag 7 endet immer — Erfolg → Hütte, sonst „Schade – neu versuchen“; Spielstand nimmt woche mit', () => {
   const s = { ...initialState(), tag: 7, geld: 730, ware: 9, heat: 2, finale: 'gut', woche: 1, tageOhneVorfall: 4 };
   const n = neueWoche(s);
   assert.equal(n.tag, 1); assert.equal(n.geld, 0); assert.equal(n.ware, START_WARE); assert.equal(n.heat, 0); assert.equal(n.finale, null); assert.equal(n.woche, 2); assert.equal(n.tageOhneVorfall, 4);
   const W = normalizeWoche(null);
   const kg = finaleKarte(s, W);
-  assert.deepEqual(kg.buttons, ['Weiterspielen', 'Neue Woche']); assert.equal(kg.neueWocheIdx, 1); assert.equal(kg.stufe, 'gut');
+  assert.deepEqual(kg.buttons, ['Zur Hütte']); assert.equal(kg.erfolg, true); assert.equal(kg.stufe, 'gut'); assert.equal(kg.titel, 'Die Hütte ist deine.'); assert.ok(kg.zeilen.includes(W.finale.gut.text[0]));
   const kf = finaleKarte({ ...s, geld: 10, finale: 'fail' }, W);
-  assert.deepEqual(kf.buttons, ['Neue Woche', 'Weiterspielen']); assert.equal(kf.neueWocheIdx, 0);
-  assert.ok(kf.zeilen[1].includes('10') && kf.zeilen[1].includes(String(W.ziel.muenzen)));
-  assert.equal(finaleKarte({ ...s, finale: null, geld: 650 }, W).stufe, 'mittel', 'ohne gesetzte Stufe nach Kasse');
+  assert.deepEqual(kf.buttons, ['Schade – neu versuchen']); assert.equal(kf.neueWocheIdx, 0); assert.equal(kf.erfolg, false);
+  assert.ok(kf.zeilen[1].includes('10') && kf.zeilen[1].includes(String(W.ziel.muenzen))); assert.ok(!kg.buttons.concat(kf.buttons).some((b) => /Weiterspielen/.test(b)), 'kein Weiterspielen mehr');
+  const km = finaleKarte({ ...s, finale: null, geld: 650 }, W); assert.equal(km.stufe, 'mittel', 'ohne gesetzte Stufe nach Kasse'); assert.equal(km.erfolg, false, 'mittel zählt als nicht geschafft');
+  // Fähren-Besucher: Harmlose, die heute nicht da sind, nie Paare; laufen die Runde, warten am Ende, fahren mit der nächsten Fähre
+  const kat = [{ id: 'a' }, { id: 'b', zivi: true }, { id: 'c' }, { id: 'd', figuren: 2 }, { id: 'e' }];
+  assert.deepEqual(besucherWahl(kat, ['a'], 2, 0).map((k) => k.id), ['c', 'e']); assert.deepEqual(besucherWahl(kat, [], 1, 1).map((k) => k.id), ['e']); assert.deepEqual(besucherWahl(kat, ['a', 'c', 'e'], 2, 0), []);
+  let b = { x: 0, z: 0, yaw: 0, speed: 2, points: [{ x: 0, z: 0 }, { x: 4, z: 0 }, { x: 4, z: 3 }], idx: 1, pause: 0, status: 'runde' };
+  for (let i = 0; i < 40; i++) b = besucherStep(b, 0.1);
+  assert.ok(Math.abs(b.x - 4) < 0.35 && b.idx === 2, `am ersten Punkt angekommen, Pause (${b.x.toFixed(2)}, idx ${b.idx}, pause ${b.pause})`);
+  for (let i = 0; i < 60; i++) b = besucherStep(b, 0.1);
+  assert.equal(b.status, 'wartet'); assert.equal(b.moving, false); assert.ok(Math.abs(b.z - 3) < 0.35);
+  assert.equal(besucherStep(b, 0.1).status, 'wartet'); assert.equal(besucherStep(b, 0.1, { docked: true }).status, 'weg'); assert.equal(besucherStep({ ...b, status: 'weg' }, 1, { docked: false }).status, 'weg');
   assert.equal(fromSave(toSave(n)).woche, 2); assert.equal(fromSave(toSave({ ...s, woche: 'x' })).woche, 1);
   assert.equal(nT(null).hud.tag, 'Tag'); assert.equal(nT({ ui: { hud: { tag: 'Day' } } }).hud.tag, 'Day');
+  // Content-Schema für Titel/Intro/Ende/Info (ui.titelbild, ui.intro[], ui.ende, ui.info{abschnitte, steuerung}) landet auf den Code-Schlüsseln
+  const C = nT({ ui: { titelbild: { titel: 'Bangi Bay', untertitel: 'Lies die Schuhe.', neues_spiel: 'Los', info: 'Hilfe' }, intro: ['Ziel: {muenzen}.', 'Regel null.'], ende: { fail: { titel: 'Pause.', zeilen: ['a', 'b'], button: 'Neu' }, erfolg: { titel: 'Deine.', zeilen: ['c'], button: 'Nochmal' } }, info: { titel: 'So geht’s', abschnitte: [{ ueberschrift: 'Ziel', text: '{muenzen} Münzen.' }, { text: 'ohne Titel' }, 'kaputt'], steuerung: [{ taste: 'F', text: 'reden' }], schliessen: 'Zu' } } });
+  assert.equal(C.start.titel, 'Bangi Bay'); assert.equal(C.start.untertitel, 'Lies die Schuhe.'); assert.equal(C.start.neu, 'Los'); assert.equal(C.start.info, 'Hilfe'); assert.equal(C.start.weiter, 'Weiter');
+  assert.deepEqual(C.intro.zeilen, ['Ziel: {muenzen}.', 'Regel null.']); assert.equal(C.finale.titel, 'Pause.'); assert.equal(C.finale.neu_versuchen, 'Neu'); assert.equal(C.finale.titel_erfolg, 'Deine.'); assert.equal(C.finale.zur_huette, 'Nochmal'); assert.deepEqual(C.finale.fail_zeilen, ['a', 'b']);
+  assert.deepEqual(C.info.zeilen, ['Ziel: {muenzen} Münzen.', 'ohne Titel', 'F — reden']); assert.equal(C.info.zurueck, 'Zu'); assert.equal(C.info.titel, 'So geht’s');
+  const kc = finaleKarte({ ...s, geld: 10, finale: 'fail' }, W, C); assert.deepEqual(kc.buttons, ['Neu']); assert.ok(kc.zeilen.includes('a') && kc.zeilen.includes('b') && kc.titel === 'Pause.');
+  assert.ok(nT(null).info.zeilen.length >= 3 && nT(null).intro.zeilen.length === 1, 'Code-Defaults ohne Content');
+  const echt = nT(JSON.parse(readFileSync(new URL('../data/texte.json', import.meta.url), 'utf8')));
+  assert.ok(echt.intro.zeilen.length >= 3 && echt.finale.erfolg_zeilen.length >= 1 && echt.info.zeilen.length >= 5 && echt.start.untertitel, 'echte Datei liefert Titel/Intro/Ende/Info');
 });
 
 import { normalizeEreignisse, ereignisFuerTag, tagesWuerfel, ereignisKundenFaktor, ereignisZiviExtra, DEFAULT_EREIGNISSE, EREIGNIS_CHANCE } from '../js/game.js';
@@ -1000,7 +1021,7 @@ test('Rotation: über 7 Tage kommt jeder Kunde des echten Katalogs mindestens ei
   for (let d = 1; d <= 7; d++) for (const k of kundenFuerTag(kat, KPT, 2, d, null, tagesziel(W, d))) gesehen.add(k.id);
   const fehlt = kat.filter((k) => !gesehen.has(k.id)).map((k) => k.id);
   assert.deepEqual(fehlt, [], 'alle in einer Woche dabei');
-  for (let d = 1; d <= 7; d++) { const l = pickKunden(kat, KPT, 2, d); assert.equal(l.length, KPT); assert.ok(l.filter((k) => k.zivi).length >= 2); assert.equal(new Set(l.map((k) => k.id)).size, l.length); }
+  for (let d = 1; d <= 7; d++) { const l = pickKunden(kat, KPT, 2, d); assert.equal(l.length, KPT + 2, 'Harmlose plus zwei Zivis'); assert.equal(l.filter((k) => !k.zivi).length, KPT); assert.ok(l.filter((k) => k.zivi).length >= 2); assert.equal(new Set(l.map((k) => k.id)).size, l.length); }
   assert.notDeepEqual(pickKunden(kat, KPT, 2, 1).map((k) => k.id), pickKunden(kat, KPT, 2, 2).map((k) => k.id), 'Unbedenkliche rotieren');
   const omaTag = W.tage.find((t) => t.zielwert.oma)?.tag;
   if (omaTag) assert.ok(kundenFuerTag(kat, KPT, 2, omaTag, null, tagesziel(W, omaTag)).some((k) => k.id === 'oma_1'), 'Oma am Oma-Tag');

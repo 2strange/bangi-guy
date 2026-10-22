@@ -7,6 +7,20 @@ gemalte Gesichter.
 
 ![Übersicht](shots/prototyp.png)
 
+## Start, Ende, Steuerung (Runde 14)
+Titelbildschirm (Neues Spiel / Weiter / Info) statt Sofortstart; „Neues Spiel“ zeigt erst die Hütte mit dem Zielschild
+(„Das ist dein Ziel“, Enter überspringt) und fährt dann zum Startstrand. Tag 7 beendet die Woche immer: Kasse ≥ Ziel →
+Erfolgs-Tableau an der Hütte (ohne Schild, Feuerwerk über die Welt-Hooks `huette.userData.tableau` / `world.feuerwerk`,
+sobald die Bausteine da sind), dort kann man noch herumlaufen, Enter/F/Reden-Knopf startet ein neues Spiel; sonst
+„Schade – neu versuchen“ (neue Woche). Kein Weiterspielen mehr. Eine Taste **F** für Ansprechen; das Gespräch läuft im
+Anschau-Modus (Kamera vors Gesicht, Dialog daneben). Kamera drehen mit **Q/E** (R geht weiter), Touch hat einen Knopf.
+Sprechblasen nur bei Figuren in Hörweite (18) und im Bild. Jeden Tag mindestens sechs Harmlose, Zivis obendrauf
+(`harmloseFuerTag`, `pickKunden`), und die Fähre bringt bei jedem Anlegen 1–2 Besucher, die eine Runde Hafen → Markt →
+Dorf drehen, am Steg warten und mit der nächsten Fähre abfahren (`besucherWahl`/`besucherStep`, getestet). Der Wasserball
+am Startstrand ist kickbar (`ballStep`: Stoß beim Drüberlaufen, rollt aus, prallt an Collidern und am Wasser ab).
+Info-Seite über den Titel oder ⚙ → Hilfe (`ui.info` in texte.json). Snaps: `?scene=titel`, `?scene=intro&bei=2`,
+`?scene=erfolg`, `?tag=2` setzt den Spieltag.
+
 ## Öffnen
 Three.js (`three@0.170.0`) kommt per Importmap von jsDelivr, kein Build. ES-Module laden nicht von `file://`,
 deshalb einen kleinen statischen Server im Ordner `spiel/` starten:

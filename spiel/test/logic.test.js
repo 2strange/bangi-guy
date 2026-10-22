@@ -5,6 +5,7 @@ import {
   inputToDir, dirToTarget, stepPlayer, resolveCollisions, pushOutCircle, pushOutRect,
   followCamera, waddlePose, npcHeadYaw, shoreZ, angleLerp, CAM_PITCH, CAM_DIST, clampPitch, camOffsetFor,
   WALK_SPEED, RUN_SPEED, PLAYER_RADIUS, WADE_DEPTH, WORLD, CAM_OFFSET, DEFAULT_CAM_YAW,
+  ballStep, BALL,
 } from '../js/logic.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -663,4 +664,21 @@ test('Kokos-Verkäufer: läuft am Wasser von West nach Ost und zurück, pausiert
   for (let i = 0; i < 60 * 120; i++) { r = kokosStep(r, 1 / 60); const q = kokosRuf(r); r = q.st; if (q.ruf) zeiten.push(r.zeit); }
   assert.ok(zeiten.length >= 5 && zeiten.length <= 10, `Rufe in 2 min: ${zeiten.length}`);
   for (let i = 1; i < zeiten.length; i++) { const dt = zeiten[i] - zeiten[i - 1]; assert.ok(dt >= KOKOS.rufMin - 0.05 && dt <= KOKOS.rufMax + 0.05, `Abstand ${dt.toFixed(2)}`); }
+});
+
+test('Wasserball: Stoß beim Drüberlaufen, rollt aus, prallt an Collidern und am Wasser ab, bleibt in der Welt', () => {
+  let b = { x: 0, z: 0, vx: 0, vz: 0 };
+  b = ballStep(b, { x: -0.8, z: 0, speed: 4, yaw: 0 }, 1 / 60);
+  assert.ok(b.kicked && b.vx > 4 && Math.abs(b.vz) < 1e-9, `Schubs weg vom Spieler (${b.vx.toFixed(2)})`); assert.ok(b.x >= BALL.r + 0.6 - 0.8 - 1e-9, 'aus dem Spieler gedrückt');
+  const v0 = Math.hypot(b.vx, b.vz); let t = 0;
+  while (b.rollt && t < 30) { b = ballStep(b, { x: -50, z: -50, speed: 0 }, 1 / 60); t += 1 / 60; }
+  assert.ok(!b.rollt && t > 1 && t < 15, `rollt aus (${t.toFixed(1)} s)`); assert.ok(b.x > 2 && b.x < 20, `Rollweg ${b.x.toFixed(2)}`); assert.ok(v0 > 0);
+  // Abprall an einer Wand (Rechteck) und am Wasser
+  let w = { x: 0, z: 0, vx: 6, vz: 0 };
+  for (let i = 0; i < 120; i++) w = ballStep(w, { x: -50, z: -50, speed: 0 }, 1 / 60, [{ x: 4, z: 0, w: 1, d: 10 }]);
+  assert.ok(w.x < 3.5 - BALL.r + 1e-6 && w.vx <= 0, `prallt zurück (${w.x.toFixed(2)}, vx ${w.vx.toFixed(2)})`);
+  let m = { x: 0, z: shoreZ(0) - 2, vx: 0, vz: 8 };
+  for (let i = 0; i < 120; i++) m = ballStep(m, { x: -50, z: -50, speed: 0 }, 1 / 60);
+  assert.ok(m.z <= shoreZ(m.x) + 0.5 + 1e-6 && m.vz <= 0, `bleibt am Ufer (${m.z.toFixed(2)})`);
+  const stumm = ballStep({ x: 5, z: 5, vx: 0, vz: 0 }, { x: 20, z: 20, speed: 4 }, 0.1); assert.ok(!stumm.kicked && !stumm.rollt, 'ohne Berührung bleibt er liegen');
 });

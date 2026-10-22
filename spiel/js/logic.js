@@ -22,6 +22,38 @@ export function shoreZ(x) {
   return 12 + 5 * Math.sin(t * Math.PI) - 1.5 * Math.sin(t * Math.PI * 3);
 }
 
+// ---------- Wasserball: Stoß beim Drüberlaufen, rollt aus, prallt an Collidern und am Wasser ab ----------
+export const BALL = { r: 0.42, minKick: 2.5, kick: 1.4, reibung: 1.1, stoss: 0.55, stopp: 0.05 };
+export function ballStep(b, player, dt, colliders = [], world = WORLD) {
+  const r = b.r ?? BALL.r;
+  let x = b.x, z = b.z, vx = b.vx || 0, vz = b.vz || 0, kicked = false;
+  // Stoß: der Spieler berührt den Ball → weg vom Spieler, mit seinem Tempo (mindestens ein Schubs)
+  const dx = x - player.x, dz = z - player.z, d = Math.hypot(dx, dz), min = r + PLAYER_RADIUS;
+  if (d < min) {
+    const nx = d > 1e-6 ? dx / d : Math.sin(player.yaw || 0), nz = d > 1e-6 ? dz / d : Math.cos(player.yaw || 0);
+    const sp = Math.max(BALL.minKick, (player.speed || 0) * BALL.kick);
+    vx = nx * sp; vz = nz * sp; x = player.x + nx * min; z = player.z + nz * min; kicked = true;
+  }
+  x += vx * dt; z += vz * dt;
+  const k = Math.exp(-BALL.reibung * dt); vx *= k; vz *= k;
+  if (Math.hypot(vx, vz) < BALL.stopp) { vx = 0; vz = 0; }
+  // Collider: rausdrücken und an der Normalen spiegeln (gedämpft)
+  for (const c of colliders) {
+    const q = c.r !== undefined ? pushOutCircle({ x, z }, r, c) : pushOutRect({ x, z }, r, c);
+    if (q.x === x && q.z === z) continue;
+    const nx = q.x - x, nz = q.z - z, n = Math.hypot(nx, nz) || 1, ux = nx / n, uz = nz / n;
+    const vn = vx * ux + vz * uz;
+    if (vn < 0) { vx -= (1 + BALL.stoss) * vn * ux; vz -= (1 + BALL.stoss) * vn * uz; }
+    x = q.x; z = q.z;
+  }
+  // Weltrand und Wasser: der Ball bleibt am Strand
+  x = Math.max(world.minX + r, Math.min(world.maxX - r, x));
+  if (z < world.minZ + r) { z = world.minZ + r; if (vz < 0) vz = -vz * BALL.stoss; }
+  const ufer = shoreZ(x) + 0.5;
+  if (z > ufer) { z = ufer; if (vz > 0) vz = -vz * BALL.stoss; }
+  return { ...b, x, z, vx, vz, r, kicked, rollt: Math.hypot(vx, vz) > 0 };
+}
+
 // Tasten → Richtungsvektor in Weltkoordinaten (x, z), um die Kamera-Gierung gedreht.
 export function inputToDir(keys, camYaw = 0) {
   let x = 0, z = 0;

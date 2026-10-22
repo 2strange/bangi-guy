@@ -216,7 +216,7 @@ export function buildWorld() {
   // Strand-Deko
   const ps = parasol(); ps.position.set(-18, 0, 6); ps.scale.setScalar(1.3); g.add(ps); circle(-17.55, 6, 0.2);
   const ps2 = parasol(); ps2.position.set(46, 0, 4); ps2.rotation.y = 2.2; ps2.scale.setScalar(1.3); g.add(ps2); circle(46.45, 4, 0.2);
-  const ball = beachBall(); ball.position.set(-20, 0.42, 9.5); g.add(ball); circle(-20, 9.5, 0.45);
+  const ball = beachBall(); ball.position.set(-20, 0.42, 9.5); g.add(ball); // kickbar: kein fester Collider, das Spiel bewegt ihn (logic.ballStep)
   const mb = mailbox(); mb.position.set(-18.5, 0, -8.5); mb.rotation.y = 0.4; mb.scale.setScalar(1.2); g.add(mb); circle(-18.5, -8.5, 0.42);
   for (const [x, z] of [[-12, 8], [-11.4, 8.4], [30, 7], [57, 3]]) {
     const c = coconut(); c.position.set(x, 0, z); c.rotation.z = rand() * 2; g.add(c);
@@ -267,5 +267,5 @@ export function buildWorld() {
     ost: { x: 58, z: -2, yaw: Math.PI / 2 },
     hecke: { x: 8, z: -17, yaw: 0.3 }, // Strandseite vor der Heckenlücke („nord“ gehört dem Dorf)
   };
-  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots, ...markt.spots, ...hafen.spots, ...reis.spots, ...hain.spots }, hideouts: [...dorf.hideouts, ...(markt.hideouts || []), ...(hafen.hideouts || []), ...(hain.hideouts || [])], dorf, huegel, markt, pier: hafen, reis, hain, sonne, nong, huette, wegweiser: sp, liegen, liegenAlle, surfer: su };
+  return { group: g, colliders, spots: { ...spots, ...dorf.spots, ...huegel.spots, ...markt.spots, ...hafen.spots, ...reis.spots, ...hain.spots }, hideouts: [...dorf.hideouts, ...(markt.hideouts || []), ...(hafen.hideouts || []), ...(hain.hideouts || [])], dorf, huegel, markt, pier: hafen, reis, hain, sonne, nong, huette, wegweiser: sp, liegen, liegenAlle, surfer: su, wasserball: ball };
 }

@@ -86,10 +86,11 @@ export function createUI() {
     b.el.style.display = 'block';
     b.until = performance.now() / 1000 + ttl;
   }
-  function placeBark(id, sx, sy, now = performance.now() / 1000) {
+  function placeBark(id, sx, sy, now = performance.now() / 1000, sichtbar = true) {
     const b = barks.get(id);
     if (!b) return;
-    if (now > b.until) { b.el.style.display = 'none'; return; }
+    if (now > b.until || !sichtbar) { b.el.style.display = 'none'; return; } // weit weg oder außerhalb des Bildes: Blase aus (läuft trotzdem ab)
+    b.el.style.display = 'block';
     const w = b.el.offsetWidth || 80;
     b.el.style.left = `${Math.max(6, Math.min(window.innerWidth - w - 6, sx - w / 2))}px`;
     b.el.style.top = `${Math.max(6, sy - (b.el.offsetHeight || 30) - 14)}px`;
@@ -167,9 +168,8 @@ export function createUI() {
       <div id="touch-buttons">
         <button id="btn-cam-l" class="tbtn small" aria-label="Kamera links">↺</button>
         <button id="btn-cam-r" class="tbtn small" aria-label="Kamera rechts">↻</button>
-        <button id="btn-look" class="tbtn" aria-label="Schauen">👀<span>Schauen</span></button>
         <button id="btn-talk" class="tbtn" aria-label="Reden">💬<span>Reden</span></button>
-      </div>`; // eine Reihe unten: ↺ ↻ klein, Schauen/Reden groß
+      </div>`; // eine Reihe unten: ↺ ↻ klein, ein Knopf Reden (Gespräch mit Blick aufs Gesicht)
     const joy = root.querySelector('#joy'), base = root.querySelector('#joy-base'), knob = root.querySelector('#joy-knob');
     const radius = 60;
     let pointerId = null, cx = 0, cy = 0;
@@ -206,7 +206,6 @@ export function createUI() {
       b.addEventListener('pointerup', stop); b.addEventListener('pointercancel', stop); b.addEventListener('pointerleave', stop);
     };
     bind('#btn-talk', (down) => { if (down) handlers.onTalk?.(); });
-    bind('#btn-look', (down) => { if (down) handlers.onLook?.(); });
     bind('#btn-cam-l', (down) => handlers.onCamLeft?.(down));
     bind('#btn-cam-r', (down) => handlers.onCamRight?.(down));
     return {
