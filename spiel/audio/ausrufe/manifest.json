@@ -1,0 +1,13 @@
+{
+  "_schema": "Datei-Manifest der echten Ausrufe. Eigentümer: Audio. Die LISTE der Ausrufe (id, text, stimme, situation, regie) liegt in data/ausrufe.json (Content); hier stehen nur die Dateien dazu. clips[] je Eintrag: id (muss in data/ausrufe.json existieren), datei oder dateien[] (relativ zu diesem Ordner; mehrere Formate in Reihenfolge der Versuche, z. B. ogg dann mp3; Platzhalter sind wav), tonhoehe_aufnahme (Tonhöhe der aufgenommenen Stimme auf der Skala der Stimmprofile, 1.0 = mittlere Männerstimme; Wiedergabe wird je Stimmprofil darauf bezogen gepitcht), platzhalter (true = synthetischer Blip aus platzhalter.mjs, kein echter Clip). Ausrufe ohne Eintrag hier laufen als Gebrabbel mit ihrem Text. Echte Clips: mp3 (läuft überall inkl. Safari), optional zusätzlich ogg davor.",
+  "clips": [
+    { "id": "duuude", "datei": "duuude.wav", "tonhoehe_aufnahme": 1.0, "platzhalter": true },
+    { "id": "far_out", "datei": "far_out.wav", "tonhoehe_aufnahme": 0.8, "platzhalter": true },
+    { "id": "all_good", "datei": "all_good.wav", "tonhoehe_aufnahme": 1.0, "platzhalter": true },
+    { "id": "bro", "datei": "bro.wav", "tonhoehe_aufnahme": 0.9, "platzhalter": true },
+    { "id": "control", "datei": "control.wav", "tonhoehe_aufnahme": 1.0, "platzhalter": true },
+    { "id": "got_you", "datei": "got_you.wav", "tonhoehe_aufnahme": 0.85, "platzhalter": true },
+    { "id": "listen_man", "datei": "listen_man.wav", "tonhoehe_aufnahme": 0.7, "platzhalter": true },
+    { "id": "hm", "datei": "hm.wav", "tonhoehe_aufnahme": 0.8, "platzhalter": true }
+  ]
+}

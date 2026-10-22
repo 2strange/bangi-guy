@@ -14,7 +14,8 @@
 //   music.start() / .stop() / .setVolume(0..1) / .setEnabled(bool)   Strand-Loop, ~75 BPM
 //   loadStimmen() → stimmeFor(id)   Stimmprofile + Barks aus data/stimmen.json
 //   babble(stimmeOderId, text, { pan }) → Dauer in Sekunden; stopBabble()
-//   bark(id, situation, { pan }) → { text, dauer } | null   zufälliger englischer Bark aus stimmen.json, gebrabbelt
+//   bark(id, situation, { pan }) → { text, dauer, clip?, echt? } | null   Ausruf-Clip (wenn im Manifest) sonst Bark gebrabbelt
+//   loadAusrufe() / preloadAusrufe(slug|'alle') / ausruf(id, stimme, { pan, gain })   echte Ausrufe aus audio/ausrufe/manifest.json
 //   setVoiceMode('babble' | 'tts') / getVoiceMode()   Gebrabbel (Standard) oder Browser-Sprachausgabe (Englisch)
 
 // ---------- Lautstärken (zentral) ----------
@@ -1262,6 +1263,13 @@ export const barkSituations = (id) => Object.keys(stimmen.barks[slugFor(stimmen,
  */
 export function bark(id, situation, opts = {}) {
   const slug = slugFor(stimmen, id);
+  // Echter Ausruf (Clip), wenn das Manifest einen für Slug + Situation hat; sonst Gebrabbel aus den Barks
+  const clip = pickAusruf(ausrufe, slug, situation, lastAusruf[slug], Math.random);
+  if (clip && !(opts && opts.nurBrabbeln)) {
+    lastAusruf[slug] = clip.id;
+    const r = ausruf(clip.id, slug, opts);
+    if (r) return { text: clip.text, dauer: r.dauer, clip: clip.id, echt: r.echt };
+  }
   const text = pickBark(stimmen, slug, situation, lastBark[slug]);
   if (!text) return null;
   lastBark[slug] = text;
@@ -1399,4 +1407,134 @@ export function ereignis(slug, phase = 'start', opts) {
     else if (art === 'musik_an') { clearTimeout(musikAusTimer); musikAusTimer = null; music.start(); }
   }
   return d;
+}
+
+// ---------- Echte Ausrufe (kurze Clips) ----------
+// Liste data/ausrufe.json (Content) + Datei-Manifest audio/ausrufe/manifest.json (Audio) → mergeAusrufe; Form je Eintrag:
+// { id, text, stimme: slug|null, situation: string|string[], dateien[], tonhoehe_aufnahme, platzhalter }
+// Clips laufen über den Voice-Bus mit Pan; Tonhöhe je Stimmprofil per playbackRate (Cartoon-Chipmunk, bewusst grob).
+// Fehlt ein Clip (nicht im Manifest, Datei fehlt, noch nicht geladen, decode schlägt fehl): Gebrabbel mit dem Manifest-Text.
+export const AUSRUF_ALLGEMEIN_QUOTE = 0.5; // Clip „für alle“ nur in der Hälfte der Fälle, damit es nicht leiert
+export function normalizeManifest(json) {
+  const list = json && Array.isArray(json.ausrufe) ? json.ausrufe : (Array.isArray(json) ? json : []);
+  const out = [];
+  const seen = new Set();
+  for (const e of list) {
+    if (!e || typeof e !== 'object' || typeof e.id !== 'string' || !/^[a-z0-9_]+$/.test(e.id) || seen.has(e.id)) continue;
+    const dateien = Array.isArray(e.dateien) ? e.dateien.filter((d) => typeof d === 'string') : (typeof e.datei === 'string' ? [e.datei] : []);
+    const situation = Array.isArray(e.situation) ? e.situation.map(String) : (e.situation ? [String(e.situation)] : []);
+    seen.add(e.id);
+    out.push({
+      id: e.id, text: typeof e.text === 'string' && e.text ? e.text : e.id, dateien,
+      stimme: typeof e.stimme === 'string' && e.stimme ? e.stimme : null, situation,
+      tonhoehe_aufnahme: clamp(Number(e.tonhoehe_aufnahme) || 1, 0.4, 2.5), platzhalter: e.platzhalter === true,
+    });
+  }
+  return out;
+}
+/**
+ * Clip für Slug + Situation wählen (rein): eigener Clip der Stimme immer; allgemeiner Clip mit AUSRUF_ALLGEMEIN_QUOTE;
+ * nie derselbe zweimal hintereinander, wenn es mehrere gibt. null = kein Clip → Gebrabbel.
+ */
+export function pickAusruf(list, slug, situation, lastId = null, r = Math.random) {
+  const passt = (e) => e.situation.includes(situation);
+  const eigene = list.filter((e) => e.stimme === slug && passt(e));
+  let pool = eigene;
+  if (!pool.length) {
+    const allg = list.filter((e) => e.stimme === null && passt(e));
+    if (!allg.length || r() >= AUSRUF_ALLGEMEIN_QUOTE) return null;
+    pool = allg;
+  }
+  const ohneLetzten = pool.length > 1 ? pool.filter((e) => e.id !== lastId) : pool;
+  return ohneLetzten[Math.floor(r() * ohneLetzten.length) % ohneLetzten.length];
+}
+/** Abspielrate aus Stimmprofil und Aufnahme-Tonhöhe, begrenzt, damit es Cartoon bleibt und nicht Matsch */
+export const clipRate = (profil, aufnahme = 1) => clamp((Number(profil && profil.tonhoehe) || 1) / (Number(aufnahme) || 1), 0.6, 1.8);
+/** Ausrufe einer Stimme (oder alle) laut Manifest, rein */
+export const ausrufeFor = (list, slug) => list.filter((e) => e.stimme === slug || e.stimme === null);
+
+/**
+ * Liste (data/ausrufe.json, Content: id, text, stimme, situation, prio, regie) mit dem Datei-Manifest
+ * (audio/ausrufe/manifest.json, Audio: clips[] mit id, datei|dateien, tonhoehe_aufnahme, platzhalter) zusammenführen (rein).
+ * Die Liste bestimmt Text/Stimme/Situation, das Manifest die Dateien; Einträge ohne Datei laufen immer als Gebrabbel.
+ */
+export function mergeAusrufe(dataJson, manifestJson) {
+  const list = normalizeManifest(dataJson);
+  const clipsSrc = manifestJson && Array.isArray(manifestJson.clips) ? manifestJson.clips : [];
+  const byId = new Map(list.map((e) => [e.id, e]));
+  for (const c of clipsSrc) {
+    if (!c || typeof c.id !== 'string') continue;
+    const e = byId.get(c.id);
+    if (!e) continue; // Clip ohne Eintrag in der Liste: ignorieren (der Test meldet es)
+    e.dateien = Array.isArray(c.dateien) ? c.dateien.filter((d) => typeof d === 'string') : (typeof c.datei === 'string' ? [c.datei] : e.dateien);
+    if (c.tonhoehe_aufnahme !== undefined) e.tonhoehe_aufnahme = clamp(Number(c.tonhoehe_aufnahme) || 1, 0.4, 2.5);
+    e.platzhalter = c.platzhalter === true;
+  }
+  return list;
+}
+let ausrufe = [];           // zusammengeführte Liste
+let ausrufBase = './audio/ausrufe/';
+const clips = new Map();    // id → AudioBuffer | 'laedt' | 'fehlt'
+const lastAusruf = {};      // slug → zuletzt gespielte Clip-id
+export const getAusrufe = () => ausrufe.slice();
+export const setAusrufe = (dataJson, manifestJson = null, base) => { ausrufe = mergeAusrufe(dataJson, manifestJson); if (base) ausrufBase = base; clips.clear(); return ausrufe; };
+/** Liste + Manifest laden (nicht die Clips); fehlt eines, bleibt es bei Gebrabbel bzw. ohne Dateien. */
+export async function loadAusrufe(dataUrl = './data/ausrufe.json', manifestUrl = './audio/ausrufe/manifest.json') {
+  let data = null, manifest = null;
+  try { const r = await fetch(dataUrl, { cache: 'no-store' }); if (r.ok) data = await r.json(); } catch (e) { /* keine Liste → nur Gebrabbel */ }
+  try { const r = await fetch(manifestUrl, { cache: 'no-store' }); if (r.ok) manifest = await r.json(); } catch (e) { /* kein Manifest → keine Clips */ }
+  ausrufe = mergeAusrufe(data, manifest); ausrufBase = manifestUrl.replace(/[^/]*$/, ''); clips.clear();
+  return ausrufe;
+}
+async function decodeClip(entry) {
+  if (!ctx) return null;
+  for (const name of entry.dateien) {
+    try {
+      const res = await fetch(ausrufBase + name);
+      if (!res.ok) continue;
+      const buf = await ctx.decodeAudioData(await res.arrayBuffer());
+      return buf;
+    } catch (e) { /* nächstes Format */ }
+  }
+  return null;
+}
+function ensureClip(entry) {
+  const st = clips.get(entry.id);
+  if (st) return st;
+  if (!entry.dateien.length) { clips.set(entry.id, 'fehlt'); return 'fehlt'; }
+  clips.set(entry.id, 'laedt');
+  decodeClip(entry).then((buf) => clips.set(entry.id, buf || 'fehlt'));
+  return 'laedt';
+}
+/** Clips vorab dekodieren: Slug, Liste von ids oder 'alle'; z. B. beim Spawn der Kundschaft. */
+export function preloadAusrufe(was = 'alle') {
+  if (!ctx) return 0;
+  const list = was === 'alle' ? ausrufe : Array.isArray(was) ? ausrufe.filter((e) => was.includes(e.id)) : ausrufeFor(ausrufe, was);
+  for (const e of list) ensureClip(e);
+  return list.length;
+}
+export const clipStatus = (id) => { const st = clips.get(id); return st === undefined ? 'unbekannt' : (typeof st === 'string' ? st : 'bereit'); };
+/**
+ * Echten Ausruf abspielen. id aus dem Manifest, stimme = Slug/Profil fürs Pitch (und fürs Gebrabbel-Fallback).
+ * Gibt { dauer, echt } zurück (echt=false → Gebrabbel-Fallback lief), null bei unbekannter id.
+ */
+export function ausruf(id, stimme = 'default', opts = {}) {
+  const entry = ausrufe.find((e) => e.id === id);
+  if (!entry) return null;
+  const profil = typeof stimme === 'string' ? stimmeFor(stimme) : normalizeStimme(stimme);
+  const fallback = () => ({ dauer: babble(profil, entry.text, opts), echt: false });
+  if (!ready() || voiceMode === 'tts') return fallback();
+  const st = ensureClip(entry);
+  if (typeof st === 'string') return fallback(); // lädt noch oder fehlt → diesmal brabbeln
+  stopBabble();
+  const { gain, pan: panPos } = normalizeSfxOpts(opts);
+  const src = ctx.createBufferSource(); src.buffer = st; src.playbackRate.value = clipRate(profil, entry.tonhoehe_aufnahme);
+  const g = ctx.createGain(); g.gain.value = profil.laut * gain;
+  if (panPos) { const p = pan(panPos); src.connect(p); p.connect(g); } else src.connect(g);
+  g.connect(bus.voice);
+  const t0 = now() + 0.01, dauer = st.duration / src.playbackRate.value;
+  src.start(t0);
+  speaking = { gain: g, nodes: [src], until: t0 + dauer };
+  setTimeout(() => { if (speaking && speaking.gain === g) { speaking = null; g.disconnect(); } }, (dauer + 0.3) * 1000);
+  return { dauer, echt: true };
 }

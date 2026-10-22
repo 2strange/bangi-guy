@@ -88,6 +88,7 @@
       <span id="dur" class="small"></span>
     </div>
     <div class="row" style="margin-top:6px"><span class="small">Barks aus stimmen.json:</span><span id="barks" class="row"></span></div>
+    <div class="row" style="margin-top:6px"><span class="small">Echte Ausrufe (Manifest, gepitcht auf die gewählte Stimme):</span><span id="ausrufe" class="row"></span><button id="preload">⬇ alle laden</button><span id="clipinfo" class="small"></span></div>
     <div class="row small" style="margin-top:6px">
       <label>tonhoehe <input id="p" type="range" min="0.5" max="2" step="0.05" value="1"></label>
       <label>tempo <input id="t" type="range" min="0.6" max="1.6" step="0.05" value="1"></label>
@@ -158,6 +159,19 @@
     }
   };
   sel.onchange = renderBarks; renderBarks();
+  // Ausrufe: Manifest laden, je Clip ein Knopf; „echt“ = Clip lief, sonst Gebrabbel-Fallback
+  await A.loadAusrufe();
+  const renderAusrufe = () => {
+    $('ausrufe').innerHTML = '';
+    for (const e of A.getAusrufe()) {
+      const b = document.createElement('button'); b.textContent = `${e.id}${e.platzhalter ? ' (Platzhalter)' : ''}`;
+      b.title = `${e.text} · ${e.stimme || 'allgemein'} · ${e.situation.join(', ')}`;
+      b.onclick = () => { const r = A.ausruf(e.id, sel.value, panOpt()); if (r) { show(r.dauer, e.text); $('clipinfo').textContent = r.echt ? 'Clip' : `Gebrabbel-Fallback (Clip: ${A.clipStatus(e.id)})`; } };
+      $('ausrufe').appendChild(b);
+    }
+  };
+  renderAusrufe();
+  $('preload').onclick = () => { const n = A.preloadAusrufe('alle'); $('clipinfo').textContent = `${n} Clips angestoßen`; };
   $('sayfree').onclick = () => show(A.babble({ tonhoehe: +$('p').value, tempo: +$('t').value, stil: $('stil').value }, $('text').value, panOpt()));
   $('hush').onclick = () => A.stopBabble();
 </script>

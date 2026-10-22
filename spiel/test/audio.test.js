@@ -9,6 +9,7 @@ import {
   ZONES, normalizeZones, pseudoWords, nextRufDelay, nextFunkDelay, sputterTimes, normalizeSfxOpts,
   MOODS, normalizeMood, nextBpm, setMood, getMood, cricketBurst, nextClinkDelay, frogCall, nextFrogDelay, JINGLES,
   WETTER, normalizeWetter, nextDropDelay, duoPlan, DUO_TONHOEHE, DUO_VERSATZ, EREIGNIS_SOUNDS, ereignisAktionen, ereignis,
+  normalizeManifest, pickAusruf, clipRate, ausrufeFor, setAusrufe, getAusrufe, ausruf, clipStatus, preloadAusrufe, mergeAusrufe,
 } from '../js/audio.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -279,4 +280,78 @@ test('texte.json (Content): jeder Ereignis-Sound-Slug ist in audio.js gemappt', 
   const e = t.ereignisse; const liste = Array.isArray(e) ? e : (e && e.liste) || [];
   assert.ok(liste.length >= 1, 'Ereignisse vorhanden');
   for (const x of liste) if (x.sound) assert.ok(ereignisAktionen(x.sound) !== null, `Ereignis ${x.id}: Sound-Slug „${x.sound}“ unbekannt`);
+});
+
+test('Ausrufe (rein): Manifest normalisieren, Clip-Wahl (eigene immer, allgemeine zu 50 %, nie doppelt), Rate begrenzt', () => {
+  const m = normalizeManifest({ ausrufe: [
+    { id: 'dude', text: 'Dude!', datei: 'dude.wav', stimme: null, situation: ['gruss', 'kauf'] },
+    { id: 'far_out', text: 'Far out.', dateien: ['far_out.ogg', 'far_out.mp3'], stimme: 'stammkunde', situation: 'kauf', tonhoehe_aufnahme: 0.8 },
+    { id: 'far_out', text: 'doppelt' }, { id: 'Böse Id' }, { id: 'ohne_text' }, null,
+  ] });
+  assert.deepEqual(m.map((e) => e.id), ['dude', 'far_out', 'ohne_text']);
+  assert.deepEqual(m[1].dateien, ['far_out.ogg', 'far_out.mp3']); assert.deepEqual(m[1].situation, ['kauf']); assert.equal(m[1].tonhoehe_aufnahme, 0.8);
+  assert.equal(m[2].text, 'ohne_text', 'Fallback-Text = id'); assert.equal(m[2].stimme, null); assert.deepEqual(m[2].dateien, []);
+  assert.deepEqual(normalizeManifest(null), []);
+  // eigene Stimme: immer der eigene Clip, auch wenn der Zufall gegen allgemeine entscheidet
+  assert.equal(pickAusruf(m, 'stammkunde', 'kauf', null, () => 0.99).id, 'far_out');
+  // nur allgemein: zu 50 %
+  assert.equal(pickAusruf(m, 'surfer', 'gruss', null, () => 0.1).id, 'dude');
+  assert.equal(pickAusruf(m, 'surfer', 'gruss', null, () => 0.9), null);
+  assert.equal(pickAusruf(m, 'surfer', 'ablehnung', null, () => 0), null, 'keine Situation → kein Clip');
+  // nie derselbe zweimal, wenn Auswahl da ist
+  const two = normalizeManifest([{ id: 'a', stimme: 'x', situation: 'g' }, { id: 'b', stimme: 'x', situation: 'g' }]);
+  for (let i = 0; i < 10; i++) assert.equal(pickAusruf(two, 'x', 'g', 'a', rng(i)).id, 'b');
+  assert.equal(pickAusruf(two.slice(0, 1), 'x', 'g', 'a', () => 0).id, 'a', 'einziger Clip darf wiederholt werden');
+  assert.deepEqual(ausrufeFor(m, 'stammkunde').map((e) => e.id), ['dude', 'far_out', 'ohne_text']);
+  assert.deepEqual(ausrufeFor(m, 'surfer').map((e) => e.id), ['dude', 'ohne_text']);
+  close(clipRate({ tonhoehe: 1.2 }, 0.8), 1.5); assert.equal(clipRate({ tonhoehe: 2.5 }, 0.5), 1.8); assert.equal(clipRate({ tonhoehe: 0.4 }, 1), 0.6); assert.equal(clipRate(null), 1);
+});
+
+test('Ausrufe ohne WebAudio: Fallback Gebrabbel, bark nutzt Clip-Text, Status-API', () => {
+  setAusrufe({ ausrufe: [{ id: 'far_out', text: 'Far out.', stimme: 'stammkunde', situation: 'kauf' }] }, { clips: [{ id: 'far_out', datei: 'x.wav' }] });
+  assert.equal(getAusrufe().length, 1);
+  const r = ausruf('far_out', 'stammkunde');
+  assert.ok(r && r.echt === false && r.dauer > 0.1, 'ohne Audio: Gebrabbel-Fallback mit Dauer');
+  assert.equal(ausruf('gibtsnicht'), null);
+  assert.equal(clipStatus('far_out'), 'unbekannt'); assert.equal(preloadAusrufe('alle'), 0, 'ohne Context nichts zu laden');
+  const b = bark('stammkunde_1', 'kauf');
+  assert.ok(b && b.clip === 'far_out' && b.text === 'Far out.' && b.echt === false && b.dauer > 0);
+  const b2 = bark('stammkunde_1', 'kauf', { nurBrabbeln: true });
+  assert.ok(b2 && !b2.clip, 'nurBrabbeln umgeht den Clip');
+  setAusrufe(null); assert.equal(getAusrufe().length, 0);
+  assert.ok(bark('stammkunde_1', 'kauf') && !bark('stammkunde_1', 'kauf').clip);
+});
+
+test('Ausrufe (rein): Liste + Manifest zusammenführen — Liste bestimmt Text/Stimme/Situation, Manifest die Dateien', () => {
+  const data = { ausrufe: [{ id: 'a', text: 'A!', stimme: null, situation: 'gruss' }, { id: 'b', text: 'B.', stimme: 'mentor', situation: ['lektion', 'abend'] }] };
+  const man = { clips: [{ id: 'a', dateien: ['a.ogg', 'a.mp3'], tonhoehe_aufnahme: 0.7 }, { id: 'b', datei: 'b.wav', platzhalter: true }, { id: 'fremd', datei: 'x.wav' }] };
+  const m = mergeAusrufe(data, man);
+  assert.deepEqual(m.map((e) => e.id), ['a', 'b'], 'Clip ohne Listeneintrag wird ignoriert');
+  assert.deepEqual(m[0].dateien, ['a.ogg', 'a.mp3']); assert.equal(m[0].tonhoehe_aufnahme, 0.7); assert.equal(m[0].platzhalter, false);
+  assert.deepEqual(m[1].dateien, ['b.wav']); assert.equal(m[1].platzhalter, true); assert.deepEqual(m[1].situation, ['lektion', 'abend']);
+  const ohne = mergeAusrufe(data, null);
+  assert.deepEqual(ohne.map((e) => e.dateien), [[], []], 'ohne Manifest keine Dateien → immer Gebrabbel');
+  assert.deepEqual(mergeAusrufe(null, man), []);
+});
+
+test('data/ausrufe.json + audio/ausrufe/manifest.json: konsistent — Stimmen bekannt, Text+Situation da, Manifest-ids in der Liste, Dateien vorhanden', async () => {
+  const dir = new URL('../audio/ausrufe/', import.meta.url);
+  const data = JSON.parse(await readFile(new URL('../data/ausrufe.json', import.meta.url), 'utf8'));
+  const man = JSON.parse(await readFile(new URL('manifest.json', dir), 'utf8'));
+  const db = normalizeStimmen(JSON.parse(await readFile(new URL('../data/stimmen.json', import.meta.url), 'utf8')));
+  const m = mergeAusrufe(data, man);
+  assert.equal(m.length, data.ausrufe.length, 'kein Listeneintrag verworfen (id-Format/Doppel)');
+  const ids = new Set(m.map((e) => e.id));
+  for (const c of man.clips) assert.ok(ids.has(c.id), `Manifest-Clip ${c.id} ohne Eintrag in data/ausrufe.json`);
+  let mitClip = 0;
+  for (const e of m) {
+    assert.ok(e.text && e.text !== e.id, `${e.id}: Text als Fallback`);
+    assert.ok(e.situation.length >= 1, `${e.id}: Situation`);
+    if (e.stimme) assert.ok(db.stimmen[e.stimme], `${e.id}: Stimme ${e.stimme} unbekannt`);
+    for (const f of e.dateien) { assert.match(f, /^[a-z0-9_]+\.(wav|mp3|ogg)$/, `${e.id}: Dateiname ${f}`); await readFile(new URL(f, dir)); }
+    if (e.dateien.length) mitClip++;
+    // Fallback-Garantie: jeder Ausruf ist brabbelbar
+    assert.ok(babblePlan(e.stimme ? db.stimmen[e.stimme] : db.stimmen.default, e.text).duration > 0.05, `${e.id} brabbelbar`);
+  }
+  assert.ok(mitClip >= 1, 'mindestens ein Clip (Platzhalter) zum Testen');
 });

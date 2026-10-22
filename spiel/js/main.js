@@ -263,7 +263,8 @@ function spawnKunden(day = 1, { erzwinge = null } = {}) {
   list.forEach((def, i) => {
     const a = anchors[def.id];
     const n = seen[a.id] = (seen[a.id] || 0) + 1; // Notnagel: geteilter Platz versetzt
-    const pos = { x: a.x + (n - 1) * 2.2, z: a.z + (n - 1) * 1.3 };
+    const liege = n === 1 ? world.liegen?.[a.id] : null; // Strandliege: Sitzpunkt + Ausrichtung der Liege
+    const pos = liege ? { x: liege.sitz.x, z: liege.sitz.z } : { x: a.x + (n - 1) * 2.2, z: a.z + (n - 1) * 1.3 };
     const group = buildKunde(def, idSeed(def.id), outfits[def.id]);
     kundenExtras(group, def, { index: 0 }); // Kleinkram je Kunde (figures.js): Kegelhut, Helm, Pfeife, Blumenkranz …
     kundenGroup.add(group);
@@ -278,18 +279,19 @@ function spawnKunden(day = 1, { erzwinge = null } = {}) {
     setMood(group, def.stimmung_start || 'neutral');
     // kein Kreisen: ein Punkt, der Kunde bleibt an seinem Platz und tut etwas
     const pts = [pos];
-    const npc = { x: pos.x, z: pos.z, yaw: a.blick ?? 0, points: pts, idx: 0, pause: 99, speed: 0.5 + def.tempo * 1.1, phase: 0, activity: a.activity };
+    const npc = { x: pos.x, z: pos.z, yaw: liege ? liege.yaw : (a.blick ?? 0), points: pts, idx: 0, pause: 99, speed: 0.5 + def.tempo * 1.1, phase: 0, activity: a.activity };
     const collider = { x: npc.x, z: npc.z, r: 0.7 };
     colliders.push(collider);
     prepareGags(group);
-    kunden.push({ def, group, npc, collider, look: 0, id: def.id, gag: null, idleN: i, nextIdle: 3 + i * 1.3, anchor: a, arrived: def.spawn !== 'K1' });
+    kunden.push({ def, group, npc, collider, look: 0, id: def.id, gag: null, idleN: i, nextIdle: 3 + i * 1.3, anchor: a, liege, arrived: def.spawn !== 'K1' });
     // Fähren-Gäste (K1) warten unsichtbar auf dem Wasser, bis die Fähre anlegt
     if (def.spawn === 'K1' && world.pier?.ferrySpawn) { group.visible = false; collider.r = 0; }
     applyKunde(kunden[kunden.length - 1]);
   });
 }
 function applyKunde(k) {
-  k.group.position.set(k.npc.x, 0, k.npc.z);
+  const shift = k.group.userData.poseShift || 0; // Liegestuhl: Rumpf kippt zurück, Hüfte wandert nach vorn
+  k.group.position.set(k.npc.x + Math.sin(k.npc.yaw) * shift, 0, k.npc.z + Math.cos(k.npc.yaw) * shift);
   k.group.rotation.y = k.npc.yaw;
   k.collider.x = k.npc.x; k.collider.z = k.npc.z;
   k.group.position.y = k.group.userData.poseOffset || 0;
@@ -298,16 +300,17 @@ function applyKunde(k) {
   if (!k.npc.moving) {
     // steht am Platz: Tätigkeits-Pose aus figures.js (einmal gesetzt), nur der Kopf folgt dem Spieler
     if (!k.group.userData.pose && !k.group.userData.inspectPose) {
-      const { offsetY } = figurePose(k.group, POSE_NAME(k.anchor));
+      const { offsetY, offsetZ = 0 } = figurePose(k.group, POSE_NAME(k.anchor));
       holdPose(k.group, POSE_NAME(k.anchor)); // Surfbrett in den Händen oder im Sand
-      k.group.userData.poseOffset = offsetY;
-      k.group.position.y = offsetY;
+      k.group.userData.poseOffset = offsetY + (k.liege ? k.liege.sitz.y : 0); // auf der Liege: Hüfte auf die Liegenfläche
+      k.group.userData.poseShift = k.liege ? offsetZ : 0;
+      k.group.position.y = k.group.userData.poseOffset;
     }
     if (k.group.userData.pose !== 'liegen') parts.head.rotation.y = k.look;
     if (parts.dog) parts.dog.userData.head.rotation.y = k.look * 0.6;
     return;
   }
-  k.group.userData.pose = null; k.group.userData.poseOffset = 0;
+  k.group.userData.pose = null; k.group.userData.poseOffset = 0; k.group.userData.poseShift = 0;
   const pose = waddlePose(k.npc.phase, k.npc.speed);
   parts.legs[0].rotation.x = pose.legL; parts.legs[1].rotation.x = pose.legR;
   parts.arms[0].rotation.x = pose.armL; parts.arms[1].rotation.x = pose.armR;
@@ -316,7 +319,7 @@ function applyKunde(k) {
   if (parts.dog) parts.dog.userData.head.rotation.y = k.look * 0.6;
 }
 // Ankerplatz-Tätigkeit → Pose aus figures.js (Liegen = liegen, Hocker = sitzen)
-const POSE_NAME = (a) => ({ sitzt: a.id.startsWith('liege') ? 'liegen' : 'sitzen', telefoniert: 'handy', fotografiert: 'foto', schaut: 'meer', steht: 'stehen' }[a.activity] || 'stehen');
+const POSE_NAME = (a) => ({ sitzt: a.id.startsWith('liege') ? 'liegestuhl' : 'sitzen', telefoniert: 'handy', fotografiert: 'foto', schaut: 'meer', steht: 'stehen' }[a.activity] || 'stehen');
 // Kunden-Positionen für Logik (x, z, yaw, id)
 const kundenPos = () => kunden.map((k) => ({ id: k.id, x: k.npc.x, z: k.npc.z, yaw: k.npc.yaw, ref: k }));
 
@@ -1391,6 +1394,19 @@ function setupScene() {
     return;
   }
   if (SCENE === 'menue') { openMenu(); return; }
+  if (SCENE === 'liegen') { // zwei Kunden auf den Hotel-Liegen (Pose liegestuhl), Spieler davor am Strand
+    const ids = ['liege_1', 'liege_2'];
+    kunden.slice(0, 2).forEach((k, i) => {
+      const a = ANCHORS.find((x) => x.id === ids[i]); const liege = world.liegen?.[ids[i]];
+      if (!a || !liege) return;
+      k.anchor = a; k.liege = liege; k.group.userData.pose = null;
+      k.npc = { ...k.npc, x: liege.sitz.x, z: liege.sitz.z, yaw: liege.yaw, moving: false, pause: 99, points: [{ x: liege.sitz.x, z: liege.sitz.z }] };
+      k.look = 0; applyKunde(k);
+    });
+    state = { ...state, x: 31, z: 2.5, yaw: Math.PI, speed: 0 }; camYaw += Math.PI; // Kamera von der Meerseite auf die Liegen
+    mode = 'free';
+    return;
+  }
   if (SCENE === 'spuren') { // Schluffi-Sandalen und Turnschuh-Spur eines Kunden im Sand, verschieden alt
     const t0 = 3.2;
     let tr = null, pos = { x: state.x - 6, z: state.z - 3 };
@@ -1525,6 +1541,7 @@ if (SNAP) {
     world.pier?.update?.(now / 1000);
     world.reis?.update?.(now / 1000);
     world.hain?.update?.(now / 1000);
+    try { world.surfer?.userData.update?.(now / 1000); } catch (e) { /* ohne Zzz */ }
     try { updateNong(world.nong, now / 1000); } catch (e) { /* ohne Figur */ }
     if (nongMoodAt && now > nongMoodAt) nongSag(nongBaseMood());
     updateFerry(now / 1000);

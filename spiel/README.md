@@ -209,6 +209,11 @@ Standbild (für die PNGs in `shots/`).
   Meshes zusammengeführt — mit `?stats=1` lässt sich der Draw-Call-Stand ablesen, das ist der erste Hebel, wenn
   es auf einem Laptop ruckelt. Pixel-Ratio ist auf 1.5 gedeckelt.
 
+## Strandliegen
+Die Hotel-Liegen haben ein hochgestelltes Rückenteil und einen Sitzpunkt (`userData.sitz`); wer den Anker einer Liege
+bekommt, sitzt halb liegend darauf (Pose `liegestuhl`: Rücken 20° zurück, Beine nach vorn) mit Blick aufs Meer. Hüfte auf
+die Liegenfläche (`offsetY`), Versatz nach vorn, weil der Rumpf zurückkippt (`offsetZ`). `?snap=1&scene=liegen`.
+
 ## Fußspuren
 Die festen Spuren im Sand sind weg; stattdessen hinterlassen der Schluffi und die Kundschaft beim Gehen echte Abdrücke
 (alle 0,8 Einheiten, links/rechts wechselnd, nur im Strandband zwischen Hecke und Wasserkante), die über 20 s verblassen.

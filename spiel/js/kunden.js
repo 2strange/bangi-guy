@@ -552,7 +552,7 @@ export function setRegen(group, an) {
 export function holdPose(group, poseName = 'stehen') {
   const P = group.userData.parts;
   if (!P?.board) return;
-  const liegt = poseName === 'sitzen' || poseName === 'liegen';
+  const liegt = poseName === 'sitzen' || poseName === 'liegen' || poseName === 'liegestuhl'; // auf der Liege: Brett daneben im Sand
   P.board.visible = !liegt; P.boardSand.visible = liegt;
   if (!liegt) { // beide Hände am Brett; Pose-Requisiten (Kamera, Handy) bleiben weg
     for (const a of P.arms) a.rotation.set(-0.9, 0, 0);
@@ -561,6 +561,7 @@ export function holdPose(group, poseName = 'stehen') {
   }
   const hipY = P.legs[0]?.position.y ?? 1.1;
   if (poseName === 'sitzen') { P.boardSand.position.set(1.05, hipY - 0.32 + 0.07, 0.25); P.boardSand.rotation.set(0, 0.15, 0); } // Boden liegt lokal bei hipY − 0.32
+  else if (poseName === 'liegestuhl') { P.boardSand.position.set(1.3, -0.95, 0.3); P.boardSand.rotation.set(0, 0.2, 0); } // Figur sitzt ~0,98 über dem Sand (Liege 0,68 + Hüfte 0,3)
   else { P.boardSand.position.set(1.05, 0.6, -0.43); P.boardSand.rotation.set(Math.PI / 2, 0, 0); } // Figur liegt (−90° um x): lokal +z = oben, Boden bei z −0.5
 }
 export function setMood(group, mood) {
