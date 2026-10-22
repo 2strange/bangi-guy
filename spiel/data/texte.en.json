@@ -229,6 +229,7 @@
       ]
     },
     "einschlafen": {
+      "haengematte_belegt": ["The American is lying in your hammock, snoring Bangkok. You sleep in the sand next to it. The sand is harder than it looks.", "There's a college shirt with a person in it in your hammock. He mumbles 'best city'. You take the lounger with the towel. It's reserved. Whatever.", "Chef is sitting on the American's belly like it's a hill. Both asleep. Not you. You've got sand in places that don't have names."],
       "text": [
         "You climb into the hammock. The mentor sits at the bar telling tonight's story to someone else. The seagull.",
         "The hammock sways. Laughter from the bar. Nong never laughs. So that was the mentor. About you.",

@@ -1,5 +1,5 @@
 {
-  "_schema": "Ambient-Szenen (Leben ohne Spielerzwang). Eigentümer: Content. szenen[] je Eintrag: id, titel, fenster{von, bis} (Spieluhr HH:MM, Tag 06:00–24:00), optional tage[] (fehlt = jeden Tag), chance 0–1 (je Tag aus dem Seed gewürfelt), ab_tag (Default 2, nie Tutorial-Tag), ort (Spot: strand|markt|posten|pier|steg|bar|liegen|dorf|huegel|reisfeld|hain oder {x,z,r}), figuren[] {slug (Figur, Basis für den Figurenbau), start (Spot oder {x,z}), stimme (Slug in stimmen.json; fehlt = slug), rolle (Doku), aussehen (wie kunden.json)}, schritte[] {t (Sekunden seit Szenenstart), wer (figuren-slug | streife), aktion: pose (pose = Name) | sag (text = Sprechblase; optional bark = kurzer EN-Ausruf, den die Stimme dazu spricht) | bark | geh (ziel) | warte | sound, dauer}, ende (fenster | schritte), loop (true = Schritte wiederholen, bis das Fenster endet), ansprechen[] (Zeilen, wenn der Spieler am Ort E drückt, Radius r (Default 5), zufällig), folge (optionale Wirkung beim Ansprechen, z. B. abends_haengematte_belegt), wirkung{} (wirksam: streife_p1 'schlaeft', streife_stolpert (laufende Verfolgung bricht ab, wenn der Spieler durch den Ort läuft), verstecke[] ({spot|x,z, r} zusätzliche Verstecke im Fenster); gelesen, aber noch ohne Wirkung: liegen_belegt, kunden_faktor, preis_faktor), kommentar{wer: mentor|barkeeper, text} (abends an der Bar; noch ohne Wirkung), folge (noch ohne Wirkung), requisite[] (Kulissen-Slugs), sound[] (Audio-Slugs). Grundregel: Keine Szene bestraft den Spieler. Sie geben Deckung, Fenster, Lacher.",
+  "_schema": "Ambient-Szenen (Leben ohne Spielerzwang). Eigentümer: Content. szenen[] je Eintrag: id, titel, fenster{von, bis} (Spieluhr HH:MM, Tag 06:00–24:00 = 420 s, eine Stunde ≈ 23 s; Ablauf-Länge sollte ins Fenster passen), optional tage[] (fehlt = jeden Tag), chance 0–1 (je Tag aus dem Seed gewürfelt), ab_tag (Default 2, nie Tutorial-Tag), ort (Spot: strand|markt|posten|pier|steg|bar|liegen|dorf|huegel|reisfeld|hain oder {x,z,r}), figuren[] {slug (Figur, Basis für den Figurenbau), start (Spot oder {x,z}), stimme (Slug in stimmen.json; fehlt = slug), rolle (Doku), aussehen (wie kunden.json)}, schritte[] {t (Sekunden seit Szenenstart), wer (figuren-slug | streife), aktion: pose (pose = Name) | sag (text = Sprechblase; optional bark = kurzer EN-Ausruf, den die Stimme dazu spricht) | bark | geh (ziel) | warte | sound, dauer}, ende (fenster | schritte), loop (true = Schritte wiederholen, bis das Fenster endet), ansprechen[] (Zeilen, wenn der Spieler am Ort E drückt, Radius r (Default 5), zufällig), folge (optionale Wirkung beim Ansprechen, z. B. abends_haengematte_belegt), wirkung{} (wirksam: streife_p1 'schlaeft', streife_stolpert (laufende Verfolgung bricht ab, wenn der Spieler durch den Ort läuft), verstecke[] ({spot|x,z, r} zusätzliche Verstecke im Fenster), liegen_belegt (Liegen-Kunden erst ab Fensterende bzw. 14 Uhr); gelesen, aber noch ohne Wirkung: kunden_faktor, preis_faktor), kommentar{wer: mentor|barkeeper, text} (abends an der Bar nach dem Rückblick), folge (z. B. abends_haengematte_belegt: Einschlaf-Text haengematte_belegt), requisite[] (Kulissen-Slugs), sound[] (Audio-Slugs). Grundregel: Keine Szene bestraft den Spieler. Sie geben Deckung, Fenster, Lacher.",
   "szenen": [
     {
       "id": "ehepaar",
@@ -833,54 +833,54 @@
           "wer": "pong",
           "aktion": "pose",
           "pose": "fuesse_hoch",
-          "dauer": 6
+          "dauer": 4
         },
         {
           "t": 0,
           "wer": "pong",
           "aktion": "sag",
           "text": "Dreizehn Uhr. Pong legt die Füße auf den Tisch, die Mütze übers Gesicht. Die Tafel sagt: „Mittagspause. Vorfälle ab 14 Uhr.“",
-          "dauer": 6,
+          "dauer": 4,
           "bark": "Incidents at two."
         },
         {
-          "t": 6,
+          "t": 4,
           "wer": "pong",
           "aktion": "pose",
           "pose": "schnarchen",
-          "dauer": 20
+          "dauer": 10
         },
         {
-          "t": 6,
+          "t": 4,
           "wer": "pong",
           "aktion": "sag",
           "text": "Schnarchen. Die Pfeife am Band hebt und senkt sich mit dem Bauch.",
-          "dauer": 20
+          "dauer": 10
         },
         {
-          "t": 26,
+          "t": 14,
           "wer": "pong",
           "aktion": "pose",
           "pose": "im_schlaf_pfeifen",
-          "dauer": 3
+          "dauer": 4
         },
         {
-          "t": 26,
+          "t": 14,
           "wer": "pong",
           "aktion": "sag",
           "text": "Im Schlaf pfeift er einmal. Kurz. Niemand weiß, wen er träumt.",
-          "dauer": 3,
+          "dauer": 4,
           "bark": "*tweet*"
         },
         {
-          "t": 29,
+          "t": 18,
           "wer": "pong",
           "aktion": "pose",
           "pose": "aufwachen",
           "dauer": 5
         },
         {
-          "t": 29,
+          "t": 18,
           "wer": "pong",
           "aktion": "sag",
           "text": "Vierzehn Uhr. Pong wacht auf, setzt die Mütze auf, dreht die Tafel um: „Tage ohne Vorfall: {tage}“. Die Streife läuft wieder.",
