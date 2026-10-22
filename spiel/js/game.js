@@ -268,7 +268,11 @@ export function pickKunden(katalog, n = KUNDEN_PRO_TAG, minZivi = 2, day = 1) {
   const start = zivis.length ? ((day - 1) % zivis.length + zivis.length) % zivis.length : 0;
   const z = [];
   for (let i = 0; i < zCount; i++) z.push(zivis[(start + i) % zivis.length]);
-  const o = others.slice(0, take - z.length);
+  // Unbedenkliche rotieren ebenfalls pro Tag (Fenster wandert um die Tagesmenge): über die Woche kommt jeder dran
+  const oWant = Math.min(take - z.length, others.length);
+  const oStart = others.length ? (((day - 1) * oWant) % others.length + others.length) % others.length : 0;
+  const o = [];
+  for (let i = 0; i < oWant; i++) o.push(others[(oStart + i) % others.length]);
   // bei zu wenig Unbedenklichen mit weiteren Zivis auffüllen
   const rest = zivis.filter((k) => !z.includes(k)).slice(0, take - z.length - o.length);
   const chosen = [...o, ...z, ...rest];
@@ -496,17 +500,23 @@ export function heatCap(state, heat) {
   return Number.isFinite(cap) ? Math.min(heat, Math.max(state.heat, cap)) : heat;
 }
 /** Kundschaft des Tages mit Ereignis: Spawns aus spawn_aus fehlen, kunden_typen_plus kommen zusätzlich (falls im Katalog) */
-export function kundenFuerTag(katalog, n, minZivi, day, ereignis = null) {
+export function kundenFuerTag(katalog, n, minZivi, day, ereignis = null, tagesziel = null) {
   const w = ereignis?.wirkung || {};
   const aus = w.spawn_aus || [];
   const pool = aus.length ? katalog.filter((k) => !aus.includes(k.spawn)) : katalog;
   const list = pickKunden(pool, n, minZivi, day);
-  for (const id of w.kunden_typen_plus || []) {
+  const dazu = [...(w.kunden_typen_plus || [])];
+  // Tagesziel „Oma“: die Oma muss an dem Tag auch da sein, sonst ist das Ziel unerreichbar
+  if (tagesziel?.zielwert?.oma) { const oma = katalog.find((k) => /^oma/.test(k.id) && !k.zivi); if (oma) dazu.push(oma.id); }
+  for (const id of dazu) {
     const k = katalog.find((x) => x.id === id);
     if (k && !list.includes(k) && !aus.includes(k.spawn)) list.push(k);
   }
   return list;
 }
+// Sichtbarer Hinweis fürs Feilschen: wer den Aufschlag wahrscheinlich zahlt, trägt eine Goldkette (kunden.js)
+export const ZAHLUNGSKRAEFTIG_AB = 0.7;
+export const zahlungskraeftig = (k) => Number.isFinite(k?.feilschen) && k.feilschen >= ZAHLUNGSKRAEFTIG_AB;
 /** Figur-Definition unter Ereignis: tells_verdeckt 'schuhe' → alle tragen Gummistiefel (Logik/Preise bleiben am Original) */
 export function figurDef(def, ereignis = null) {
   const v = ereignis?.wirkung?.tells_verdeckt || [];

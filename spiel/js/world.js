@@ -2,7 +2,7 @@
 // Bauten und Deko mit passenden Collidern (Kreise für Stämme/Pfosten, Rechtecke für Gebäude).
 import * as THREE from 'three';
 import { toonMesh, toon, basicMat, deform, rng } from './toon.js';
-import { palm, beachBar, pier, boat, signpost, hammock, parasol, beachBall, coconut, crab, cloud, sun, footprints, limb, hut, mailbox, hotel, lounger, rental, sleepingSurfer, barrier, finaleHuette, setHuette, setWegweiserText, lamp, hedge, shell, starfish, sandcastle, driftwood } from './props.js';
+import { palm, beachBar, pier, boat, signpost, hammock, parasol, beachBall, coconut, crab, cloud, sun, limb, hut, mailbox, hotel, lounger, rental, sleepingSurfer, barrier, finaleHuette, setHuette, setWegweiserText, lamp, hedge, shell, starfish, sandcastle, driftwood } from './props.js';
 import { shoreZ, WORLD, buildingScale, scaledRect, scaledCircle, BUILDING_POS, buildingFootprints, poolLadderCollider } from './logic.js';
 import { buildDorf } from './zone-dorf.js';
 import { buildHuegel } from './zone-huegel.js';
@@ -213,8 +213,6 @@ export function buildWorld() {
     const c = coconut(); c.position.set(x, 0, z); c.rotation.z = rand() * 2; g.add(c);
   }
   const cr = crab(); cr.position.set(10, 0, 9); cr.rotation.y = 1.3; g.add(cr);
-  g.add(footprints('sandal', new THREE.Vector3(-26, 0, 1), new THREE.Vector3(-14, 0, 7), 7));
-  g.add(footprints('sneaker', new THREE.Vector3(22, 0, 10), new THREE.Vector3(14, 0, 2), 6));
 
   // Himmel: Sonne (stoned) und Wolken weit weg
   // Himmelsobjekte: nicht faden und nicht im Nebel verblassen (eigene Materialkopien ohne fog)
@@ -247,10 +245,6 @@ export function buildWorld() {
   }
   const cr2 = crab(); cr2.position.set(-30, 0, 11); cr2.rotation.y = -0.8; g.add(cr2);
   const cr3 = crab(); cr3.position.set(52, 0, 6); cr3.rotation.y = 2.4; g.add(cr3);
-  g.add(footprints('sandal', new THREE.Vector3(-6, 0, 2), new THREE.Vector3(6, 0, 9), 8));
-  g.add(footprints('sneaker', new THREE.Vector3(-44, 0, 12), new THREE.Vector3(-30, 0, 4), 8));
-  g.add(footprints('sandal', new THREE.Vector3(26, 0, 0), new THREE.Vector3(40, 0, 8), 8));
-  g.add(footprints('sneaker', new THREE.Vector3(54, 0, 1), new THREE.Vector3(62, 0, 9), 6));
 
   // Snap-/Startpunkte: Spielerposition + Blickrichtung (Kamera steht im Norden → yaw ≈ π schaut zur Kamera)
   const spots = {

@@ -245,7 +245,7 @@ function clearKunden() {
 function spawnKunden(day = 1, { erzwinge = null } = {}) {
   clearKunden();
   // „Großer Markt“: doppelt so viele; Ereignisse (Regen, Kreuzfahrt) skalieren mit, ein Zivi extra bei zivi_extra
-  const list = kundenFuerTag(katalog, Math.max(1, Math.round(KUNDEN_PRO_TAG * (tagModifikator(woche, day).kunden_faktor || 1) * ereignisKundenFaktor(game.ereignis))), 2 + ereignisZiviExtra(game.ereignis), day, game.ereignis);
+  const list = kundenFuerTag(katalog, Math.max(1, Math.round(KUNDEN_PRO_TAG * (tagModifikator(woche, day).kunden_faktor || 1) * ereignisKundenFaktor(game.ereignis))), Math.max(0, 2 + ereignisZiviExtra(game.ereignis)), day, game.ereignis, tagesziel(woche, day)); // Tagesziel „Oma“ garantiert die Oma
   if (erzwinge && !list.some((k) => k.id === erzwinge)) { const def = katalog.find((k) => k.id === erzwinge); if (def) list.push(def); } // Snap/Szene: bestimmten Kunden erzwingen
   const outfits = assignOutfits(list, day); // keine Doppel-Outfits pro Tag
   const anchors = assignAnchors(list, ANCHORS, { day }); // feste Plätze über alle Zonen (Markt-Plätze stecken in ANCHORS), Zivis mit Abstand

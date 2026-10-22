@@ -13,6 +13,7 @@ import { toonMesh, toon, deform, rng, BLACK, textTexture, stripeTexture } from '
 import { limb } from './props.js';
 import { sandal, sneaker, hawaiiTexture, kopfOhneSchattenwurf } from './figures.js';
 import { face, faceDecal, setFace, FACE_EXTRAS } from './faces.js';
+import { zahlungskraeftig } from './game.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const SKIN = { hell: 0xf4c9a4, mittel: 0xe8a773, dunkel: 0x8d5a3a, sonnenbrand: 0xf0907a };
@@ -510,6 +511,13 @@ export function buildKunde(k, seed = 1, outfit = null) {
   capPolice.visible = false;
   head.add(capPolice);
 
+  // Feilsch-Hinweis: zahlungskräftige Gäste (feilschen ≥ 0,7) tragen eine Goldkette – wer mehr verlangt, sollte darauf achten
+  if (zahlungskraeftig(k)) {
+    const kette = toonMesh(new THREE.TorusGeometry(0.3, 0.035, 8, 20), 0xffc53d, { outline: 0.015 });
+    kette.position.set(0, shoulderY + 0.02, 0.12); kette.rotation.x = Math.PI / 2 - 0.35; root.add(kette);
+    const anhaenger = toonMesh(new THREE.SphereGeometry(0.06, 8, 6), 0xffc53d, { outline: 0.012 });
+    anhaenger.position.set(0, shoulderY - 0.22, 0.42); root.add(anhaenger);
+  }
   // Surfbrett: quer vor dem Körper in beiden Händen (lange Achse links–rechts, ragt beidseitig über den Körper, Deck nach
   // vorn/leicht oben, Bauchhöhe). Beim Sitzen/Liegen liegt ein zweites Brett daneben im Sand (holdPose).
   let board = null, boardSand = null;

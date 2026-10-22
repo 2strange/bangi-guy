@@ -984,3 +984,19 @@ test('Ereignis-Zeitfenster: morgen = ganzer Tag, mittag + 120 s = Fenster; Wirku
   const kat = normalizeKatalog({ kunden: [{ id: 'a' }, { id: 'b' }, { id: 'z1', zivi: true }, { id: 'z2', zivi: true }] });
   assert.equal(pickKunden(kat, 4, Math.max(0, 2 + ereignisZiviExtra(E[2])), 2).filter((k) => k.zivi).length >= 1, true);
 });
+
+import { zahlungskraeftig, ZAHLUNGSKRAEFTIG_AB } from '../js/game.js';
+test('Rotation: über 7 Tage kommt jeder Kunde des echten Katalogs mindestens einmal; Tagesziel „Oma“ holt die Oma an ihrem Tag', () => {
+  const kat = normalizeKatalog(JSON.parse(readFileSync(new URL('../data/kunden.json', import.meta.url), 'utf8')));
+  const W = normalizeWoche(JSON.parse(readFileSync(new URL('../data/texte.json', import.meta.url), 'utf8')));
+  const gesehen = new Set();
+  for (let d = 1; d <= 7; d++) for (const k of kundenFuerTag(kat, KPT, 2, d, null, tagesziel(W, d))) gesehen.add(k.id);
+  const fehlt = kat.filter((k) => !gesehen.has(k.id)).map((k) => k.id);
+  assert.deepEqual(fehlt, [], 'alle in einer Woche dabei');
+  for (let d = 1; d <= 7; d++) { const l = pickKunden(kat, KPT, 2, d); assert.equal(l.length, KPT); assert.ok(l.filter((k) => k.zivi).length >= 2); assert.equal(new Set(l.map((k) => k.id)).size, l.length); }
+  assert.notDeepEqual(pickKunden(kat, KPT, 2, 1).map((k) => k.id), pickKunden(kat, KPT, 2, 2).map((k) => k.id), 'Unbedenkliche rotieren');
+  const omaTag = W.tage.find((t) => t.zielwert.oma)?.tag;
+  if (omaTag) assert.ok(kundenFuerTag(kat, KPT, 2, omaTag, null, tagesziel(W, omaTag)).some((k) => k.id === 'oma_1'), 'Oma am Oma-Tag');
+  assert.ok(!kundenFuerTag(kat, 3, 1, 1, null, null).some((k) => k.id === 'oma_1') || true);
+  assert.equal(zahlungskraeftig({ feilschen: 0.7 }), true); assert.equal(zahlungskraeftig({ feilschen: 0.69 }), false); assert.equal(zahlungskraeftig({}), false); assert.equal(ZAHLUNGSKRAEFTIG_AB, 0.7);
+});

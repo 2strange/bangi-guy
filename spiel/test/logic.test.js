@@ -586,7 +586,9 @@ test('Streife P2: Route Hotelstrand ↔ Furt ↔ Pier folgt der Furt-Mittellinie
 
 import { SPAWN_ZONE, assignAnchors as aA, ANCHORS as ALLE } from '../js/logic.js';
 test('Spawn-Zonen: K7 landet im Reisfeld, K8 im Kokoshain (hain_*), K1 im Hafen; ohne Spawn normale Rotation', () => {
-  assert.deepEqual(SPAWN_ZONE, { K1: 'pier', K7: 'reisfeld', K8: 'hain' });
+  assert.deepEqual(SPAWN_ZONE, { K1: 'pier', K4: 'markt', K5: 'dorf', K7: 'reisfeld', K8: 'hain' });
+  const d = aA([{ id: 'oma', spawn: 'K5' }, { id: 'm', spawn: 'K4' }], ALLE, { day: 2 });
+  assert.equal(d.oma.zone, 'dorf', 'K5 = Krummgassen'); assert.equal(d.m.zone, 'markt');
   const m = aA([{ id: 'nok', spawn: 'K7' }, { id: 'dao', spawn: 'K8' }, { id: 'f', spawn: 'K1' }, { id: 'x' }], ALLE, { day: 3 });
   assert.equal(m.nok.zone, 'reisfeld'); assert.ok(m.dao.id.startsWith('hain_')); assert.equal(m.f.zone, 'pier'); assert.ok(!m.f.id.startsWith('hain_'), 'Fähre nicht in den Hain');
   assert.ok(m.x);

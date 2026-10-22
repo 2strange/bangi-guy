@@ -358,7 +358,7 @@ export function zoneSequence(n, anchors = ANCHORS, { day = 1, mix = ZONE_MIX } =
   return seq.slice(k).concat(seq.slice(0, k));
 }
 // Spawn-Punkte, die einen festen Bereich erzwingen: K1 Fähre → Hafenplätze, K7 → Reisfeld, K8 → Kokoshain (Plätze hain_*)
-export const SPAWN_ZONE = { K1: 'pier', K7: 'reisfeld', K8: 'hain' };
+export const SPAWN_ZONE = { K1: 'pier', K4: 'markt', K5: 'dorf', K7: 'reisfeld', K8: 'hain' }; // K4 Markt, K5 Krummgassen: Oma & Co. stehen dort, wo die Texte sie verorten
 const inZone = (a, zone) => (zone === 'hain' ? a.id.startsWith('hain_') : a.zone === zone);
 export function assignAnchors(kunden, anchors = ANCHORS, { minDist = ZIVI_MIN_DIST, day = 1, mix = ZONE_MIX } = {}) {
   const out = {};
