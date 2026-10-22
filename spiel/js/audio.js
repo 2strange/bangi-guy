@@ -16,6 +16,7 @@
 //   babble(stimmeOderId, text, { pan }) → Dauer in Sekunden; stopBabble()
 //   bark(id, situation, { pan }) → { text, dauer, clip?, echt? } | null   Ausruf-Clip (wenn im Manifest) sonst Bark gebrabbelt
 //   loadAusrufe() / preloadAusrufe(slug|'alle') / ausruf(id, stimme, { pan, gain })   echte Ausrufe aus audio/ausrufe/manifest.json
+//   gesang('kokos_ruf', { pan, gain })   gesungener Strandruf mit fester Melodie; echter Clip, sobald er geladen ist
 //   setVoiceMode('babble' | 'tts') / getVoiceMode()   Gebrabbel (Standard) oder Browser-Sprachausgabe (Englisch)
 
 // ---------- Lautstärken (zentral) ----------
@@ -745,6 +746,7 @@ export function normalizeSfxOpts(o) {
 }
 /** Spielt einen Effekt. opts { gain, pan } optional. Gibt die ungefähre Dauer in Sekunden zurück (0, wenn nichts spielt). */
 export function sfx(name, opts) {
+  if (!SFX[name] && GESAENGE[name]) { const r = gesang(name, opts); return r ? r.dauer : 0; } // gesungene Rufe auch über sfx() erreichbar
   if (!SFX[name]) { if (!warned.has(name)) { warned.add(name); console.warn('audio: unbekannter Effekt', name); } return 0; }
   if (!ready()) return 0;
   const { gain, pan: panPos } = normalizeSfxOpts(opts);
@@ -1537,4 +1539,50 @@ export function ausruf(id, stimme = 'default', opts = {}) {
   speaking = { gain: g, nodes: [src], until: t0 + dauer };
   setTimeout(() => { if (speaking && speaking.gain === g) { speaking = null; g.disconnect(); } }, (dauer + 0.3) * 1000);
   return { dauer, echt: true };
+}
+
+// ---------- Gesungene Rufe (feste Melodie statt Zufalls-Gebrabbel) ----------
+// Für Strandverkäufer-Rufe mit Wiedererkennungswert. Melodie: Silben mit Halbton (relativ zum Grundton des Profils),
+// Dauer in s (bei tempo 1) und optional glide (Halbtöne, die der Ton am Ende rutscht). Erst echter Clip (wenn geladen), sonst Gesang.
+export const GESAENGE = {
+  // „Co-co-nut juice!“ — Sansibar-Strandruf: co–co–nut gedehnt auf einem Ton, juice eine Quinte höher, lang, leicht abfallend
+  kokos_ruf: { stimme: 'kokosverkaeufer', silben: [
+    { text: 'co', semi: 0, dur: 0.3 }, { text: 'co', semi: 0, dur: 0.3 }, { text: 'nut', semi: 2, dur: 0.45 },
+    { text: 'juice', semi: 7, dur: 1.0, glide: -3, laut: 1.15 },
+  ] },
+};
+/** Plan für einen gesungenen Ruf (rein): wie babblePlan, aber mit fester Melodie; tonhoehe/tempo/laut aus dem Profil */
+export function gesangPlan(stimmeIn, silben) {
+  const stimme = normalizeStimme(stimmeIn);
+  const base = 220 * stimme.tonhoehe;
+  const notes = [];
+  let t = 0;
+  for (const s of silben) {
+    const dur = (Number(s.dur) || 0.3) / stimme.tempo;
+    const freq = base * Math.pow(2, (Number(s.semi) || 0) / 12);
+    notes.push({ t, dur, freq, freqEnd: freq * Math.pow(2, (Number(s.glide) || 0) / 12), gain: 0.9 * (Number(s.laut) || 1), vowel: vowelOf(String(s.text || 'a')) });
+    t += dur + 0.03 / stimme.tempo;
+  }
+  return { notes, duration: notes.length ? t : 0, stimme };
+}
+/**
+ * Gesungenen Ruf abspielen: id aus GESAENGE. Liegt ein echter Clip gleicher id bereit (Manifest), kommt der Clip;
+ * sonst der Gesang mit dem Stimmprofil (Slug aus GESAENGE, Fallback default). opts { pan, gain }. Gibt { dauer, echt } zurück, null bei unbekannter id.
+ */
+export function gesang(id, opts = {}) {
+  const g = GESAENGE[id];
+  if (!g) return null;
+  const entry = ausrufe.find((e) => e.id === id);
+  if (entry && ready() && voiceMode !== 'tts' && typeof ensureClip(entry) !== 'string') return ausruf(id, g.stimme, opts);
+  const profil = stimmeFor(g.stimme);
+  const plan = gesangPlan(profil, g.silben);
+  if (!ready() || voiceMode === 'tts') return { dauer: plan.duration, echt: false };
+  stopBabble();
+  const { gain, pan: panPos } = normalizeSfxOpts(opts);
+  const out = ctx.createGain(); out.gain.value = profil.laut * gain; out.connect(bus.voice);
+  const t0 = now() + 0.02;
+  const nodes = panPos ? (() => { const p = pan(panPos); p.connect(out); return renderPlan(plan, p, t0); })() : renderPlan(plan, out, t0);
+  speaking = { gain: out, nodes, until: t0 + plan.duration };
+  setTimeout(() => { if (speaking && speaking.gain === out) { speaking = null; out.disconnect(); } }, (plan.duration + 0.3) * 1000);
+  return { dauer: plan.duration, echt: false };
 }

@@ -40,6 +40,8 @@
     { "id": "change_please", "text": "Change, please.", "stimme": "oma", "situation": "kauf", "prio": 2, "regie": "Hand hörbar ausgestreckt. Keine Verhandlung, eine Anordnung. 'Please' ist Formsache." },
     { "id": "selfie", "text": "Selfie!", "stimme": "paar", "situation": "kauf", "prio": 2, "regie": "Zwei Stimmen gleichzeitig, eine halbe Silbe versetzt, beide zu glücklich. Blitz hörbar, wenn möglich." },
     { "id": "lacher_mentor", "text": "*heh heh heh*", "stimme": "mentor", "situation": "abend", "prio": 3, "regie": "Drei tiefe, trockene Lacher, Rauchhusten am Ende. Kein Wort." },
+    { "id": "kokos_ruf", "text": "Co-co-nut-juice!", "stimme": "kokosverkaeufer", "situation": "ruf", "prio": 1, "regie": "Gesungen wie ein Strandverkäufer auf Sansibar: co-co-nut gedehnt auf einem Ton, juice eine Quinte höher, lang gehalten, am Ende leicht abfallend. Muss hundert Meter tragen; fröhlich, ein bisschen heiser, jeden Tag derselbe Ton." },
+    { "id": "something_special", "text": "Something special, my friend?", "stimme": "kokosverkaeufer", "situation": "gruss", "prio": 2, "regie": "Verschwörerisch, zu nah am Ohr, 'special' gedehnt; er meint nicht die Kokosnuss, und er will, dass man das merkt." },
     { "id": "heads_up", "text": "Heads up!", "stimme": "kletterer", "situation": "gruss", "prio": 3, "regie": "Von oben gerufen, mit Hall, fröhlich; danach dumpfer Aufprall einer Kokosnuss." }
   ]
 }

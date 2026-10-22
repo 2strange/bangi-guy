@@ -637,3 +637,30 @@ test('Fußspuren: alle 0,8 Einheiten eine Spur, links/rechts wechselnd, quer zur
   // Sand: Strandband; Hecke/Dorf, Wasser und Furt nicht
   assert.equal(imSand({ x: 0, z: 3 }), true); assert.equal(imSand({ x: 0, z: -30 }), false); assert.equal(imSand({ x: 0, z: 200 }), false);
 });
+
+import { KOKOS, kokosStart, kokosStep, kokosRuf } from '../js/logic.js';
+test('Kokos-Verkäufer: läuft am Wasser von West nach Ost und zurück, pausiert an den Enden und unterwegs, weicht Hindernissen landeinwärts aus, ruft alle 6–10 s', () => {
+  let st = kokosStart();
+  assert.equal(st.x, KOKOS.west); assert.ok(Math.abs(st.z - (shoreZ(KOKOS.west) - KOKOS.abstand)) < 1e-9);
+  let maxX = -1e9, minX = 1e9, pausen = 0, warMoving = false, umkehr = 0, lastDir = 1;
+  for (let i = 0; i < 60 * 200; i++) {
+    st = kokosStep(st, 1 / 60);
+    maxX = Math.max(maxX, st.x); minX = Math.min(minX, st.x);
+    if (warMoving && !st.moving) pausen++; warMoving = st.moving;
+    if (st.dir !== lastDir) { umkehr++; lastDir = st.dir; }
+    assert.ok(st.x >= KOKOS.west - 1e-9 && st.x <= KOKOS.ost + 1e-9, 'im Strandband');
+    assert.ok(st.z <= shoreZ(st.x) - KOKOS.abstand + 1e-6 + 0.01, 'nie ins Wasser');
+  }
+  assert.ok(maxX >= KOKOS.ost - 1e-6 && minX <= KOKOS.west + 1e-6, 'beide Enden erreicht'); assert.ok(umkehr >= 2); assert.ok(pausen >= 6, `Pausen ${pausen}`);
+  // Hindernis auf der Spur: er geht landeinwärts (kleineres z) drumherum und kommt danach zurück ans Wasser
+  let h = { ...kokosStart(), x: 0, z: shoreZ(0) - KOKOS.abstand, gelaufen: 0 };
+  const stein = { x: 3, z: shoreZ(3) - KOKOS.abstand, r: 0.7 };
+  let minZ = 1e9, zEnde = 0;
+  for (let i = 0; i < 60 * 8; i++) { h = kokosStep(h, 1 / 60, [stein]); if (h.x > 1 && h.x < 4) minZ = Math.min(minZ, h.z - (shoreZ(h.x) - KOKOS.abstand)); if (h.x > 9) { zEnde = h.z - (shoreZ(h.x) - KOKOS.abstand); break; } }
+  assert.ok(minZ < -1.2, `Umweg landeinwärts ${minZ.toFixed(2)}`); assert.ok(Math.abs(zEnde) < 0.3, 'danach wieder am Wasser');
+  // Ruf: 6–10 s Abstand
+  let r = kokosStart(); const zeiten = [];
+  for (let i = 0; i < 60 * 60; i++) { r = kokosStep(r, 1 / 60); const q = kokosRuf(r); r = q.st; if (q.ruf) zeiten.push(r.zeit); }
+  assert.ok(zeiten.length >= 5 && zeiten.length <= 10, `Rufe ${zeiten.length}`);
+  for (let i = 1; i < zeiten.length; i++) { const dt = zeiten[i] - zeiten[i - 1]; assert.ok(dt >= KOKOS.rufMin - 0.05 && dt <= KOKOS.rufMax + 0.05, `Abstand ${dt.toFixed(2)}`); }
+});

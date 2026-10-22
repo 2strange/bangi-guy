@@ -138,6 +138,8 @@ const MOODS = {
   // Müde: schwere Lider, Pupillen nach unten; schläft: Augen zu
   muede:        { lid: 0.72, tilt: -0.1,  pupil: 1,    px: 0,         py: 26 },
   schlaeft:     { lid: 1.0,  tilt: -0.08, pupil: 1,    px: 0,         py: 0 },
+  // Ruf: Augen zu Schlitzen, Mund weit auf (Strandverkäufer, „Co-co-nut-juice!“)
+  ruf:          { lid: 0.62, tilt: -0.1,  pupil: 0.9,  px: 0,         py: -8 },
 };
 
 // ---------- Figurentypen: Augenlayout, Mundanker (y = Lippenlinie, grinY = Oberkante des offenen Grinsens),
@@ -249,6 +251,9 @@ function mouth(ctx, kind, mood, m, line) {
       break;
     case 'erschrocken':
       gasp(ctx, x, y + 20, w * 0.28, w * 0.3, line - 2);
+      break;
+    case 'ruf': // weit offen, nach unten gezogen — man hört es fast
+      gasp(ctx, x, y + 45, w * 0.42, w * 0.5, line);
       break;
     case 'reveal': // das Touristen-Lächeln bleibt — nur zu breit
     case 'zufrieden': // breites, geschlossenes Lächeln mit Grübchen

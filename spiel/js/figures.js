@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { toonMesh, toon, deform, BLACK, textTexture } from './toon.js';
-import { limb } from './props.js';
+import { limb, coconut } from './props.js';
 import { faceDecal, schluffiFace, runnerFace, face, setFace } from './faces.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -595,6 +595,107 @@ export function setNongMood(g, mood) {
 // faehrenticket (Ticket in der Gesäßtasche), handschellen_umriss (Umriss unterm Hemd an der Hüfte).
 // opts.index: bei Kunden mit figuren: 2 die Nummer der Figur (0/1) — das Paar teilt sich Kranz (0) und Cap (1),
 // damit die Silhouetten unterscheidbar bleiben.
+// ---------- Kokos-Verkäufer: läuft den Strand auf und ab und ruft „Co-co-nut-juice!“ ----------
+// Bauchladen voller Kokosnüsse mit Strohhalm, Kappe, Flip-Flops. buildKokosVerkaeufer() → Gruppe (Füße auf y = 0,
+// Blick nach +z) mit userData.parts { legs, arms, head, body, laden }, userData.update(t) (Gehen: Beine, Arme,
+// Wippen, Nüsse klappern) und userData.setRuf(an) (rechte Hand als Megafon an den Mund, Kopf hoch, Mund auf).
+// Der Laufweg kommt vom Spiel (Position/Yaw setzen); updateKokosVerkaeufer(g, t) und setKokosRuf(g, an) auch als Export.
+const KOKOS_SKIN = 0x8d5a3a;
+const KOKOS_FACE = { skin: '#8d5a3a', bart: 'stoppel', seed: 88 };
+function flipFlopEinfach(color, side) {
+  const m = sideSign(side);
+  const g = new THREE.Group();
+  const sole = toonMesh(new RoundedBoxGeometry(0.4, 0.07, 0.72, 3, 0.03), color, { outline: 0.03 }); sole.position.set(0, 0.035, 0.1); g.add(sole);
+  const post = V(m * 0.06, 0.07, 0.3);
+  g.add(limb(post, V(-m * 0.17, 0.09, 0.02), 0.018, 0x222222, { outline: 0.01 })); // Riemen außen
+  g.add(limb(post, V(m * 0.18, 0.09, 0.02), 0.018, 0x222222, { outline: 0.01 }));  // Riemen innen
+  return g;
+}
+export function buildKokosVerkaeufer() {
+  const root = new THREE.Group();
+  const skin = KOKOS_SKIN, hipY = 1.05;
+  const legs = [];
+  for (const s of [-1, 1]) {
+    const leg = new THREE.Group(); leg.position.set(s * 0.22, hipY, 0);
+    leg.add(limb(V(0, 0, 0), V(0, 0.2 - hipY, 0), 0.1, skin, { outline: 0.04 }));
+    const shorts = toonMesh(new THREE.CylinderGeometry(0.19, 0.21, 0.42, 10), 0xe8463a, { outline: 0.035 }); shorts.position.y = -0.14; leg.add(shorts);
+    const ff = flipFlopEinfach(0x3dd6e0, s < 0 ? 'L' : 'R'); ff.position.set(0, -hipY, 0.04); ff.rotation.y = s * 0.15; leg.add(ff);
+    root.add(leg); legs.push(leg);
+  }
+  const body = new THREE.Group(); body.position.set(0, hipY - 0.05, 0); root.add(body);
+  const torso = toonMesh(new THREE.CylinderGeometry(0.34, 0.39, 0.95, 12), 0xffd54a, { outline: 0.045 }); torso.position.set(0, 0.5, 0); body.add(torso); // Tanktop
+  for (const s of [-1, 1]) { const strap = toonMesh(new THREE.BoxGeometry(0.1, 0.3, 0.06), 0xffd54a, { outline: 0.02 }); strap.position.set(s * 0.2, 1.05, 0.2); strap.rotation.x = 0.3; body.add(strap); }
+  // Bauchladen: Kiste vor dem Bauch, am Nackenriemen; Nüsse mit Strohhalm darin
+  const laden = new THREE.Group(); laden.position.set(0, 0.62, 0.62); body.add(laden);
+  const kiste = toonMesh(new THREE.BoxGeometry(1.15, 0.14, 0.6), 0x2fa9b9, { outline: 0.04 }); laden.add(kiste);
+  const rand = toonMesh(new THREE.BoxGeometry(1.15, 0.22, 0.05), 0x2fa9b9, { outline: 0.03 }); rand.position.set(0, 0.1, 0.3); laden.add(rand);
+  const schild = toonMesh(new THREE.BoxGeometry(0.8, 0.16, 0.02), [toon(0xfff1c2), toon(0xfff1c2), toon(0xfff1c2), toon(0xfff1c2), toon(0xffffff, { map: textTexture('COCONUT JUICE', { bg: '#fff1c2', fg: '#2b1b0b', font: 'bold 64px sans-serif', w: 512, h: 96 }) }), toon(0xfff1c2)], { outline: 0.015 });
+  schild.position.set(0, 0.1, 0.34); laden.add(schild);
+  const nuesse = [];
+  [[-0.38, -0.1], [-0.12, -0.12], [0.14, -0.1], [0.4, -0.12], [-0.25, 0.12], [0.27, 0.12]].forEach(([x, z], i) => {
+    const n = coconut(true); n.scale.setScalar(0.42); n.position.set(x, 0.05, z); n.rotation.y = i * 1.3; laden.add(n); nuesse.push(n);
+  });
+  for (const s of [-1, 1]) root.add(limb(V(s * 0.55, hipY + 0.57, 0.62), V(s * 0.12, hipY + 1.15, -0.02), 0.025, 0x5a3b1a, { outline: 0.012 })); // Nackenriemen
+  // Arme: links trägt den Laden (Hand unter der Kiste), rechts frei bzw. als Megafon am Mund
+  const shoulderY = hipY + 0.82;
+  const arms = [];
+  for (const s of [-1, 1]) {
+    const arm = new THREE.Group(); arm.position.set(s * 0.46, shoulderY, 0);
+    arm.add(limb(V(0, 0, 0), V(s * 0.16, -0.72, 0.1), 0.09, skin, { outline: 0.035 }));
+    const hand = toonMesh(new THREE.SphereGeometry(0.17, 12, 9), skin, { outline: 0.035 }); hand.position.set(s * 0.18, -0.84, 0.12); arm.add(hand);
+    if (s === 1) { // Megafon-Hand: offener Trichter in Hautfarbe, erscheint nur beim Rufen
+      const horn = toonMesh(new THREE.CylinderGeometry(0.2, 0.08, 0.3, 10, 1, true), toon(skin, { side: THREE.DoubleSide }), { outline: 0.02 });
+      // Achse so gelegt, dass der Trichter in der Ruf-Pose (Arm um x ≈ −2.45 gedreht) nach vorn-oben aus der Hand zeigt
+      const d = V(0, -0.78, -0.62).normalize();
+      horn.position.set(0.18, -0.84, 0.12).add(d.clone().multiplyScalar(0.22)); horn.quaternion.setFromUnitVectors(V(0, 1, 0), d);
+      horn.visible = false; arm.add(horn); arm.userData.horn = horn;
+    }
+    root.add(arm); arms.push(arm);
+  }
+  arms[0].rotation.set(-1.25, 0, 0.1); // linker Arm hält den Laden
+  // Hals + Kopf: Kappe, Stoppeln, zufriedener Grundblick
+  const neckY = shoulderY + 0.12;
+  root.add(limb(V(0, neckY - 0.2, 0), V(0, neckY + 0.3, 0), 0.13, skin, { outline: 0.035 }));
+  const head = new THREE.Group(); head.position.set(0, neckY + 0.68, 0.03); root.add(head);
+  const shape = (geo) => { geo.scale(1, 1.06, 0.97); };
+  const hg = new THREE.SphereGeometry(0.48, 24, 18); shape(hg);
+  head.add(toonMesh(hg, skin, { outline: 0.045 }));
+  const decal = faceDecal(face('kunde', 'zufrieden', KOKOS_FACE), 0.487, shape); head.add(decal);
+  const nose = toonMesh(new THREE.SphereGeometry(0.12, 10, 8), 0x7a4a2e, { outline: 0.03 }); nose.position.set(0, -0.06, 0.47); head.add(nose);
+  for (const s of [-1, 1]) { const ear = toonMesh(new THREE.SphereGeometry(0.09, 8, 6), skin, { outline: 0.03 }); ear.position.set(s * 0.48, -0.02, 0); head.add(ear); }
+  const capTop = toonMesh(new THREE.SphereGeometry(0.52, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), 0xff7f3f, { outline: 0.045 }); capTop.position.set(0, 0.14, -0.02); head.add(capTop);
+  const brimGeo = new THREE.BoxGeometry(0.56, 0.06, 0.5); deform(brimGeo, (v) => { if (v.z > 0) v.x *= 1 - 0.45 * (v.z / 0.25); });
+  const brim = toonMesh(brimGeo, 0xff7f3f, { outline: 0.03 }); brim.position.set(0, 0.28, 0.58); brim.rotation.x = -0.15; head.add(brim);
+  kopfOhneSchattenwurf(head);
+  root.userData.parts = { legs, arms, head, body, laden, nuesse, decal, baseHeadRot: head.rotation.clone() };
+  root.userData.ruf = false;
+  root.userData.update = (t) => updateKokosVerkaeufer(root, t);
+  root.userData.setRuf = (an) => setKokosRuf(root, an);
+  return root;
+}
+export function setKokosRuf(g, an) {
+  const P = g.userData.parts; if (!P) return;
+  g.userData.ruf = !!an;
+  setFace(P.decal, face('kunde', an ? 'ruf' : 'zufrieden', KOKOS_FACE));
+  P.arms[1].userData.horn.visible = !!an;
+}
+export function updateKokosVerkaeufer(g, t) {
+  const P = g.userData.parts; if (!P) return;
+  const w = t * 7, gang = Math.sin(w);
+  P.legs[0].rotation.x = 0.55 * gang; P.legs[1].rotation.x = -0.55 * gang;
+  P.body.position.y = (P.legs[0].position.y - 0.05) + 0.03 * Math.abs(Math.cos(w));
+  P.body.rotation.z = 0.04 * gang;
+  P.laden.rotation.x = 0.05 * Math.cos(w * 2);
+  P.nuesse.forEach((n, i) => { n.position.y = 0.05 + 0.02 * Math.max(0, Math.sin(w * 2 + i)); });
+  if (g.userData.ruf) {
+    P.arms[1].rotation.set(-2.45, -0.3, -0.4 + 0.03 * Math.sin(t * 9)); // Hand seitlich am Mund, zittert vom Brüllen
+    P.head.rotation.set(-0.3 + 0.03 * Math.sin(t * 9), 0.15, 0.08);
+  } else {
+    P.arms[1].rotation.set(-0.5 * gang, 0, -0.1);
+    P.head.rotation.set(0.03 * Math.sin(w), 0.35 * Math.sin(t * 0.6), 0.03); // schaut sich nach Kundschaft um
+  }
+}
+
 export function kundenExtras(figur, k, { index = 0 } = {}) {
   if (!figur || figur.userData.extrasDran) return figur;
   const P = figur.userData.parts; if (!P) return figur;

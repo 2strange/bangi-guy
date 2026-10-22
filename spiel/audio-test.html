@@ -172,6 +172,12 @@
   };
   renderAusrufe();
   $('preload').onclick = () => { const n = A.preloadAusrufe('alle'); $('clipinfo').textContent = `${n} Clips angestoßen`; };
+  // gesungene Rufe (feste Melodie), nutzen den Pan-Regler
+  for (const id of Object.keys(A.GESAENGE)) {
+    const b = document.createElement('button'); b.textContent = `🎶 ${id}`;
+    b.onclick = () => { const r = A.gesang(id, panOpt()); if (r) { show(r.dauer, A.GESAENGE[id].silben.map((s) => s.text).join('-')); $('clipinfo').textContent = r.echt ? 'Clip' : 'Gesang (Synth)'; } };
+    $('ausrufe').appendChild(b);
+  }
   $('sayfree').onclick = () => show(A.babble({ tonhoehe: +$('p').value, tempo: +$('t').value, stil: $('stil').value }, $('text').value, panOpt()));
   $('hush').onclick = () => A.stopBabble();
 </script>

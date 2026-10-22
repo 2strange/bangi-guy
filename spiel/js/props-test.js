@@ -11,9 +11,10 @@
 // ?what=bauch → Schluffi von vorn und von der Seite (Bauch unterm Hemd)
 // ?what=liege → Strandliegen mit Kunden in der Pose „liegestuhl“ (userData.sitz), dazu der schlafende Surfer
 // ?what=kletterer → Kokos-Kletterer außen am Stamm (amStamm), von zwei Seiten
+// ?what=kokos → Kokos-Verkäufer: links gehend, Mitte rufend (setRuf), rechts rufend von der Seite
 import * as THREE from 'three';
 import { toonMesh, textTexture } from './toon.js';
-import { schluffi, runner, sandal, sneaker, pose, POSES, buildNong, updateNong, setNongMood, kundenExtras, updateKundenExtras } from './figures.js';
+import { schluffi, runner, sandal, sneaker, pose, POSES, buildNong, updateNong, setNongMood, kundenExtras, updateKundenExtras, buildKokosVerkaeufer } from './figures.js';
 import { hotel, beachBar, finaleHuette, setHuette, HUETTE_ZUSTAENDE, signpost, setWegweiserText, lounger, sleepingSurfer, palm } from './props.js';
 import { climber, amStamm } from './zone-reisfeld.js';
 import { buildingScale } from './logic.js';
@@ -78,6 +79,12 @@ if (WHAT === 'feet') {
   });
   camera.position.set(0, 5.5, 9);
   camera.lookAt(0, 3.2, 0);
+} else if (WHAT === 'kokos') {
+  [[-3.4, 0.25, false], [0, 0.1, true], [3.4, -Math.PI / 2 + 0.2, true]].forEach(([x, yaw, ruf]) => {
+    const v = buildKokosVerkaeufer(); v.position.set(x, 0, 0); v.rotation.y = yaw; v.userData.setRuf(ruf); v.userData.update(0.3); scene.add(v);
+  });
+  camera.position.set(0, 2.6, 8.5);
+  camera.lookAt(0, 1.5, 0);
 } else if (WHAT === 'shoes') {
   const items = [[sandal(0xf0b98a, 'L'), -2.4], [sandal(0xf0b98a, 'R'), -0.8], [sneaker(0xe8463a, 'L'), 0.8], [sneaker(0xe8463a, 'R'), 2.4]];
   for (const [shoe, x] of items) { shoe.position.set(x, 0, 0); shoe.scale.setScalar(1.6); scene.add(shoe); }

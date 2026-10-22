@@ -10,6 +10,7 @@ import {
   MOODS, normalizeMood, nextBpm, setMood, getMood, cricketBurst, nextClinkDelay, frogCall, nextFrogDelay, JINGLES,
   WETTER, normalizeWetter, nextDropDelay, duoPlan, DUO_TONHOEHE, DUO_VERSATZ, EREIGNIS_SOUNDS, ereignisAktionen, ereignis,
   normalizeManifest, pickAusruf, clipRate, ausrufeFor, setAusrufe, getAusrufe, ausruf, clipStatus, preloadAusrufe, mergeAusrufe,
+  GESAENGE, gesangPlan, gesang,
 } from '../js/audio.js';
 
 const close = (a, b, eps = 1e-6, msg) => assert.ok(Math.abs(a - b) < eps, msg ?? `${a} ≈ ${b}`);
@@ -354,4 +355,24 @@ test('data/ausrufe.json + audio/ausrufe/manifest.json: konsistent — Stimmen be
     assert.ok(babblePlan(e.stimme ? db.stimmen[e.stimme] : db.stimmen.default, e.text).duration > 0.05, `${e.id} brabbelbar`);
   }
   assert.ok(mitClip >= 1, 'mindestens ein Clip (Platzhalter) zum Testen');
+});
+
+test('Gesang: feste Melodie je Silbe, tonhoehe/tempo aus dem Profil, Kokos-Ruf endet hoch und rutscht leicht ab', () => {
+  const k = GESAENGE.kokos_ruf;
+  assert.equal(k.silben.length, 4); assert.equal(k.silben.map((s) => s.text).join('-'), 'co-co-nut-juice');
+  const p = gesangPlan({ tonhoehe: 1, tempo: 1 }, k.silben);
+  assert.equal(p.notes.length, 4);
+  close(p.notes[0].freq, 220); close(p.notes[1].freq, 220); assert.ok(p.notes[2].freq > p.notes[1].freq);
+  close(p.notes[3].freq / p.notes[0].freq, Math.pow(2, 7 / 12), 1e-9, 'juice eine Quinte höher');
+  assert.ok(p.notes[3].freqEnd < p.notes[3].freq, 'am Ende abfallend'); assert.ok(p.notes[3].dur > p.notes[2].dur, 'juice lang');
+  assert.ok(p.duration > 1.8 && p.duration < 2.6, `Dauer ${p.duration}`);
+  for (let i = 1; i < p.notes.length; i++) assert.ok(p.notes[i].t >= p.notes[i - 1].t + p.notes[i - 1].dur - 1e-9, 'keine Überlappung');
+  const hoch = gesangPlan({ tonhoehe: 1.5, tempo: 2 }, k.silben);
+  close(hoch.notes[0].freq, 330); assert.ok(hoch.duration < p.duration / 1.9, 'tempo verkürzt');
+  assert.equal(gesangPlan(null, []).duration, 0);
+  // ohne WebAudio: Dauer kommt trotzdem, unbekannte id → null; Profil-Fallback default, wenn der Slug fehlt
+  const r = gesang('kokos_ruf', { pan: -0.5 }); assert.ok(r && r.echt === false && r.dauer > 1.8);
+  assert.equal(gesang('wassermelone'), null);
+  // sfx('kokos_ruf') leitet an gesang weiter (gleiche Dauer), unbekannte Namen bleiben 0
+  close(sfx('kokos_ruf', { pan: 0.2, gain: 0.5 }), r.dauer, 1e-9); assert.equal(sfx('wassermelone'), 0);
 });

@@ -6,6 +6,7 @@ import { schluffi } from './figures.js';
 import { buildKunde, setMood, setRevealed, holdPose, setRegen } from './kunden.js';
 import { kundenExtras, updateKundenExtras } from './figures.js';
 import { pose as figurePose, updateNong, setNongMood } from './figures.js';
+import * as FIG from './figures.js'; // buildKokosVerkaeufer/setRuf kommen aus figures.js, sobald vorhanden
 import { initLicht } from './licht.js';
 import { zielMarker, updateMarker } from './marker.js';
 import { ereignisSteuerung } from './ereignisse.js';
@@ -17,13 +18,13 @@ import { prepareGags, playGag, stopGag } from './gags.js';
 import {
   inputToDir, dirToTarget, stepPlayer, followCamera, waddlePose, CAM_OFFSET, DEFAULT_CAM_YAW, isOccluder, joystickInput, rotateDir,
   ANCHORS, assignAnchors, zoneMix, patrolStart, seesTarget, chaseStep, inHideout, CHASE_SPEED, PATROL_SPEED, WORLD, BUILDING_POS, STREIFE_P2_ROUTE,
-  CAM_PITCH, clampPitch, spurSchritt, imSand,
+  CAM_PITCH, clampPitch, spurSchritt, imSand, kokosStart, kokosStep, kokosRuf,
 } from './logic.js';
 import {
   initialState, normalizeKatalog, pickKunden, startDialog, advanceDialog, chooseOption, isArrested, newDay, moodFor,
   kundeStatus, nearestKunde, wanderStep, inspectCamera, kundeLookYaw, TALK_DIST, idSeed,
   normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE, gagFor, nextIdleGagDelay,
-  mergeTexte, mergeKundenKatalog, normalizeOptionen, toSave, fromSave, hatFortschritt, fillText,
+  mergeTexte, mergeKundenKatalog, normalizeOptionen, toSave, fromSave, hatFortschritt, fillText, buyKokos, KOKOS_PREIS,
   normalizeTutorial, tutorialStart, tutorialEvent, tutorialSkip,
   normalizeWoche, tagesziel, tagModifikator, hudZiel, finaleStufe, KUNDEN_PRO_TAG, kalibriereWoche, neueWoche, finaleKarte,
   normalizeEreignisse, ereignisFuerTag, ereignisKundenFaktor, ereignisZiviExtra, kundenFuerTag, ereignisFenster,
@@ -374,6 +375,8 @@ function placeBarks() {
   P.head.getWorldPosition(barkHead);
   barkHead.y += 0.9; barkHead.project(camera);
   ui.placeBark('spieler', (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now);
+  (kokosFig.userData.parts?.head || kokosFig).getWorldPosition(barkHead); barkHead.y += 0.9; barkHead.project(camera);
+  ui.placeBark('kokos', (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now);
   (barkeeperObj.userData.parts?.head || barkeeperObj).getWorldPosition(barkHead); barkHead.y += 0.9; barkHead.project(camera);
   ui.placeBark('barkeeper', (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now);
   for (const s of streifen) {
@@ -431,6 +434,7 @@ let posten7 = normalizePosten7(null);
 function pointObj(x, y, z) { const o = new THREE.Object3D(); o.position.set(x, y, z); o.userData.parts = { head: o }; scene.add(o); return o; }
 const mangoStandDef = STAENDE.find((st) => st.kind === 'mango') || { x: 44, z: -44 };
 const POINTS = [
+  { id: 'kokos', get x() { return kokos.x; }, get z() { return kokos.z; }, r: TALK_DIST + 0.6, name: 'Kokos-Verkäufer', get obj() { return kokosFig; } },
   { id: 'mango_stand', x: mangoStandDef.x, z: mangoStandDef.z + 1.4, r: TALK_DIST + 0.6, name: 'Mango-Stand', obj: pointObj(mangoStandDef.x, 2.6, mangoStandDef.z) },
   { id: 'pong', x: POSTEN_LAYOUT.pong.x, z: POSTEN_LAYOUT.pong.z, r: TALK_DIST + 0.8, name: 'Pong', obj: world.markt?.pong || pointObj(POSTEN_LAYOUT.pong.x, 2.6, POSTEN_LAYOUT.pong.z) },
   // Tuk-Tuk-Express am Hafen: Fahrt zur Bar (20 Mangos laut Schild, sonst Geld), beendet eine Verfolgung
@@ -439,6 +443,66 @@ const POINTS = [
   { id: 'gnaden_stand', x: world.markt?.mangoStand?.x ?? 15.5, z: (world.markt?.mangoStand?.z ?? -82) + 1.4, r: TALK_DIST + 0.6, name: 'Pong', obj: world.markt?.pong || pointObj(POSTEN_LAYOUT.pong.x, 2.6, POSTEN_LAYOUT.pong.z) },
 ];
 let nearPoint = null;
+// ---------- Kokos-Verkäufer: läuft den Strand am Wasser auf und ab (logic.kokosStep), ruft, verkauft Kokosnüsse (E) ----------
+const kokosFig = FIG.buildKokosVerkaeufer?.() || buildKunde(normalizeKunde({ id: 'kokos_verkaeufer', typ: 'Kokos-Verkäufer', name: 'Kokos', schuhe: 'barfuss', hemd: 'tanktop', hose: 'shorts', accessoire: 'kegelhut', extras: ['kokosnuss'], hautton: 'dunkel', haare: 'kurz', stimmung_start: 'zufrieden' }), 1234);
+if (!FIG.buildKokosVerkaeufer) kundenExtras(kokosFig, { extras: ['kokosnuss'], accessoire: 'kegelhut' });
+scene.add(kokosFig);
+let kokos = kokosStart();
+const kokosCollider = { x: kokos.x, z: kokos.z, r: 0.6 };
+colliders.push(kokosCollider);
+let kokosSpur = null, kokosRufBis = 0, kokosGangT = 0; // Gang-Zeit läuft nur beim Gehen, sonst friert die Figur mitten im Schritt ein
+function applyKokos(dt = 0) {
+  kokosFig.position.set(kokos.x, 0, kokos.z); kokosFig.rotation.y = kokos.yaw;
+  kokosCollider.x = kokos.x; kokosCollider.z = kokos.z;
+  if (kokos.moving) kokosGangT += dt;
+  if (kokosFig.userData.update) { kokosFig.userData.update(kokosGangT); return; } // Figur aus figures.js animiert Gang, Bauchladen, Ruf-Pose selbst
+  const P = kokosFig.userData.parts; if (!P?.legs) return;
+  const pose = waddlePose(kokos.phase || 0, kokos.moving ? 1.6 : 0);
+  P.legs[0].rotation.x = pose.legL; P.legs[1].rotation.x = pose.legR;
+  P.arms[0].rotation.x = pose.armL; P.arms[1].rotation.x = pose.armR;
+}
+function updateKokos(dt, now) {
+  if (mode !== 'free' && mode !== 'inspect') { applyKokos(0); return; } // im Gespräch bleibt er stehen
+  const vorher = { x: kokos.x, z: kokos.z };
+  const hind = [kokosHindernisse(), { x: state.x, z: state.z, r: 0.8 }].flat();
+  kokos = kokosStep(kokos, dt, hind);
+  const r = kokosRuf(kokos); kokos = r.st;
+  if (r.ruf) {
+    ui.showBark('kokos', texte.kokos.ruf, 2.4);
+    const dist = Math.hypot(kokos.x - state.x, kokos.z - state.z);
+    kokosTon(Math.max(0, 1 - dist / 35));
+    try { kokosFig.userData.setRuf?.(true); } catch (e) { /* ohne Ruf-Pose */ }
+    kokosRufBis = now + 1800;
+  }
+  if (kokosRufBis && now > kokosRufBis) { kokosRufBis = 0; try { kokosFig.userData.setRuf?.(false); } catch (e) { /* ignorieren */ } }
+  if (kokos.moving) { const h = { s: kokosSpur }; spurLegen(h, 's', vorher, kokos, kokos.yaw, 'flipflop', now / 1000); kokosSpur = h.s; }
+  applyKokos(dt);
+}
+const kokosHindernisse = () => kunden.filter((k) => k.group.visible).map((k) => ({ x: k.npc.x, z: k.npc.z, r: 0.8 }));
+// gesungener Strandruf (audio.gesang, echter Clip sobald geladen), gain = nur Abstand
+function kokosTon(gain) { try { if (audio?.gesang) audio.gesang('kokos_ruf', { pan: panFor(kokosFig), gain }); else sfx('kokos_ruf', { pan: panFor(kokosFig), gain }); } catch (e) { /* ohne Ton */ } }
+// Kauf: kleine Blase mit Kaufen/Nein; danach der Gag „was Besonderes“ als lauter Ruf
+let kokosDialog = false;
+function startKokos() {
+  const T = texte.kokos;
+  talking = { id: 'kokos', group: kokosFig, def: { id: 'kokos', name: T.name }, npc: { x: kokos.x, z: kokos.z, yaw: kokos.yaw } };
+  for (const key in keys) keys[key] = false;
+  clickTarget = null; mode = 'kokos'; kokosDialog = true;
+  ui.showPrompt(null);
+  ui.showBubble({ text: T.frage, options: [T.kaufen, T.nein] }, T.name, 0);
+}
+function kokosChoice(i) {
+  if (!kokosDialog) return;
+  const T = texte.kokos;
+  kokosDialog = false;
+  if (i === 0) {
+    const r = buyKokos(game, KOKOS_PREIS);
+    game = r.state; refreshHud();
+    if (r.result === 'gekauft') { sfx('kasse'); ui.showBubble({ text: fillText(T.gekauft, { kokos: game.kokos }), options: ['Weiter'] }, T.name, 0); mode = 'info'; }
+    else { sfx('ablehnung'); ui.showBubble({ text: T.kein_geld, options: ['Weiter'] }, T.name, 0); mode = 'info'; }
+    setTimeout(() => { ui.showBark('kokos', T.besonderes, 3); kokosTon(1); try { kokosFig.userData.setRuf?.(true); } catch (e) { /* ignorieren */ } kokosRufBis = performance.now() + 1800; }, 900); // Gag: fragt laut nach „was Besonderem“
+  } else { ui.hideBubble(); talking = null; mode = 'free'; }
+}
 function pongSay(situation) {
   try { const pan = panFor(POINTS[1].obj); if (situation === 'pfiff') sfx('pfeife'); else audio?.bark?.('pong', situation, { pan }); } catch (e) { /* ohne Ton */ }
 }
@@ -454,6 +518,7 @@ function showInfo(point, text, bark = null) {
   ui.showBubble({ text, options: ['Weiter'] }, point.name, 0);
 }
 function usePoint(point) {
+  if (point.id === 'kokos') { startKokos(); return; }
   if (point.id === 'mango_stand') {
     const r = buyMango(game);
     game = r.state; refreshHud();
@@ -642,7 +707,7 @@ function advanceMentor() {
 let joy = null;
 const touch = ui.createTouchControls({
   onJoystick: (dx, dy) => { joy = dx === null ? null : joystickInput(dx, dy, { radius: touch.radius }); if (joy) clickTarget = null; },
-  onTalk: () => { sfx('talk'); if (mode === 'dialog') confirmDialog(); else if (mode === 'mentor') advanceMentor(); else if (mode === 'info') endInfo(); else if (mode === 'bar') advanceBar(); else if (nearK && mode === 'free') startTalk(nearK); else if (nearMentor && mode === 'free') startMentor(); else if (nearPoint && mode === 'free') usePoint(nearPoint); },
+  onTalk: () => { sfx('talk'); if (mode === 'dialog') confirmDialog(); else if (mode === 'mentor') advanceMentor(); else if (mode === 'info') endInfo(); else if (mode === 'bar') advanceBar(); else if (mode === 'kokos') kokosChoice(0); else if (nearK && mode === 'free') startTalk(nearK); else if (nearMentor && mode === 'free') startMentor(); else if (nearPoint && mode === 'free') usePoint(nearPoint); },
   onLook: () => { sfx('talk'); if (nearK || mode === 'inspect') toggleInspect(); },
   onCamLeft: (down) => { keys.rotL = down; },
   onCamRight: (down) => { keys.rotR = down; },
@@ -658,6 +723,7 @@ window.addEventListener('keydown', (e) => {
   if (mode === 'mentor') { if (['Enter', 'Space', 'KeyE', 'Digit1'].includes(e.code)) advanceMentor(); else if (e.code === 'Escape') advanceMentor(); e.preventDefault(); return; }
   if (mode === 'info') { if (['Enter', 'Space', 'KeyE', 'Digit1', 'Escape'].includes(e.code)) endInfo(); e.preventDefault(); return; }
   if (mode === 'bar') { if (['Enter', 'Space', 'KeyE', 'Digit1'].includes(e.code)) advanceBar(0); else if (['Digit2', 'Escape'].includes(e.code)) advanceBar(1); e.preventDefault(); return; }
+  if (mode === 'kokos') { if (['Enter', 'Space', 'KeyE', 'Digit1'].includes(e.code)) kokosChoice(0); else if (['Digit2', 'Escape'].includes(e.code)) kokosChoice(1); e.preventDefault(); return; }
   if (e.code === KEY_TALK && nearMentor && mode === 'free') { startMentor(); e.preventDefault(); return; }
   if (e.code === KEY_TALK && nearPoint && !nearK && mode === 'free') { usePoint(nearPoint); e.preventDefault(); return; }
   // E = immer ansprechen (ohne Kunden in Reichweite passiert nichts), F = hinschauen
@@ -803,6 +869,7 @@ ui.onOptionClick((i, where) => {
   else if (mode === 'mentor') advanceMentor();
   else if (mode === 'info') endInfo();
   else if (mode === 'bar') advanceBar(i);
+  else if (mode === 'kokos') kokosChoice(i);
   else if (mode === 'dialog') { selected = i; confirmDialog(); }
 });
 
@@ -1181,7 +1248,7 @@ function updateNearHint() {
     ui.showPrompt(txt); ui.showBadge(null); ui.pulseButtons({ talk: true }); return;
   }
   if (!nearK && nearPoint) {
-    const txt = nearPoint.id === 'mango_stand' ? 'Mango-Stand — E: Mango kaufen (10 Münzen)' : nearPoint.id === 'tuktuk' ? `Tuk-Tuk — E: zur Bar (${TUKTUK_PREIS_MANGOS} Mangos oder ${TUKTUK_PREIS_GELD} Münzen)` : (game.mangos > 0 ? 'Pong — E: Mango abgeben (1 Mango = 1 Gnade)' : 'Pong — E: ansprechen');
+    const txt = nearPoint.id === 'kokos' ? `${texte.kokos.name} — E: Kokosnuss (${KOKOS_PREIS} Münzen)` : nearPoint.id === 'mango_stand' ? 'Mango-Stand — E: Mango kaufen (10 Münzen)' : nearPoint.id === 'tuktuk' ? `Tuk-Tuk — E: zur Bar (${TUKTUK_PREIS_MANGOS} Mangos oder ${TUKTUK_PREIS_GELD} Münzen)` : (game.mangos > 0 ? 'Pong — E: Mango abgeben (1 Mango = 1 Gnade)' : 'Pong — E: ansprechen');
     ui.showPrompt(txt); ui.showBadge(null); ui.pulseButtons({ talk: true }); return;
   }
   if (!nearK) { ui.showPrompt(null); ui.showBadge(null); ui.pulseButtons(null); return; }
@@ -1397,6 +1464,13 @@ function setupScene() {
     return;
   }
   if (SCENE === 'menue') { openMenu(); return; }
+  if (SCENE === 'kokos') { // Verkäufer neben dem Schluffi am Wasser, Ruf-Blase, Kauf-Blase
+    kokos = { ...kokos, x: state.x + 2.2, z: state.z + 2.5, yaw: -Math.PI / 2, moving: true, phase: 1.2 };
+    kokosGangT = 0.3; applyKokos(0); try { kokosFig.userData.setRuf?.(true); } catch (e) { /* ignorieren */ } applyKokos(0);
+    ui.showBark('kokos', texte.kokos.ruf, 999);
+    startKokos();
+    return;
+  }
   if (SCENE === 'liegen') { // zwei Kunden auf den Hotel-Liegen (Pose liegestuhl), Spieler davor am Strand
     const ids = ['liege_1', 'liege_2'];
     kunden.slice(0, 2).forEach((k, i) => {
@@ -1522,10 +1596,10 @@ if (SNAP) {
     updateFade(mode === 'inspect' ? talking.npc : state);
     const shoot = () => {
       resize(); camera.updateMatrixWorld();
-      if (SCENE === 'badge' || SCENE === 'hint' || SCENE === 'bark') { const near = nearestKunde(state, kundenPos()); nearK = near ? near.ref : null; updateNearHint(); placeBarks(); }
-      if (mode === 'dialog' || mode === 'mentor' || mode === 'info' || mode === 'bar') placeBubbleAtHead();
+      if (SCENE === 'badge' || SCENE === 'hint' || SCENE === 'bark' || SCENE === 'kokos') { const near = nearestKunde(state, kundenPos()); nearK = near ? near.ref : null; updateNearHint(); placeBarks(); }
+      if (mode === 'dialog' || mode === 'mentor' || mode === 'info' || mode === 'bar' || mode === 'kokos') placeBubbleAtHead();
       renderer.render(scene, camera);
-      requestAnimationFrame(() => { resize(); if (mode === 'dialog' || mode === 'mentor' || mode === 'info' || mode === 'bar') placeBubbleAtHead(); renderer.render(scene, camera); stats(); });
+      requestAnimationFrame(() => { resize(); if (mode === 'dialog' || mode === 'mentor' || mode === 'info' || mode === 'bar' || mode === 'kokos') placeBubbleAtHead(); renderer.render(scene, camera); stats(); });
     };
     if (document.readyState === 'complete') shoot(); else window.addEventListener('load', shoot);
     window.addEventListener('resize', shoot);
@@ -1593,6 +1667,7 @@ if (SNAP) {
     for (const k of kunden) updateKundenExtras(k.group, now / 1000);
     updateTutorial(now);
     updatePatrol(dt, now);
+    updateKokos(dt, now);
     // Schritt im Sand: jede volle Watschel-Periode (1.6 Einheiten ≈ 0.4 s Gehen)
     if (state.moving && Math.floor(state.phase / (Math.PI * 2)) !== Math.floor(lastStepPhase / (Math.PI * 2))) sfx('schritt');
     lastStepPhase = state.phase;
@@ -1626,7 +1701,7 @@ if (SNAP) {
     applyCamera();
     camera.updateMatrixWorld();
     updateFade(mode === 'inspect' && talking ? talking.npc : state);
-    if (mode === 'dialog' || mode === 'mentor' || mode === 'info' || mode === 'bar') placeBubbleAtHead();
+    if (mode === 'dialog' || mode === 'mentor' || mode === 'info' || mode === 'bar' || mode === 'kokos') placeBubbleAtHead();
     renderer.render(scene, camera);
     stats();
   });

@@ -312,6 +312,8 @@ export const DEFAULT_TEXTE = {
   // Startkarte bei vorhandenem Spielstand
   start: { titel: 'Bangi Beach', stand: 'Spielstand: Tag {tag} · {geld} Münzen · {ware} Beutel', weiter: 'Weiter', neu: 'Neues Spiel' },
   hud: { tag: 'Tag', heat: 'Heat', ware: 'Ware', geld: 'Kasse', mangos: 'Mangos', ziel: 'Ziel' },
+  // Kokos-Verkäufer (E): Kokosnuss für 5 Münzen, Gag „was Besonderes“
+  kokos: { name: 'Kokos-Verkäufer', ruf: 'Co-co-nut-juice!', frage: 'Kokosnuss? Fünf Münzen. Frisch vom Baum, der Baum war gestern noch dran.', kaufen: 'Kaufen', nein: 'Nein danke', gekauft: 'Hier. Trinken, dann denken. {kokos} im Beutel.', kein_geld: 'Fünf Münzen, Mann. FÜNF. Das ist eine Hand.', besonderes: 'ODER WILLST DU WAS BESONDERES?!' },
   // Karte nach dem Finale: weiterspielen (Tag 8 ff.) oder die Woche neu starten
   finale: { titel: 'Die Woche ist rum.', kasse: 'Kasse: {geld} Münzen · Ziel: {muenzen}', weiterspielen: 'Weiterspielen', neue_woche: 'Neue Woche' },
   reveal_gags: [],
@@ -325,7 +327,7 @@ export function normalizeTexte(json) {
   const pick = (key) => (u[key] !== undefined ? u[key] : t[key]);
   const obj = (v) => (v && typeof v === 'object' ? v : {});
   const te = obj(t.tagesende);
-  const op = obj(pick('optionen')), ti = obj(pick('titel')), di = obj(pick('dialog')), hl = obj(pick('heat_label')), me = obj(pick('menue')), sta = obj(pick('start')), vh = obj(pick('verhandeln')), hu = obj(pick('hud')), fi = obj(pick('finale'));
+  const op = obj(pick('optionen')), ti = obj(pick('titel')), di = obj(pick('dialog')), hl = obj(pick('heat_label')), me = obj(pick('menue')), sta = obj(pick('start')), vh = obj(pick('verhandeln')), hu = obj(pick('hud')), fi = obj(pick('finale')), kk = obj(pick('kokos'));
   const tagesende = {};
   for (const l of LAGEN) tagesende[l] = strList(te[l], DEFAULT_TEXTE.tagesende[l]);
   const strMap = (src, defaults) => Object.fromEntries(Object.keys(defaults).map((k) => [k, str(src[k], defaults[k])]));
@@ -345,6 +347,7 @@ export function normalizeTexte(json) {
     verhandeln: { angenommen: strList(vh.angenommen, DEFAULT_TEXTE.verhandeln.angenommen), weg: strList(vh.weg, DEFAULT_TEXTE.verhandeln.weg) },
     hud: strMap(hu, DEFAULT_TEXTE.hud),
     finale: strMap(fi, DEFAULT_TEXTE.finale),
+    kokos: strMap(kk, DEFAULT_TEXTE.kokos),
   };
 }
 
@@ -875,6 +878,12 @@ export function finishMentor(state, folge) {
 export const POSTEN_DEFAULT = { x: 20, z: -84, r: 15 };
 export const inPostenSicht = (pos, posten = POSTEN_DEFAULT) => Math.hypot(pos.x - posten.x, pos.z - posten.z) <= posten.r;
 export const MANGO_PREIS = 10;
+export const KOKOS_PREIS = 5;
+// Kokosnuss beim Strandverkäufer: nur Flavor (Zähler), keine Wirkung
+export function buyKokos(state, preis = KOKOS_PREIS) {
+  if (state.geld < preis) return { state, result: 'kein_geld' };
+  return { state: { ...state, geld: state.geld - preis, kokos: (state.kokos || 0) + 1 }, result: 'gekauft' };
+}
 // Mango am Markt-Stand kaufen (Geld −, Mango +); zu wenig Geld → unverändert
 export function buyMango(state, preis = MANGO_PREIS) {
   if (state.geld < preis) return { state, result: 'kein_geld' };

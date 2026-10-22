@@ -209,6 +209,13 @@ Standbild (für die PNGs in `shots/`).
   Meshes zusammengeführt — mit `?stats=1` lässt sich der Draw-Call-Stand ablesen, das ist der erste Hebel, wenn
   es auf einem Laptop ruckelt. Pixel-Ratio ist auf 1.5 gedeckelt.
 
+## Kokos-Verkäufer
+Ein Kokos-Verkäufer läuft am Wasser entlang den ganzen Strand auf und ab (Verleih ↔ Bauzaun), weicht Liegen, Kundschaft
+und dem Schluffi landeinwärts aus, macht Pausen und ruft alle 6–10 s „Co-co-nut-juice!“ (Blase, Ton mit Richtung und
+Abstand). Er hinterlässt Fußspuren. **E** bei ihm: Kokosnuss für 5 Münzen (🥥 im HUD, reiner Flavor) – danach fragt er
+laut, ob man „was Besonderes“ will. Laufweg und Ruf sind reine Logik in `js/logic.js` (`kokosStep`, `kokosRuf`,
+getestet), Texte unter `ui.kokos{}`. `?snap=1&scene=kokos`.
+
 ## Strandliegen
 Die Hotel-Liegen haben ein hochgestelltes Rückenteil und einen Sitzpunkt (`userData.sitz`); wer den Anker einer Liege
 bekommt, sitzt halb liegend darauf (Pose `liegestuhl`: Rücken 20° zurück, Beine nach vorn) mit Blick aufs Meer. Hüfte auf

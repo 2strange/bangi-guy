@@ -405,6 +405,40 @@ export function zoneMix(pos, defs = {}, { strandMin = 0.2, heckeZ = -24, fade = 
   return out;
 }
 
+// ---------- Kokos-Verkäufer: läuft am Wasser entlang den Strand auf und ab (Verleih ↔ Bauzaun), weicht landeinwärts aus,
+// macht Pausen und ruft alle 6–10 s. Reine Logik, Darstellung in main.js ----------
+export const KOKOS = { west: -46, ost: 60, abstand: 2.4, speed: 1.6, pauseAlle: 16, pauseDauer: 2.5, rufMin: 6, rufMax: 10, umweg: 2.2 };
+export function kokosStart(o = KOKOS) {
+  return { x: o.west, z: shoreZ(o.west) - o.abstand, yaw: Math.PI / 2, dir: 1, wait: 0, phase: 0, moving: false, gelaufen: 0, umweg: 0, zeit: 0, rufAt: o.rufMin };
+}
+/** hindernisse: [{ x, z, r }] (Liegen, Kundschaft, Spieler). Rückgabe: neuer Zustand */
+export function kokosStep(st, dt, hindernisse = [], o = KOKOS) {
+  const zeit = st.zeit + dt;
+  if (st.wait > 0) return { ...st, wait: Math.max(0, st.wait - dt), moving: false, zeit };
+  let dir = st.dir, wait = 0;
+  let x = st.x + dir * o.speed * dt;
+  if (x >= o.ost) { x = o.ost; dir = -1; wait = o.pauseDauer; }
+  else if (x <= o.west) { x = o.west; dir = 1; wait = o.pauseDauer; }
+  // Spur am Wasser; steht etwas im Weg (voraus auf der Spur), landeinwärts drumherum, danach wieder ans Wasser
+  const zSoll = shoreZ(x) - o.abstand;
+  const vorausX = x + dir * 1.6;
+  const imWeg = hindernisse.some((h) => Math.abs(h.x - vorausX) < (h.r || 1) + 0.7 && Math.abs(h.z - zSoll) < (h.r || 1) + 0.9);
+  const umweg = imWeg ? o.umweg : Math.max(0, st.umweg - 2.5 * dt);
+  const zZiel = zSoll - umweg;
+  const z = Math.min(zSoll, st.z + (zZiel - st.z) * Math.min(1, 4 * dt)); // nie seewärts der Spur (die Uferlinie schwingt mit x)
+  const d = Math.hypot(x - st.x, z - st.z);
+  let gelaufen = st.gelaufen + d;
+  if (gelaufen >= o.pauseAlle) { gelaufen = 0; wait = Math.max(wait, o.pauseDauer); } // kurz stehen bleiben, Kokosnuss zeigen
+  const yaw = d > 1e-6 ? Math.atan2(x - st.x, z - st.z) : st.yaw;
+  return { ...st, x, z, yaw, dir, wait, moving: true, phase: st.phase + d * (Math.PI * 2 / 1.6), gelaufen, umweg, zeit };
+}
+/** Ruf fällig? Nächster Ruf 6–10 s später (deterministisch aus der Zeit) */
+export function kokosRuf(st, o = KOKOS) {
+  if (st.zeit < st.rufAt) return { st, ruf: false };
+  const frac = (Math.floor(st.rufAt * 97) % 1000) / 1000;
+  return { st: { ...st, rufAt: st.zeit + o.rufMin + frac * (o.rufMax - o.rufMin) }, ruf: true };
+}
+
 // ---------- Fußspuren im Sand: alle `abstand` Einheiten Weg eine Spur, links/rechts wechselnd, verblasst nach ttl ----------
 export const SPUR = { abstand: 0.8, seitlich: 0.2, ttl: 20, max: 160 };
 export const imSand = (pos) => pos.z > -24 && pos.z < shoreZ(pos.x) - 0.3 && !inUntiefe(pos); // Strandband zwischen Hecke und Wasserkante

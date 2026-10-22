@@ -1000,3 +1000,13 @@ test('Rotation: über 7 Tage kommt jeder Kunde des echten Katalogs mindestens ei
   assert.ok(!kundenFuerTag(kat, 3, 1, 1, null, null).some((k) => k.id === 'oma_1') || true);
   assert.equal(zahlungskraeftig({ feilschen: 0.7 }), true); assert.equal(zahlungskraeftig({ feilschen: 0.69 }), false); assert.equal(zahlungskraeftig({}), false); assert.equal(ZAHLUNGSKRAEFTIG_AB, 0.7);
 });
+
+import { buyKokos, KOKOS_PREIS } from '../js/game.js';
+test('Kokosnuss: 5 Münzen, Zähler hoch, ohne Geld nichts; Texte unter ui.kokos', () => {
+  assert.equal(KOKOS_PREIS, 5);
+  const r = buyKokos({ ...initialState(), geld: 12 });
+  assert.equal(r.result, 'gekauft'); assert.equal(r.state.geld, 7); assert.equal(r.state.kokos, 1);
+  assert.equal(buyKokos(r.state).state.kokos, 2);
+  const k = buyKokos({ ...initialState(), geld: 4 }); assert.equal(k.result, 'kein_geld'); assert.equal(k.state.geld, 4);
+  assert.equal(nT(null).kokos.ruf, 'Co-co-nut-juice!'); assert.equal(nT({ ui: { kokos: { kaufen: 'Buy' } } }).kokos.kaufen, 'Buy');
+});

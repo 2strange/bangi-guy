@@ -136,6 +136,37 @@
     }
   },
 
+  "kokosverkaeufer": {
+    "name": "Mister Coconut",
+    "gruss": [
+      "'My friend! Coconut? Cold, fresh, five coins. Or... something special?'",
+      "'You again! Good. Coconut? Or do we talk about the special?'",
+      "Mister Coconut sets down his tray and wipes his forehead with the towel. 'Five coins. For you: five coins.'"
+    ],
+    "kauf": [
+      "One swing of the little machete, without looking, straw in. 'Drink, my friend. Now you look like holiday.'",
+      "'Five coins, one heaven.' He's looking at your bag, not at the nut.",
+      "'Straw is free. The straw is the business model.'"
+    ],
+    "kein_geld": [
+      "'No five coins? My friend, you're in the wrong business. Or the right one, but badly.'",
+      "'Tomorrow. Coconuts wait. Me too. Eleven years already.'"
+    ],
+    "ablehnung": [
+      "'Okay okay okay. I walk. You think.'",
+      "'No nut, no problem. The special? Also no problem. Yet.'"
+    ],
+    "running_gag": [
+      { "tag": 1, "text": "'Something special, my friend? I see you. Every day. Sandals, shirt, bag. I did coconut for eleven years. Maybe it's time for... variety.'" },
+      { "tag": 2, "text": "Mister Coconut produces a coconut with a leaf drawn on it in marker. 'Bangi Coconut. Special Edition. Ten coins. For you: fifteen, you're an expert.'" },
+      { "tag": 3, "text": "Three tourists stand on the beach holding Bangi Coconuts, waiting for something to happen. Nothing happens. Mister Coconut waves at you: 'Same customers, my friend! I take the dumb ones, you take the smart ones!'" },
+      { "tag": 4, "text": "Pong is standing at Mister Coconut's tray buying a Bangi Coconut. Pong sniffs it. Pong shrugs. Pong leaves. Mister Coconut, whispering to you: 'My product is legal, my friend. Yours isn't. Think about who the professional is here.'" },
+      { "tag": 5, "text": "'Partner? Fifty-fifty. You bring the special, I bring the call. Co-co-nut-juice, and underneath: something special. Nobody checks a coconut, my friend. Nobody.'" },
+      { "tag": 6, "text": "Mister Coconut has dropped his price to three coins and now sings 'Co-co-nut-juice, cheaper than the other guy!' There is no other guy. He means you." },
+      { "tag": 7, "text": "In the evening Mister Coconut sits at the bar next to the mentor. Nong has put the empty glass in front of him. 'Competition is also customers,' says the mentor. Mister Coconut buys a bag. He asks for five coins off, for the coconut from day one." }
+    ]
+  },
+
   "abend_bar": {
     "sonnenuntergang": [
       "The sun's already got its eyes shut. That's your cue: bar.",
