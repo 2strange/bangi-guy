@@ -32,7 +32,7 @@ import {
   normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE, gagFor, nextIdleGagDelay,
   mergeTexte, mergeKundenKatalog, normalizeOptionen, toSave, fromSave, hatFortschritt, fillText, dayReport, buyKokos, kokosSchutz, normalizeKokos, kokosGag, kokosWirkung, pickLine,
   normalizeTutorial, tutorialStart, tutorialEvent, tutorialSkip,
-  normalizeWoche, tagesziel, tagModifikator, hudZiel, finaleStufe, harmloseFuerTag, kalibriereWoche, neueWoche, finaleKarte, besucherWahl, besucherStep,
+  normalizeWoche, tagesziel, tagModifikator, hudZiel, finaleStufe, harmloseFuerTag, kalibriereWoche, neueWoche, finaleKarte, besucherWahl, besucherStep, KOPF_WAHL,
   normalizeEreignisse, ereignisFuerTag, ereignisKundenFaktor, ereignisZiviExtra, kundenFuerTag, ereignisFenster,
   normalizeStimmen, barksFor, pickBark,
   normalizeMentorSzene, mentorSzene, finishMentor, mentorBesucht,
@@ -104,9 +104,18 @@ world.group.updateMatrixWorld(true);
 }
 const colliders = world.colliders.slice();
 
-const player = schluffi();
+let player = schluffi();
 scene.add(player);
-const P = player.userData.parts;
+let P = player.userData.parts;
+// Figurenwahl: Schluffi mit anderer Kopfbedeckung neu bauen (Kokosnuss in der Hand wandert mit)
+function setzeSchluffi(kopf) {
+  const alt = player;
+  player = schluffi({ kopf }); player.position.copy(alt.position); player.rotation.copy(alt.rotation);
+  scene.remove(alt); scene.add(player);
+  P = player.userData.parts;
+  if (P.arms?.[0] && typeof spielerNuss !== 'undefined') P.arms[0].add(spielerNuss);
+  game = { ...game, kopf };
+}
 
 // ---------- Zustand ----------
 const startSpot = world.spots[AT] || world.spots.start;
@@ -946,6 +955,7 @@ window.addEventListener('keydown', (e) => {
   if (mode === 'menu') { if (e.code === 'Escape') closeMenu(); e.preventDefault(); return; }
   if (mode === 'start') { if (['Enter', 'Space', 'Digit1'].includes(e.code)) startChoice(0); else if (e.code === 'Digit2') startChoice(1); else if (e.code === 'Digit3') startChoice(2); e.preventDefault(); return; }
   if (mode === 'infoseite') { if (['Enter', 'Space', 'Escape', 'Digit1'].includes(e.code)) closeInfo(); e.preventDefault(); return; }
+  if (mode === 'figur') { const d = { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3, Enter: 0, Space: 0 }[e.code]; if (d !== undefined) figurChoice(d); e.preventDefault(); return; }
   if (mode === 'intro') { if (['Enter', 'Space', 'Escape', KEY_TALK].includes(e.code)) introEnde(); e.preventDefault(); return; }
   if (e.code === 'Escape' && (mode === 'free')) { openMenu(); e.preventDefault(); return; }
   if (mode === 'finale') { if (['Enter', 'Space', 'Digit1'].includes(e.code)) finaleChoice(0); else if (e.code === 'Digit2') finaleChoice(1); e.preventDefault(); return; }
@@ -1056,6 +1066,7 @@ function startChoice(i) {
   if (wahl === 'info') { showInfoSeite('start'); return; }
   if (wahl === 'weiter' && saved) {
     game = { ...game, ...saved };
+    if (game.kopf && game.kopf !== 'stirnband') setzeSchluffi(game.kopf);
     if (game.finale) applyFinale(game.finale);
     refreshKokos();
     planeSzenen();
@@ -1067,6 +1078,18 @@ function startChoice(i) {
     return;
   }
   clearSave(); game = { ...game, seed: neuerSeed() }; refreshHud();
+  showFigurWahl();
+}
+// Figurenwahl vor dem Intro: vier Kopfbedeckungen, Wahl landet im Spielstand (game.kopf)
+function showFigurWahl() {
+  const T = texte.figur;
+  mode = 'figur';
+  ui.showCard({ titel: T.titel, zeilen: [T.hinweis], buttons: KOPF_WAHL.map((k) => T[k]) });
+}
+function figurChoice(i) {
+  const kopf = KOPF_WAHL[i]; if (!kopf) return;
+  setzeSchluffi(kopf); sfx('talk');
+  ui.hideCard();
   startIntro();
 }
 // Info-Seite (Titel → Info, ⚙ → Hilfe): Text aus texte.json ui.info, Code-Default in game.js
@@ -1110,6 +1133,7 @@ let fw = null; // Feuerwerk (feuerwerk.js) überm Meer
 const ERFOLG_LIEGE = { x: -57.2, z: 11.2, yaw: Math.PI / 2 }; // vor der Hüttentür (Osten), Blick zur Kamera
 function erfolgTableau() {
   erfolg = true; erfolgSitzt = true; finaleKarteOffen = null; clearSave();
+  tagesuhr = { t01: zeitT('21:00') }; applyTageszeit(); // Abend: Feuerwerk leuchtet, Lichterkette an
   const hut = world.huette.position;
   try { setHuette(world.huette, 'deine', { schild: false }); world.huegel.mentorAnHuette?.(world.huette, true); } catch (e) { /* ohne Hütte */ }
   try { // Liegestuhl vor der Hütte, Schluffi liegt drin (Pose liegestuhl auf dem Sitzpunkt der Liege)
@@ -1171,7 +1195,7 @@ ui.onMenu({
 });
 ui.onOptionClick((i, where) => {
   sfx('talk');
-  if (where === 'card') { if (mode === 'start') startChoice(i); else if (mode === 'infoseite') closeInfo(); else if (mode === 'finale') finaleChoice(i); else cardWeiter(); }
+  if (where === 'card') { if (mode === 'start') startChoice(i); else if (mode === 'figur') figurChoice(i); else if (mode === 'infoseite') closeInfo(); else if (mode === 'finale') finaleChoice(i); else cardWeiter(); }
   else if (mode === 'mentor') advanceMentor();
   else if (mode === 'info') endInfo();
   else if (mode === 'bar') advanceBar(i);
@@ -1671,6 +1695,8 @@ function setupScene() {
   if (TAG && Number.isFinite(parseInt(TAG, 10))) { game = { ...game, tag: Math.max(1, parseInt(TAG, 10)) }; planeSzenen(); spawnKunden(game.tag); }
   if (T01) { tagesuhr = { t01: Math.max(0, Math.min(1, parseFloat(T01))) }; applyTageszeit(); placeMentor(barBeendetTag(tagesuhr.t01)); }
   refreshHud();
+  if (q('kopf')) setzeSchluffi(q('kopf')); // Schnappschuss mit Kopfbedeckung
+  if (SCENE === 'figur_wahl') { showFigurWahl(); return; }
   if (SCENE === 'titel') { showTitle(); return; }
   if (SCENE === 'intro') { startIntro({ halt: parseFloat(q('bei') || '2') }); return; }
   if (SCENE === 'erfolg') { game = { ...game, tag: woche.tage.length, geld: woche.ziel.muenzen + 10, finale: 'gut' }; refreshHud(); erfolgTableau(); return; }

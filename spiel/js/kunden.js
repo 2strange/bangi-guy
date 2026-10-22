@@ -178,9 +178,10 @@ export function buildKunde(k, seed = 1, outfit = null) {
     schuhPaare.push({ shoe, boot });
     if (longPants) {
       leg.add(limb(V(fx, 0.35 - hipY, -0.05), V(0, 0, 0), 0.16, pantsColor, { outline: 0.04 }));
-      if (hose === 'jogginghose') {
-        const stripe = toonMesh(new THREE.BoxGeometry(0.04, 0.7, 0.05), 0xffffff, { outline: 0.015 });
-        stripe.position.set(fx + s * 0.16, 0.7 - hipY, 0); leg.add(stripe);
+      if (hose === 'jogginghose') { // Seitenstreifen liegt am Hosenbein an (vorher stand er senkrecht neben dem Bein wie eine Antenne auf dem Schuh)
+        const a = V(fx, 0.35 - hipY, -0.05), b = V(0, 0, 0), dir = b.clone().sub(a), mid = a.clone().lerp(b, 0.5);
+        const stripe = toonMesh(new THREE.BoxGeometry(0.035, dir.length() * 0.8, 0.04), 0xffffff, { outline: 0.012 });
+        stripe.position.set(mid.x + s * 0.14, mid.y, mid.z); stripe.rotation.set(Math.atan2(dir.z, dir.y), 0, -Math.atan2(dir.x, dir.y)); stripe.castShadow = false; leg.add(stripe);
       }
     } else {
       leg.add(limb(V(fx, 0.3 - hipY, -0.05), V(0, 0, 0), 0.12, skin, { outline: 0.04 }));
@@ -464,12 +465,10 @@ export function buildKunde(k, seed = 1, outfit = null) {
     const band = toonMesh(new THREE.TorusGeometry(0.47, 0.06, 8, 24), [0xffd54a, 0x3a7bd5, 0x3bb84a][Math.floor(rand() * 3)], { outline: 0.03 });
     band.position.set(0, 0.3, 0); band.rotation.x = Math.PI / 2 + 0.1; head.add(band);
   }
-  if (k.accessoire === 'kopfhoerer') {
-    const band = toonMesh(new THREE.TorusGeometry(0.56, 0.05, 8, 24, Math.PI), 0x222233, { outline: 0.03 });
-    band.position.set(0, 0.15, 0); band.rotation.y = Math.PI / 2; head.add(band);
+  if (k.accessoire === 'kopfhoerer') { // nur die kleinen Ohrstücke, kein Bügel (der stand als Rolle vor dem Körper)
     for (const s of [-1, 1]) {
-      const cup = toonMesh(new THREE.CylinderGeometry(0.18, 0.18, 0.12, 12), 0xe8463a, { outline: 0.03 });
-      cup.position.set(s * 0.58, 0, 0); cup.rotation.z = Math.PI / 2; head.add(cup);
+      const cup = toonMesh(new THREE.CylinderGeometry(0.11, 0.11, 0.07, 12), 0xe8463a, { outline: 0.025 });
+      cup.position.set(s * 0.56, 0, 0.02); cup.rotation.z = Math.PI / 2; cup.castShadow = false; head.add(cup);
     }
   }
   if (k.accessoire === 'ohrknopf') {
@@ -516,11 +515,12 @@ export function buildKunde(k, seed = 1, outfit = null) {
 
   // Feilsch-Hinweis: zahlungskräftige Gäste (feilschen ≥ 0,7) tragen eine Goldkette – wer mehr verlangt, sollte darauf achten
   if (zahlungskraeftig(k)) {
-    const vorn = (belly ? 0.6 : 0.5) + 0.05; // knapp vor der Brust, sonst verschwindet die Kette im Rumpf
-    const kette = toonMesh(new THREE.TorusGeometry(0.24, 0.035, 8, 20, Math.PI), 0xffc53d, { outline: 0.015 }); // halber Ring, hängt als U vor der Brust
-    kette.position.set(0, shoulderY + 0.04, vorn); kette.rotation.z = Math.PI; root.add(kette);
-    const anhaenger = toonMesh(new THREE.SphereGeometry(0.07, 8, 6), 0xffc53d, { outline: 0.012 });
-    anhaenger.position.set(0, shoulderY - 0.24, vorn + 0.02); root.add(anhaenger);
+    // eng um den Hals: Ring um den Halsansatz (leicht nach vorn gekippt), Anhänger liegt auf der Brust; kein Schattenwurf
+    const vorn = belly ? 0.52 : 0.44; // Brustfläche
+    const kette = toonMesh(new THREE.TorusGeometry(0.2, 0.03, 8, 24), 0xffc53d, { outline: 0.012 });
+    kette.position.set(0, shoulderY + 0.02, 0.1); kette.rotation.x = Math.PI / 2 + 0.55; kette.castShadow = false; root.add(kette);
+    const anhaenger = toonMesh(new THREE.SphereGeometry(0.06, 8, 6), 0xffc53d, { outline: 0.012 });
+    anhaenger.scale.set(1, 1, 0.5); anhaenger.position.set(0, shoulderY - 0.2, vorn + 0.01); anhaenger.castShadow = false; root.add(anhaenger);
   }
   // Surfbrett: quer vor dem Körper in beiden Händen (lange Achse links–rechts, ragt beidseitig über den Körper, Deck nach
   // vorn/leicht oben, Bauchhöhe). Beim Sitzen/Liegen liegt ein zweites Brett daneben im Sand (holdPose).

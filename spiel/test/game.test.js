@@ -710,6 +710,7 @@ test('Spielstand: toSave/fromSave sind ein Rundlauf über die Nachtfelder; fremd
   const r = fromSave(JSON.parse(JSON.stringify(j)));
   assert.equal(r.tag, 4); assert.equal(r.geld, 140); assert.equal(r.ware, 3); assert.equal(r.heat, 2); assert.equal(r.mangos, 7); assert.equal(r.tageOhneVorfall, 2);
   assert.equal(r.verkauftHeute, 0); assert.deepEqual(r.status, {}); assert.equal(r.texte, undefined, 'Tagesinternes und Texte kommen frisch');
+  assert.equal(r.kopf, 'stirnband', 'Figurenwahl: Default Stirnband'); assert.equal(fromSave(toSave({ ...s, kopf: 'strohhut' })).kopf, 'strohhut'); assert.equal(fromSave(toSave({ ...s, kopf: 'zylinder' })).kopf, 'stirnband', 'unbekannter Kopf → Default');
   assert.equal(fromSave(null), null); assert.equal(fromSave('x'), null); assert.equal(fromSave({ version: 99, tag: 2 }), null); assert.equal(fromSave({ version: SAVE_VERSION, tag: 0 }), null);
   assert.equal(fromSave({ version: SAVE_VERSION, tag: 'zwei' }), null);
   // Müll in den Feldern wird geklemmt/ersetzt

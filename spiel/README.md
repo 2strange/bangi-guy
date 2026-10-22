@@ -18,6 +18,7 @@ Sprechblasen nur bei Figuren in Hörweite (18) und im Bild. Jeden Tag mindestens
 (`harmloseFuerTag`, `pickKunden`), und die Fähre bringt bei jedem Anlegen 1–2 Besucher, die eine Runde Hafen → Markt →
 Dorf drehen, am Steg warten und mit der nächsten Fähre abfahren (`besucherWahl`/`besucherStep`, getestet). Der Wasserball
 am Startstrand ist kickbar (`ballStep`: Stoß beim Drüberlaufen, rollt aus, prallt an Collidern und am Wasser ab).
+Figurenwahl nach „Neues Spiel“ (Stirnband, Flatcap, Strohhut, Bandana — `schluffi({ kopf })`, im Spielstand als `kopf`).
 Info-Seite über den Titel oder ⚙ → Hilfe (`ui.info` in texte.json). Snaps: `?scene=titel`, `?scene=intro&bei=2`,
 `?scene=erfolg`, `?tag=2` setzt den Spieltag.
 

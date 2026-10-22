@@ -315,6 +315,8 @@ export const DEFAULT_TEXTE = {
   menue: { titel: 'Optionen', sprache: 'Textsprache', beschlagnahme: 'Zivi nimmt die Ware ab', musik: 'Musik', ton: 'Ton', an: 'an', aus: 'aus', schliessen: 'Schließen', hinweis: 'Stimmen bleiben Englisch.', info: 'Hilfe', anzeigen: 'Anzeigen' },
   // Startkarte bei vorhandenem Spielstand
   start: { titel: 'Bangi Beach', untertitel: '', stand: 'Spielstand: Tag {tag} · {geld} Münzen · {ware} Beutel', weiter: 'Weiter', neu: 'Neues Spiel', info: 'Info' }, // Content: ui.titelbild{titel, untertitel, neues_spiel, weiter, info}
+  // Figurenwahl nach „Neues Spiel“: Kopfbedeckung des Schluffi (Content: ui.figur{titel, hinweis, stirnband, flatcap, strohhut, bandana})
+  figur: { titel: 'Wer bist du?', hinweis: 'Später nicht mehr änderbar. Das Stirnband ist Klassik.', stirnband: 'Stirnband', flatcap: 'Flatcap', strohhut: 'Strohhut', bandana: 'Bandana' },
   // Intro nach „Neues Spiel“: Kamerafahrt zur Hütte mit Zielschild, dann zum Startstrand; Content: ui.intro[] (eine Zeile nach der anderen)
   intro: { zeilen: ['Das ist dein Ziel.'], hinweis: 'Enter überspringt' },
   // Info-Seite (Titel → Info, ⚙ → Hilfe)
@@ -354,6 +356,7 @@ export function normalizeTexte(json) {
     verhandeln: { angenommen: strList(vh.angenommen, DEFAULT_TEXTE.verhandeln.angenommen), weg: strList(vh.weg, DEFAULT_TEXTE.verhandeln.weg) },
     hud: strMap(hu, DEFAULT_TEXTE.hud),
     finale: strMap(fi, DEFAULT_TEXTE.finale),
+    figur: strMap(obj(pick('figur')), DEFAULT_TEXTE.figur),
     intro: { zeilen: strList(Array.isArray(pick('intro')) ? pick('intro') : obj(pick('intro')).zeilen, DEFAULT_TEXTE.intro.zeilen), hinweis: str(obj(pick('intro')).hinweis, DEFAULT_TEXTE.intro.hinweis) },
     info: normalizeInfo(obj(pick('info'))),
   }, u);
@@ -682,11 +685,12 @@ export function tutorialEvent(tut, T, trigger) {
 
 // ---------- Spielstand: automatisch am Tagesende (Morgenstand des neuen Tages), „Weiter“/„Neues Spiel“ beim Start ----------
 export const SAVE_VERSION = 1;
-export const SAVE_FELDER = ['tag', 'geld', 'ware', 'heat', 'mangos', 'tageOhneVorfall', 'finale', 'woche', 'seed'];
+export const SAVE_FELDER = ['tag', 'geld', 'ware', 'heat', 'mangos', 'tageOhneVorfall', 'finale', 'woche', 'seed', 'kopf'];
+export const KOPF_WAHL = ['stirnband', 'flatcap', 'strohhut', 'bandana']; // Figurenwahl auf der Startseite (figures.schluffi({ kopf }))
 /** Nur das, was über Nacht zählt: Tag, Kasse, Tasche, Heat, Mangos, Tafel. Tagesinternes (status, verkauftHeute …) ist morgens ohnehin frisch. */
 export function toSave(state) {
   const n = (v, d = 0) => (Number.isFinite(v) ? v : d);
-  return { version: SAVE_VERSION, tag: Math.max(1, Math.round(n(state.tag, 1))), geld: Math.max(0, n(state.geld)), ware: Math.max(0, Math.min(MAX_WARE, n(state.ware))), heat: Math.max(0, Math.min(MAX_HEAT, n(state.heat))), mangos: Math.max(0, n(state.mangos)), tageOhneVorfall: Math.max(0, n(state.tageOhneVorfall)), finale: FINALE_STUFEN.includes(state.finale) ? state.finale : null, woche: Math.max(1, Math.round(n(state.woche, 1))), seed: Math.max(1, Math.round(n(state.seed, 1))) };
+  return { version: SAVE_VERSION, tag: Math.max(1, Math.round(n(state.tag, 1))), geld: Math.max(0, n(state.geld)), ware: Math.max(0, Math.min(MAX_WARE, n(state.ware))), heat: Math.max(0, Math.min(MAX_HEAT, n(state.heat))), mangos: Math.max(0, n(state.mangos)), tageOhneVorfall: Math.max(0, n(state.tageOhneVorfall)), finale: FINALE_STUFEN.includes(state.finale) ? state.finale : null, woche: Math.max(1, Math.round(n(state.woche, 1))), seed: Math.max(1, Math.round(n(state.seed, 1))), kopf: KOPF_WAHL.includes(state.kopf) ? state.kopf : KOPF_WAHL[0] };
 }
 /** Gespeicherter Stand → Spielzustand (auf initialState gelegt); null bei fremder Version, Müll oder Tag 1 ohne Fortschritt. */
 export function fromSave(json) {
