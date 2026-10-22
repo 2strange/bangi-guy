@@ -90,7 +90,7 @@ if (WHAT === 'feet') {
     const tex = textTexture(kopf, { bg: '#fff1c2', fg: '#2b1b0b', font: 'bold 56px sans-serif', w: 512, h: 96 });
     const label = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.38), new THREE.MeshBasicMaterial({ map: tex })); label.position.set(x, 3.7, 1.6); scene.add(label);
   });
-  camera.position.set(0, 5.5, 17); camera.lookAt(0, 1.7, -1);
+  camera.position.set(0, 4.6, 12.5); camera.lookAt(0, 1.9, -0.8);
 } else if (WHAT === 'tableau') {
   const meer = toonMesh(new THREE.PlaneGeometry(200, 60), 0x3dd6e0, { outline: 0, shadow: false }); meer.rotation.x = -Math.PI / 2; meer.position.set(0, 0.02, -40); scene.add(meer); // Meer hinter der Hütte, Kamera schaut von Land drauf
   const h = finaleHuette(); setHuette(h, 'deine', { schild: false }); h.scale.setScalar(1.5); h.position.set(-2.5, 0, -4); h.rotation.y = 0.25; scene.add(h);
