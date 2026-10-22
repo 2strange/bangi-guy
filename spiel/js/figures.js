@@ -176,8 +176,14 @@ export function keinSchattenwurf(...objs) {
 
 // Kopfbedeckungen für den Spieler (Auswahl offen): stirnband (bisher) | radkappe | flatcap | strohhut | bandana | sonnenschild
 export const SCHLUFFI_KOEPFE = ['stirnband', 'radkappe', 'flatcap', 'strohhut', 'bandana', 'sonnenschild'];
-function schluffiKopfbedeckung(head, kopf) {
+function schluffiKopfbedeckung(head, kopf, locken = []) {
   const g = new THREE.Group(); head.add(g);
+  // Unter Hüten (Kappe, Flatcap, Strohhut, Bandana) verschwinden die vorderen Locken, die übrigen rutschen auf y 0.06 und
+  // werden gestaucht: Oberkante inkl. Hülle ≈ 0.21–0.24, also unter Flatcap-Rand (0.45), Strohhut-Krempe (≥ 0.295),
+  // Bandana-/Kappenrand (0.19–0.21) — sie lugen seitlich und hinten unter dem Rand hervor, stechen aber nicht durch.
+  if (['radkappe', 'flatcap', 'strohhut', 'bandana'].includes(kopf)) {
+    locken.forEach((h, i) => { if (i === 1 || i === 2) h.visible = false; else { h.position.y = 0.06; h.scale.y = 0.8; } });
+  }
   const add = (m) => { g.add(m); return m; };
   switch (kopf) {
     case 'radkappe': { // Fahrradmütze: knappe Kappe, kleiner Schirm, Kettenblatt-Logo vorn
@@ -310,15 +316,16 @@ export function schluffi({ kopf = 'stirnband' } = {}) {
     const ear = toonMesh(new THREE.SphereGeometry(0.11, 8, 6), skin, { outline: 0.03 });
     ear.position.set(s * 0.56, 0.0, 0); head.add(ear);
   }
+  const locken = [];
   for (let i = 0; i < 7; i++) {
     const a = i * 0.9;
     const h = toonMesh(new THREE.SphereGeometry(0.16 + (i % 3) * 0.03, 10, 7), 0x4a2a12, { outline: 0.035 });
     h.geometry.scale(1.2, 0.8, 1);
     h.position.set(Math.cos(a) * 0.3, 0.52 + (i % 2) * 0.08, Math.sin(a) * 0.25);
     h.rotation.z = a;
-    head.add(h);
+    head.add(h); locken.push(h);
   }
-  schluffiKopfbedeckung(head, kopf);
+  schluffiKopfbedeckung(head, kopf, locken);
   for (const s of [-1, 1]) {
     const lens = toonMesh(new THREE.TorusGeometry(0.11, 0.03, 6, 12), BLACK, { outline: 0, basic: true });
     lens.position.set(s * 0.14, 0.6, 0.3); lens.rotation.x = -0.9; head.add(lens);
