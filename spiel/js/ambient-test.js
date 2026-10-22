@@ -1,14 +1,15 @@
-// ambient-test.js — Standbild der Ambient-Figuren (ambient.js), t über ?t= (Sekunden).
-// ?what=kinder   → drei Kinder: rennend mit Wasserpistole, spritzend, mit Eis fragend
-// ?what=paar     → streitendes Ehepaar (Streit · Pause · Umarmung)
-// ?what=steg     → Influencerin mit Blitz und Reflektor-Freund, daneben der Betrunkene
-// ?what=liegen   → Liegen mit Handtuch-Reservierung, fliegende Handtuchrolle, Betrunkener schlafend
-// ?what=pong     → Pong wach und schlafend (Mütze über den Augen)
+// ambient-test.js — Standbild der Ambient-Figuren (ambient.js) mit den Posen aus data/szenen.json, t über ?t= (Sekunden).
+// ?what=kinder → kind_1 rennen_kreis · kind_2 flipflop_verlieren · kind_3 eimer_kippen · kaputte Sandburg
+// ?what=liegen → Ehepaar in drei Pose-Paaren (handy_hochhalten/dose_heben · zeitschrift_rollen/schnorchel_runter ·
+//                hinterherrufen/zurueckkommen_nass) · Handtuch-Werfer (handtuch_werfen · zaehlen) an Liegen mit Handtüchern
+// ?what=strand → Chad (an_tresen_lehnen · kippen_fangen · moewe_anreden · einschlafen_tresen) · Influencerin (pose_steg · foto)
+//                mit Reflektor-Freund (reflektor_heben · blick_ins_meer) und Stativ
+// ?what=pong   → Pong am Pausentisch: fuesse_hoch · schnarchen · aufwachen
 import * as THREE from 'three';
-import { toonMesh } from './toon.js';
-import { lounger } from './props.js';
-import { buildKind, buildEhepaar, buildInfluencerin, buildBetrunkener, handtuchAufLiege, handtuchRolle, HANDTUCH_FARBEN } from './ambient.js';
-import { pong, setPongSchlaeft, updatePongSchlaf } from './zone-markt.js';
+import { toonMesh, BLACK } from './toon.js';
+import { lounger, limb } from './props.js';
+import { buildAmbientFigur, handtuchAufLiege, handtuchRolle, HANDTUCH_FARBEN, sandburgKaputt, bierdosenHaufen, stativ } from './ambient.js';
+import { pong, pongPose, updatePongPose } from './zone-markt.js';
 
 const q = (name) => (location.search.match(new RegExp('[?&]' + name + '=([-a-z0-9.]+)')) || [])[1];
 const WHAT = q('what') || 'kinder';
@@ -31,34 +32,51 @@ scene.add(new THREE.HemisphereLight(0xcfeeff, 0xd9b27a, 0.75));
 const sand = toonMesh(new THREE.PlaneGeometry(200, 200), 0xf7d984, { outline: 0, shadow: false });
 sand.rotation.x = -Math.PI / 2; sand.receiveShadow = true; scene.add(sand);
 
+// Figur an Ort x/z mit Blick yaw, Pose name bei Fortschritt u (0…1): Posenstart so gelegt, dass update(T) genau u trifft
+function stelle(fig, x, z, yaw, name = null, u = 0.5, dauer = 4) {
+  fig.position.set(x, 0, z); fig.rotation.y = yaw;
+  if (name) fig.userData.pose(name, T - u * dauer, dauer);
+  fig.userData.update(T);
+  scene.add(fig);
+  return fig;
+}
+
 if (WHAT === 'kinder') {
-  const a = buildKind({ seed: 1, item: 'wasserpistole' }); a.position.set(-2.4, 0, 0); a.rotation.y = 0.4; a.userData.update(T, { rennt: true }); scene.add(a);
-  const b = buildKind({ seed: 2, item: 'wasserpistole' }); b.position.set(0, 0, 0.3); b.rotation.y = -0.3; b.userData.update(T, { rennt: false, spritzt: true }); scene.add(b);
-  const c = buildKind({ seed: 3, item: 'eis' }); c.position.set(2.4, 0, 0); c.userData.pose('fragen'); c.userData.update(T, { rennt: false }); c.userData.pose('fragen'); scene.add(c);
-  camera.position.set(0, 1.6, 6.2); camera.lookAt(0, 0.8, 0);
-} else if (WHAT === 'paar') {
-  [[-4.6, 'streit'], [0, 'pause'], [4.6, 'umarmung']].forEach(([x, zustand]) => {
-    const p = buildEhepaar(); p.gruppe.position.set(x, 0, 0);
-    if (zustand === 'pause') p.setStreit(false); if (zustand === 'umarmung') p.setVersoehnt(true);
-    p.update(T); scene.add(p.gruppe);
-  });
-  camera.position.set(0, 3.2, 11); camera.lookAt(0, 1.4, 0);
-} else if (WHAT === 'steg') {
-  const inf = buildInfluencerin(); inf.gruppe.position.set(-2.2, 0, 0); inf.update(1.4); scene.add(inf.gruppe); // u = 0.583: Blitz an
-  const bet = buildBetrunkener(); bet.position.set(3.2, 0, 0.5); bet.rotation.y = -0.3; bet.userData.update(T); scene.add(bet);
-  camera.position.set(0.5, 3.0, 9.5); camera.lookAt(0.5, 1.4, 0);
+  stelle(buildAmbientFigur('kind_1'), -2.6, 0, 0.4, 'rennen_kreis', 0.5);
+  stelle(buildAmbientFigur('kind_2'), 0, 0.2, 0.3, 'flipflop_verlieren', 0.45, 3);
+  stelle(buildAmbientFigur('kind_3'), 2.6, 0, -0.2, 'eimer_kippen', 0.6, 3);
+  const sb = sandburgKaputt(); sb.position.set(4.8, 0, 1.6); sb.scale.setScalar(0.6); scene.add(sb);
+  camera.position.set(1.0, 1.9, 8.5); camera.lookAt(1.0, 0.8, 0);
 } else if (WHAT === 'liegen') {
-  [0, 1, 2].forEach((i) => {
-    const lo = lounger(i % 2 ? ['#3a7bd5', '#ffffff'] : ['#e8463a', '#fff5e0']); lo.position.set(-4.5 + i * 3.2, 0, 0); lo.rotation.y = 0.2 - i * 0.15; lo.scale.setScalar(1.3); scene.add(lo);
-    if (i < 2) handtuchAufLiege(lo, HANDTUCH_FARBEN[(i + 2) % 4]);
+  const paare = [['handy_hochhalten', 'dose_heben'], ['zeitschrift_rollen', 'schnorchel_runter'], ['hinterherrufen', 'zurueckkommen_nass']];
+  paare.forEach(([ps, pe], i) => {
+    const x = -7 + i * 4.2;
+    stelle(buildAmbientFigur('ehe_sie'), x - 0.9, 0.6, 0.9, ps, i === 1 ? 0.3 : 0.5);
+    stelle(buildAmbientFigur('ehe_er'), x + 0.9, 0.6, -0.9, pe, i === 2 ? 0.3 : 0.5);
   });
-  const r = handtuchRolle(HANDTUCH_FARBEN[3]); r.position.set(2.2, 2.4, 1.2); r.userData.update(0.3); scene.add(r);
-  const bet = buildBetrunkener(); bet.userData.setSchlaeft(true); bet.position.set(4.6, 0.5, 1.5); bet.rotation.y = 0.4; bet.userData.update(T); scene.add(bet);
-  camera.position.set(0, 4.5, 10); camera.lookAt(0, 0.8, 0);
+  [0, 1].forEach((i) => { const lo = lounger(HANDTUCH_FARBEN[i]); lo.position.set(5.2 + i * 2.4, 0, -1.5); lo.scale.setScalar(1.3); scene.add(lo); if (i === 0) handtuchAufLiege(lo, HANDTUCH_FARBEN[2]); });
+  stelle(buildAmbientFigur('werfer_1'), 6.2, 2.6, 2.8, 'handtuch_werfen', 0.3, 3);
+  stelle(buildAmbientFigur('werfer_2'), 8.4, 2.6, 2.6, 'zaehlen', 0.5);
+  const r = handtuchRolle(HANDTUCH_FARBEN[1]); r.position.set(7.4, 2.2, 0.3); r.userData.update(0.3); scene.add(r);
+  camera.position.set(1.0, 4.0, 19); camera.lookAt(1.0, 1.2, 0);
+} else if (WHAT === 'strand') {
+  const tresen = toonMesh(new THREE.BoxGeometry(5.5, 1.05, 0.8), 0xc47a3a, { outline: 0.05 }); tresen.position.set(-5, 0.52, -0.9); scene.add(tresen);
+  ['an_tresen_lehnen', 'kippen_fangen', 'moewe_anreden', 'einschlafen_tresen'].forEach((p, i) => stelle(buildAmbientFigur('chad'), -7.4 + i * 1.7, 0, 0.15, p, p === 'einschlafen_tresen' ? 0.8 : 0.45));
+  const h = bierdosenHaufen(); h.position.set(-3.2, 0, 0.9); scene.add(h);
+  stelle(buildAmbientFigur('influencerin'), 1.6, 0, Math.PI + 0.4, 'pose_steg', 0.5);
+  stelle(buildAmbientFigur('influencerin'), 3.6, 0, Math.PI - 0.4, 'foto', 0.19);
+  stelle(buildAmbientFigur('reflektor_freund'), 6.0, 0.8, -0.4, 'reflektor_heben', 0.7);
+  stelle(buildAmbientFigur('reflektor_freund'), 8.4, 0.8, -0.6, 'blick_ins_meer', 0.6, 5);
+  const st = stativ(); st.position.set(4.9, 0, 1.6); scene.add(st);
+  camera.position.set(0.8, 3.6, 17); camera.lookAt(0.8, 1.3, 0);
 } else if (WHAT === 'pong') {
-  const a = pong(); a.position.set(-1.8, 0, 0); a.rotation.y = 0.2; scene.add(a);
-  const b = pong(); b.position.set(1.8, 0, 0); b.rotation.y = -0.2; setPongSchlaeft(b, true); updatePongSchlaf(b, T); scene.add(b);
-  camera.position.set(0, 2.6, 7.5); camera.lookAt(0, 1.8, 0);
+  const tisch = (x) => { const g = new THREE.Group(); g.position.set(x, 0, 0); const platte = toonMesh(new THREE.BoxGeometry(1.6, 0.08, 1.0), 0xd8a85a, { outline: 0.035 }); platte.position.set(0, 0.75, 1.6); g.add(platte); for (const [dx, dz] of [[-0.7, 1.2], [0.7, 1.2], [-0.7, 2.0], [0.7, 2.0]]) g.add(limb(new THREE.Vector3(dx, 0, dz), new THREE.Vector3(dx, 0.72, dz), 0.04, 0x8b5a2b, { outline: 0.02 })); const sitz = toonMesh(new THREE.BoxGeometry(0.8, 0.07, 0.8), 0x8b5a2b, { outline: 0.03 }); sitz.position.y = 0.55; g.add(sitz); const lehne = toonMesh(new THREE.BoxGeometry(0.8, 0.7, 0.07), 0x8b5a2b, { outline: 0.03 }); lehne.position.set(0, 0.95, -0.37); g.add(lehne); scene.add(g); return g; };
+  [['fuesse_hoch', 0.95, 6], ['schnarchen', 0.5, 20], ['aufwachen', 0.5, 5]].forEach(([name, u, dauer], i) => {
+    const x = -4 + i * 4; tisch(x);
+    const p = pong(); scene.add(p);
+    pongPose(p, name, T - u * dauer, dauer, { x, z: 0, rot: 0 }, { x, z: -2, rot: 0 }); updatePongPose(p, T);
+  });
+  camera.position.set(0, 3.2, 9.5); camera.lookAt(0, 1.3, 0.8);
 }
 
 function shoot() {

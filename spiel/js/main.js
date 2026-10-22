@@ -199,7 +199,11 @@ let szenenWirk = szenenWirkung([]);
 let szeneNah = null; // aktive Szene in Reichweite (E = ansprechen)
 async function loadSzenen() { const json = await fetchJson('./data/szenen.json'); szenen = normalizeSzenen(json); planeSzenen(); }
 // Szenen-Ort: Spot-Name (strand|markt|posten|pier|bar|liegen|dorf|…) oder {x,z,r} → Weltposition mit Radius
-const SZENE_ORT = (ort) => (ort && typeof ort === 'object' ? ort : { r: 5, ...({ strand: world.spots.mitte }[ort] || world.spots[ort] || world.spots.start) });
+const SZENE_ORT = (ort) => (ort && typeof ort === 'object' ? ort : { r: 5, ...({ strand: world.spots.mitte, steg: world.spots.pier }[ort] || world.spots[ort] || world.spots.start) });
+// Szenen-Sounds, die im Fenster von selbst laufen (Slug → Pause zwischen zwei Durchläufen in s, Hörradius); Schritt-Sounds laufen über `sound`-Schritte
+const SZENE_SOUND_TAKT = { schnarchen_pong: { pause: [0.4, 0.8], radius: 12 } };
+let szenenSoundAt = {}; // Slug → nächster Start (ms)
+let pongSchlief = false;
 function planeSzenen() { szenenHeute = szenenDesTages(szenen, { seed: game.seed, woche: game.woche, tag: game.tag }); szenenLauf = {}; }
 function updateSzenen(now) {
   const aktive = szenenAktiv(szenenHeute, tagesuhr.t01);
@@ -212,15 +216,24 @@ function updateSzenen(now) {
   for (const id of Object.keys(szenenLauf)) if (!(id in neu)) ui.hideBarks?.(); // Fensterende: Blasen weg
   szenenLauf = neu;
   szenenWirk = szenenWirkung(aktive, SZENE_ORT);
+  const schlaeft = szenenWirk.streife_p1 === 'schlaeft';
+  if (schlaeft !== pongSchlief) { pongSchlief = schlaeft; try { world.markt?.pongSchlaeft?.(schlaeft); } catch (e) { /* ohne Markt */ } } // Mütze über die Augen, Zzz
+  for (const { szene } of aktive) for (const slug of szene.sound) { // Dauer-Sounds im Fenster (Schnarchen), nur in Hörweite, Lautstärke nach Abstand
+    const takt = SZENE_SOUND_TAKT[slug]; if (!takt || now < (szenenSoundAt[slug] || 0)) continue;
+    const o = slug === 'schnarchen_pong' && world.markt?.pong ? world.markt.pong.position : SZENE_ORT(szene.ort);
+    const dist = Math.hypot(o.x - state.x, o.z - state.z); if (dist > takt.radius) { szenenSoundAt[slug] = now + 500; continue; }
+    let dauer = 0; try { dauer = audio?.ereignis?.(slug, 'start', { pan: Math.max(-1, Math.min(1, (o.x - state.x) / 12)), gain: 1 - dist / takt.radius }) || 0; } catch (e) { /* ohne Ton */ }
+    szenenSoundAt[slug] = now + (dauer || 2.2) * 1000 + (takt.pause[0] + Math.random() * (takt.pause[1] - takt.pause[0])) * 1000;
+  }
   szeneNah = aktive.map((a) => a.szene).find((sz) => { const o = SZENE_ORT(sz.ort); return Math.hypot(o.x - state.x, o.z - state.z) < Math.max(4, o.r) && sz.ansprechen.length; }) || null;
 }
 // Schritt: sag = Erzähltext als Einblendung unten (+ optionaler Bark als Blase), bark = Blase an der Figur (Pong/Streife = P1,
 // sonst Anker am Ort, bis die Szenen-Figuren stehen), sound über sfx; pose/geh/warte warten auf die Figuren
 function szenenSchritt(szene, st, now, { halten = false } = {}) { // halten: Blase stehen lassen (Schnappschuss)
-  const anker = st.wer === 'pong' || st.wer === 'streife' ? (streifen[0]?.id || 'streife_p1') : `szene_${szene.id}_${st.wer}`;
+  const anker = st.wer === 'pong' ? 'pong' : st.wer === 'streife' ? (streifen[0]?.id || 'streife_p1') : `szene_${szene.id}_${st.wer}`;
   if (st.aktion === 'sag' && st.text && mode === 'free') { ui.showPrompt(fillText(st.text, dayReport(game)), { small: true }); hinweisBis = now + Math.min(9000, 1000 + st.dauer * 1000); }
   const blase = st.aktion === 'bark' ? st.bark || st.text : st.aktion === 'sag' ? st.bark : null;
-  if (blase) { ui.showBark(anker, blase, halten ? 999 : Math.min(4, st.dauer)); if (!anker.startsWith('streife')) szenenAnker[anker] = SZENE_ORT(szene.ort); try { audio?.babble?.(szene.figuren.find((f) => f.slug === st.wer)?.stimme || st.wer, blase, { pan: 0 }); } catch (e) { /* ohne Ton */ } }
+  if (blase) { ui.showBark(anker, blase, halten ? 999 : Math.min(4, st.dauer)); if (!anker.startsWith('streife') && anker !== 'pong') szenenAnker[anker] = SZENE_ORT(szene.ort); try { audio?.babble?.(szene.figuren.find((f) => f.slug === st.wer)?.stimme || st.wer, blase, { pan: 0 }); } catch (e) { /* ohne Ton */ } }
   if (st.aktion === 'sound' && st.text) sfx(st.text, { pan: 0, gain: 0.6 });
 }
 const szenenAnker = {}; // Bark-Anker ohne Figur: Position am Szenen-Ort
@@ -228,7 +241,7 @@ const alleVerstecke = () => (szenenWirk.verstecke.length ? [...world.hideouts, .
 function szeneAnreden() {
   if (!szeneNah) return;
   const text = szeneAnsprechen(szeneNah, lineIdx++);
-  if (text) showInfo({ id: 'szene', name: szeneNah.titel, x: SZENE_ORT(szeneNah.ort).x, z: SZENE_ORT(szeneNah.ort).z, obj: szeneNah.figuren.some((f) => f.slug === 'pong') ? streifen[0].group : player }, fillText(text, dayReport(game)));
+  if (text) showInfo({ id: 'szene', name: szeneNah.titel, x: SZENE_ORT(szeneNah.ort).x, z: SZENE_ORT(szeneNah.ort).z, obj: szeneNah.figuren.some((f) => f.slug === 'pong') && world.markt?.pong ? world.markt.pong : player }, fillText(text, dayReport(game)));
 }
 let ereignisse = normalizeEreignisse(null); // Tages-Ereignisse (texte.json → ereignisse[])
 let woche = normalizeWoche(null); // Wochenbogen: Tagesziele + Finale (texte.json → woche{}), Ziel kalibriert am Kundenkatalog
@@ -421,6 +434,7 @@ function placeBarks() {
   ui.placeBark('kokos', (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now);
   (barkeeperObj.userData.parts?.head || barkeeperObj).getWorldPosition(barkHead); barkHead.y += 0.9; barkHead.project(camera);
   ui.placeBark('barkeeper', (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now);
+  if (world.markt?.pong) { (world.markt.pong.userData.parts?.head || world.markt.pong).getWorldPosition(barkHead); barkHead.y += 0.9; barkHead.project(camera); ui.placeBark('pong', (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now); } // Pong am Posten (Szenen)
   for (const [id, pos] of Object.entries(szenenAnker)) { barkHead.set(pos.x, 2.4, pos.z); barkHead.project(camera); ui.placeBark(id, (barkHead.x + 1) / 2 * window.innerWidth, (1 - barkHead.y) / 2 * window.innerHeight, now); }
   for (const s of streifen) {
     s.group.userData.parts.head.getWorldPosition(barkHead);

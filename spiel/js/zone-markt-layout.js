@@ -45,6 +45,7 @@ export const POSTEN = {
   pong: { x: 5.5, z: -84, r: 0.6, rot: Math.PI / 2 },
   fahne: { x: 4.5, z: -79, r: 0.2 },
   bank: { x: 12.5, z: -88, w: 2.6, d: 1.0, rot: 0.1 },
+  pause: { tisch: { x: 4.6, z: -81.5, w: 1.6, d: 1.0 }, stuhl: { x: 4.6, z: -83.1, rot: Math.PI }, collider: { x: 4.6, z: -82.3, w: 1.6, d: 2.6 } }, // Mittagsschlaf: Füße auf dem Tisch
 };
 
 export const MARKT_SPOTS = {
@@ -88,6 +89,7 @@ export function marktColliders(exits = { pier: true, stadt: true }) {
   out.push({ x: P.pong.x, z: P.pong.z, r: P.pong.r });
   out.push({ x: P.fahne.x, z: P.fahne.z, r: P.fahne.r });
   out.push(aabb(P.bank.x, P.bank.z, P.bank.w, P.bank.d, P.bank.rot));
+  out.push(aabb(P.pause.collider.x, P.pause.collider.z, P.pause.collider.w, P.pause.collider.d, 0));
   for (const [name, e] of Object.entries(EXITS)) if (exits[name] !== false) out.push({ x: e.x, z: e.z, w: e.w, d: e.d });
   return out;
 }

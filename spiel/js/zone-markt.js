@@ -232,8 +232,9 @@ export function pong() {
   const root = new THREE.Group();
   const skin = 0xd9a06e, blue = 0x2a3f8f;
   const hipY = 1.05;
+  const legs = [];
   for (const s of [-1, 1]) {
-    const leg = new THREE.Group(); leg.position.set(s * 0.26, hipY, 0);
+    const leg = new THREE.Group(); leg.position.set(s * 0.26, hipY, 0); legs.push(leg);
     const fx = s * 0.5 - s * 0.26;
     leg.add(limb(V(fx, 0.3 - hipY, -0.05), V(0, 0, 0), 0.12, skin, { outline: 0.04 }));
     const shorts = toonMesh(new THREE.CylinderGeometry(0.21, 0.25, 0.5, 12), 0x1f2f6f, { outline: 0.04 }); shorts.position.set(0, -0.18, 0); leg.add(shorts);
@@ -286,7 +287,7 @@ export function pong() {
     notes.push(n);
   }
   const z = zzz(); z.visible = false; z.position.set(0.7, neckY + 1.7, 0.2); z.userData.y0 = neckY + 1.7; root.add(z);
-  root.userData.parts = { arms, head, whistle, whistleIdle, notes, cap, decal, zzz: z };
+  root.userData.parts = { arms, legs, head, whistle, whistleIdle, notes, cap, decal, zzz: z, hipY };
   root.userData.schlaeft = false;
   kopfOhneSchattenwurf(head);
   return root;
@@ -302,6 +303,63 @@ export function setPongSchlaeft(g, an) {
   P.zzz.visible = !!an;
   setFace(P.decal, face('kunde', an ? 'schlaeft' : 'misstrauisch', PONG_FACE));
 }
+/** Pose aus szenen.json (pong_mittag) starten: fuesse_hoch | schnarchen | im_schlaf_pfeifen | aufwachen.
+ *  platz = { x, z, rot } des Stuhls; stand = { x, z, rot } seines Dienstplatzes. Läuft in buildMarkt().update. */
+export function pongPose(g, name, t0, dauer, platz, stand) { g.userData.poseLauf = { name, t0, dauer, platz, stand }; }
+export function updatePongPose(g, t) {
+  const L = g.userData.poseLauf; if (!L) return false;
+  const P = g.userData.parts, u = (t - L.t0) / L.dauer;
+  const sitz = (an) => { // auf dem Stuhl, Beine hoch auf den Tisch, Sandalen baumeln
+    if (an) { g.position.set(L.platz.x, 0.55 - (P.hipY - 0.3), L.platz.z); g.rotation.y = L.platz.rot; for (const l of P.legs) l.rotation.x = -1.25; }
+    else { g.position.set(L.stand.x, 0, L.stand.z); g.rotation.y = L.stand.rot; for (const l of P.legs) l.rotation.x = 0; }
+  };
+  if (u >= 1) { g.userData.poseLauf = null; if (L.name === 'aufwachen') { sitz(false); setPongSchlaeft(g, false); } return true; }
+  switch (L.name) {
+    case 'fuesse_hoch': { // hinsetzen, Füße hoch, Arme hinter den Kopf, Mütze rutscht
+      sitz(true); for (const l of P.legs) l.rotation.x = -1.25 * smoothstep(u, 0.1, 0.5);
+      P.arms[0].rotation.set(-2.6, 0, 0.6); P.arms[1].rotation.set(-2.6, 0, -0.6);
+      P.cap.rotation.x = 1.05 * smoothstep(u, 0.5, 0.9); P.cap.position.y = 0.38 - 0.36 * smoothstep(u, 0.5, 0.9); P.cap.position.z = 0.3 + 0.06 * smoothstep(u, 0.5, 0.9);
+      P.head.rotation.set(-0.35 * smoothstep(u, 0.2, 0.6), 0, 0.1);
+      if (u > 0.9 && !g.userData.schlaeft) setPongSchlaeft(g, true);
+      break;
+    }
+    case 'schnarchen': { // Bauch hebt sich, Pfeife am Band hebt sich mit, Sandalen baumeln, Zzz
+      sitz(true); if (!g.userData.schlaeft) setPongSchlaeft(g, true);
+      const atem = Math.sin(t * 1.6);
+      P.arms[0].rotation.set(-2.6 + 0.03 * atem, 0, 0.6); P.arms[1].rotation.set(-2.6 + 0.03 * atem, 0, -0.6);
+      P.head.rotation.x = -0.35 + 0.03 * atem;
+      P.whistleIdle.position.y = P.hipY + 0.58 + 0.04 * atem; P.whistleIdle.rotation.z = Math.PI / 2 + 0.15 * atem;
+      for (const [i, l] of P.legs.entries()) l.rotation.z = 0.04 * Math.sin(t * 2.2 + i * 1.5);
+      P.zzz.userData.update(t);
+      break;
+    }
+    case 'im_schlaf_pfeifen': { // Pfeife wandert im Schlaf zum Mund, zwei Noten, Mütze bleibt unten
+      sitz(true);
+      const k = u * 3;
+      P.arms[1].rotation.set(-2.5, 0, -0.55); P.whistle.visible = true; P.whistleIdle.visible = false;
+      P.notes.forEach((n, i) => { const ph = (k * 1.2 + i * 0.5) % 1; n.visible = true; n.position.set(0.35 + ph * 0.6, 0.0 + ph * 0.9 + i * 0.1, 0.5); });
+      P.head.rotation.x = -0.35 + 0.05 * Math.sin(t * 25);
+      P.zzz.userData.update(t);
+      break;
+    }
+    case 'aufwachen': { // Mütze hoch, Augen auf, strecken, Beine runter, aufstehen
+      sitz(true);
+      const r = smoothstep(u, 0, 0.3);
+      P.whistle.visible = false; P.whistleIdle.visible = true; P.notes.forEach((n) => { n.visible = false; });
+      P.cap.rotation.x = 1.05 * (1 - r); P.cap.position.y = 0.02 + 0.36 * r; P.cap.position.z = 0.36 - 0.06 * r;
+      if (r >= 1 && g.userData.schlaeft) { g.userData.schlaeft = false; P.zzz.visible = false; setFace(P.decal, face('kunde', 'misstrauisch', PONG_FACE)); }
+      P.arms[0].rotation.set(-2.6 - 0.4 * puls(u, 0.3, 0.7), 0, 0.6 + 0.3 * puls(u, 0.3, 0.7)); P.arms[1].rotation.set(-2.6 - 0.4 * puls(u, 0.3, 0.7), 0, -0.6 - 0.3 * puls(u, 0.3, 0.7)); // strecken
+      for (const l of P.legs) l.rotation.x = -1.25 * (1 - smoothstep(u, 0.7, 0.9));
+      P.head.rotation.set(-0.35 * (1 - r), 0.3 * Math.sin(t * 2) * r, 0.1 * (1 - r));
+      if (u > 0.9) { sitz(false); P.arms[0].rotation.set(0.35, 0, 0.85); P.arms[1].rotation.set(0.35, 0, -0.85); }
+      break;
+    }
+    default: break;
+  }
+  return true;
+}
+const smoothstep = (x, a, b) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const puls = (u, a, b) => (u < a ? 0 : u < b ? Math.sin((u - a) / (b - a) * Math.PI) : 0);
 /** Schlaf-Atmung (Bauch hebt sich, Zzz schweben) — läuft in buildMarkt().update, solange er schläft. */
 export function updatePongSchlaf(g, t) {
   const P = g.userData.parts;
@@ -353,6 +411,15 @@ export function buildMarkt(parent, colliders, { exits = { pier: true, stadt: tru
   const car = policeCar(); car.position.set(P.wagen.x, 0, P.wagen.z); car.rotation.y = P.wagen.rot; add(car);
   const bribe = stand({ kind: 'mango', sign: P.stand.sign, cloth: P.stand.cloth, seed: 31 }); bribe.position.set(P.stand.x, 0, P.stand.z); bribe.rotation.y = P.stand.rot; add(bribe);
   const pongObj = pong(); pongObj.position.set(P.pong.x, 0, P.pong.z); pongObj.rotation.y = P.pong.rot; add(pongObj);
+  // Pausentisch + Stuhl vor dem Posten (Mittagsschlaf: Füße auf dem Tisch)
+  { const T = P.pause.tisch, S = P.pause.stuhl;
+    const platte = toonMesh(new THREE.BoxGeometry(T.w, 0.08, T.d), 0xd8a85a, { outline: 0.035 }); platte.position.set(T.x, 0.75, T.z); platte.rotation.z = 0.02; add(platte);
+    for (const [dx, dz] of [[-0.7, -0.4], [0.7, -0.4], [-0.7, 0.4], [0.7, 0.4]]) add(limb(V(T.x + dx, 0, T.z + dz), V(T.x + dx, 0.72, T.z + dz), 0.04, 0x8b5a2b, { outline: 0.02 }));
+    const stuhl = new THREE.Group(); stuhl.position.set(S.x, 0, S.z); stuhl.rotation.y = S.rot; add(stuhl);
+    const sitz = toonMesh(new THREE.BoxGeometry(0.8, 0.07, 0.8), 0x8b5a2b, { outline: 0.03 }); sitz.position.y = 0.55; stuhl.add(sitz);
+    const lehne = toonMesh(new THREE.BoxGeometry(0.8, 0.7, 0.07), 0x8b5a2b, { outline: 0.03 }); lehne.position.set(0, 0.95, -0.37); lehne.rotation.x = -0.15; stuhl.add(lehne);
+    for (const [dx, dz] of [[-0.35, -0.35], [0.35, -0.35], [-0.35, 0.35], [0.35, 0.35]]) stuhl.add(limb(V(dx, 0, dz), V(dx, 0.52, dz), 0.035, 0x8b5a2b, { outline: 0.02 }));
+  }
   {
     const f = new THREE.Group();
     f.add(limb(V(0, 0, 0), V(0.05, 6.5, 0), 0.08, 0xeeeeee, { outline: 0.03 }));
@@ -383,6 +450,7 @@ export function buildMarkt(parent, colliders, { exits = { pier: true, stadt: tru
     katze.position.set(c.x, 0, c.z); katze.rotation.y = c.yaw;
     katze.position.y = 0.06 * Math.abs(Math.sin(t * 9));
     for (const fl of flies) fl.children.forEach((f) => { const ph = t * 7 + f.userData.phase; f.position.set(Math.cos(ph) * 0.5, Math.sin(ph * 1.7) * 0.25, Math.sin(ph) * 0.4); });
+    if (updatePongPose(pongObj, t)) return; // laufende Mittagsschlaf-Pose (szenen.json)
     if (pongObj.userData.schlaeft) { updatePongSchlaf(pongObj, t); return; } // Mittagsschlaf: kein Pfeifen, kein Umschauen
     const k = t % 12;
     const [armL, armR] = PP.arms;
@@ -439,6 +507,7 @@ export function buildMarkt(parent, colliders, { exits = { pier: true, stadt: tru
     spots: MARKT_SPOTS, update, hideouts, anchors: MARKT_ANCHORS, bounds: { minZ: WORLD_MIN_Z },
     pong: pongObj, party,                   // Pong-Figur (userData.parts) und Party-Deko an/aus
     pongSchlaeft: (an) => setPongSchlaeft(pongObj, an), // Mittagsschlaf 13–14 Uhr: Mütze über den Augen, Zzz
+    pongPose: (name, t0, dauer) => pongPose(pongObj, name, t0, dauer, P.pause.stuhl, { x: P.pong.x, z: P.pong.z, rot: P.pong.rot }), // szenen.json pong_mittag: fuesse_hoch | schnarchen | im_schlaf_pfeifen | aufwachen
     posten: { ...POSTEN_SICHT },            // Vorplatz des Postens (Heat zählt hier doppelt)
     mangoStand: { ...MANGO_STAND },         // Bestechungs-Stand „1 MANGO = 1 GNADE“
     setTafel: st.userData.setTafel,         // Tafel „TAGE OHNE VORFALL“: untere Zeile neu malen
