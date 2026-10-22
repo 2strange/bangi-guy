@@ -316,7 +316,7 @@ export const DEFAULT_TEXTE = {
   // Startkarte bei vorhandenem Spielstand
   start: { titel: 'Bangi Beach', untertitel: '', stand: 'Spielstand: Tag {tag} · {geld} Münzen · {ware} Beutel', weiter: 'Weiter', neu: 'Neues Spiel', info: 'Info' }, // Content: ui.titelbild{titel, untertitel, neues_spiel, weiter, info}
   // Figurenwahl nach „Neues Spiel“: Kopfbedeckung des Schluffi (Content: ui.figur{titel, hinweis, stirnband, flatcap, strohhut, bandana})
-  figur: { titel: 'Wer bist du?', hinweis: 'Später nicht mehr änderbar. Das Stirnband ist Klassik.', stirnband: 'Stirnband', flatcap: 'Flatcap', strohhut: 'Strohhut', bandana: 'Bandana' },
+  figur: { titel: 'Wer bist du?', hinweis: 'Später nicht mehr änderbar. Das Stirnband ist Klassik.', stirnband: 'Stirnband', flatcap: 'Flatcap', strohhut: 'Strohhut', bandana: 'Bandana', los: 'Los geht’s' },
   // Intro nach „Neues Spiel“: Kamerafahrt zur Hütte mit Zielschild, dann zum Startstrand; Content: ui.intro[] (eine Zeile nach der anderen)
   intro: { zeilen: ['Das ist dein Ziel.'], hinweis: 'Enter überspringt' },
   // Info-Seite (Titel → Info, ⚙ → Hilfe)

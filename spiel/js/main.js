@@ -955,7 +955,11 @@ window.addEventListener('keydown', (e) => {
   if (mode === 'menu') { if (e.code === 'Escape') closeMenu(); e.preventDefault(); return; }
   if (mode === 'start') { if (['Enter', 'Space', 'Digit1'].includes(e.code)) startChoice(0); else if (e.code === 'Digit2') startChoice(1); else if (e.code === 'Digit3') startChoice(2); e.preventDefault(); return; }
   if (mode === 'infoseite') { if (['Enter', 'Space', 'Escape', 'Digit1'].includes(e.code)) closeInfo(); e.preventDefault(); return; }
-  if (mode === 'figur') { const d = { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3, Enter: 0, Space: 0 }[e.code]; if (d !== undefined) figurChoice(d); e.preventDefault(); return; }
+  if (mode === 'figur') { // 1–4 wählen, Pfeile/A/D blättern, Enter/Space/5 bestätigen
+    const d = { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3 }[e.code];
+    if (d !== undefined) { figurSel(d); sfx('ui_umschalten'); } else if (['Enter', 'Space', 'Digit5'].includes(e.code)) figurChoice(); else if (['ArrowLeft', 'KeyA'].includes(e.code)) figurSel((figurWahl.sel + KOPF_WAHL.length - 1) % KOPF_WAHL.length); else if (['ArrowRight', 'KeyD'].includes(e.code)) figurSel((figurWahl.sel + 1) % KOPF_WAHL.length);
+    e.preventDefault(); return;
+  }
   if (mode === 'intro') { if (['Enter', 'Space', 'Escape', KEY_TALK].includes(e.code)) introEnde(); e.preventDefault(); return; }
   if (e.code === 'Escape' && (mode === 'free')) { openMenu(); e.preventDefault(); return; }
   if (mode === 'finale') { if (['Enter', 'Space', 'Digit1'].includes(e.code)) finaleChoice(0); else if (e.code === 'Digit2') finaleChoice(1); e.preventDefault(); return; }
@@ -1002,6 +1006,7 @@ renderer.domElement.addEventListener('pointermove', (e) => {
   drag.x = e.clientX; drag.y = e.clientY;
 });
 const dragEnd = (e) => {
+  if (mode === 'figur' && (e.pointerType !== 'touch' || drag.fingers.size <= 1)) { const i = figurTreffer(e.clientX, e.clientY); if (i >= 0) { figurSel(i); sfx('ui_umschalten'); } } // Figurenwahl: Tipp/Klick auf eine Figur
   if (e.pointerType === 'touch') { drag.fingers.delete(e.pointerId); drag.pinchY = null; return; }
   if (drag.id !== e.pointerId) return;
   drag.id = null;
@@ -1080,16 +1085,55 @@ function startChoice(i) {
   clearSave(); game = { ...game, seed: neuerSeed() }; refreshHud();
   showFigurWahl();
 }
-// Figurenwahl vor dem Intro: vier Kopfbedeckungen, Wahl landet im Spielstand (game.kopf)
-function showFigurWahl() {
-  const T = texte.figur;
+// Figurenwahl vor dem Intro: vier Schluffis nebeneinander auf dem Sand (je Kopfbedeckung, langsam drehend), Leuchtring unter
+// der gewählten Figur, Wahl per Klick/Tipp auf die Figur, Knopf in der Blase oder Taste 1–4, Enter/„Los geht’s“ bestätigt.
+// Die Wahl landet im Spielstand (game.kopf).
+let figurWahl = null; // { figuren: [{ kopf, g, x, z }], sel, cx, cz }
+const FIGUR_ABSTAND = 2.5;
+function showFigurWahl(vorwahl = 0) {
+  const st = world.spots.start, cx = st.x, cz = st.z + 5; // Reihe zwischen Startstrand und Wasser
+  const figuren = KOPF_WAHL.map((kopf, i) => {
+    const g = schluffi({ kopf }); const x = cx + (i - (KOPF_WAHL.length - 1) / 2) * FIGUR_ABSTAND;
+    g.position.set(x, groundY(x, cz), cz); scene.add(g); return { kopf, g, x, z: cz };
+  });
+  figurWahl = { figuren, sel: Math.max(0, Math.min(KOPF_WAHL.length - 1, vorwahl)), cx, cz };
+  player.visible = false;
   mode = 'figur';
-  ui.showCard({ titel: T.titel, zeilen: [T.hinweis], buttons: KOPF_WAHL.map((k) => T[k]) });
+  for (const key in keys) keys[key] = false;
+  clickTarget = null;
+  ui.hideCard(); ui.showPrompt(null);
+  figurSel(figurWahl.sel);
 }
-function figurChoice(i) {
-  const kopf = KOPF_WAHL[i]; if (!kopf) return;
+function figurSel(i) {
+  if (!figurWahl || !figurWahl.figuren[i]) return;
+  figurWahl.sel = i;
+  const f = figurWahl.figuren[i];
+  marker.visible = true; marker.userData.setPosition(f.x, f.z, groundY(f.x, f.z));
+  const T = texte.figur;
+  ui.showBubble({ text: T.hinweis, options: [...KOPF_WAHL.map((k) => T[k]), T.los] }, T.titel, i);
+}
+function updateFigurWahl(t) {
+  if (!figurWahl) return;
+  figurWahl.figuren.forEach((f, i) => { f.g.rotation.y = Math.sin(t * 0.6 + i * 1.3) * 0.6; f.g.position.y = groundY(f.x, f.z) + (i === figurWahl.sel ? 0.08 + 0.04 * Math.sin(t * 3) : 0); }); // langsam drehen, die gewählte hebt sich leicht
+  updateMarker(marker, t);
+  ui.placeBubble(window.innerWidth / 2, window.innerHeight - 16); // Blase unten mittig, die Figuren bleiben frei
+}
+const figurCamera = () => ({ x: figurWahl.cx, y: 3.4, z: figurWahl.cz + 11.5, tx: figurWahl.cx, ty: 1.45, tz: figurWahl.cz }); // vom Wasser aus auf die Reihe, alle vier ganz im Bild
+function figurTreffer(clientX, clientY) { // Klick/Tipp auf eine der Figuren → Index, sonst -1
+  if (!figurWahl) return -1;
+  const ndc = new THREE.Vector2((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObjects(figurWahl.figuren.map((f) => f.g), true)[0];
+  if (!hit) return -1;
+  return figurWahl.figuren.findIndex((f) => { let o = hit.object; while (o) { if (o === f.g) return true; o = o.parent; } return false; });
+}
+function figurChoice(i = figurWahl?.sel ?? 0) { // bestätigen: Figur bauen, Vorschau abräumen, Intro
+  if (!figurWahl) return;
+  const kopf = KOPF_WAHL[i] || KOPF_WAHL[0];
+  for (const f of figurWahl.figuren) scene.remove(f.g);
+  figurWahl = null; marker.visible = false; player.visible = true;
+  ui.hideBubble();
   setzeSchluffi(kopf); sfx('talk');
-  ui.hideCard();
   startIntro();
 }
 // Info-Seite (Titel → Info, ⚙ → Hilfe): Text aus texte.json ui.info, Code-Default in game.js
@@ -1195,7 +1239,8 @@ ui.onMenu({
 });
 ui.onOptionClick((i, where) => {
   sfx('talk');
-  if (where === 'card') { if (mode === 'start') startChoice(i); else if (mode === 'figur') figurChoice(i); else if (mode === 'infoseite') closeInfo(); else if (mode === 'finale') finaleChoice(i); else cardWeiter(); }
+  if (mode === 'figur') { if (where === 'bubble') { if (i < KOPF_WAHL.length) figurSel(i); else figurChoice(); } return; }
+  if (where === 'card') { if (mode === 'start') startChoice(i); else if (mode === 'infoseite') closeInfo(); else if (mode === 'finale') finaleChoice(i); else cardWeiter(); }
   else if (mode === 'mentor') advanceMentor();
   else if (mode === 'info') endInfo();
   else if (mode === 'bar') advanceBar(i);
@@ -1696,7 +1741,7 @@ function setupScene() {
   if (T01) { tagesuhr = { t01: Math.max(0, Math.min(1, parseFloat(T01))) }; applyTageszeit(); placeMentor(barBeendetTag(tagesuhr.t01)); }
   refreshHud();
   if (q('kopf')) setzeSchluffi(q('kopf')); // Schnappschuss mit Kopfbedeckung
-  if (SCENE === 'figur_wahl') { showFigurWahl(); return; }
+  if (SCENE === 'figur_wahl') { showFigurWahl(Math.max(0, KOPF_WAHL.indexOf(q('kopf') || 'stirnband'))); return; }
   if (SCENE === 'titel') { showTitle(); return; }
   if (SCENE === 'intro') { startIntro({ halt: parseFloat(q('bei') || '2') }); return; }
   if (SCENE === 'erfolg') { game = { ...game, tag: woche.tage.length, geld: woche.ziel.muenzen + 10, finale: 'gut' }; refreshHud(); erfolgTableau(); return; }
@@ -1958,6 +2003,7 @@ if (SNAP) {
     if (mode === 'bar') cam = barCamera();
     if (mode === 'dialog' && talking?.npc) cam = inspectCamera(talking.npc, state, inspectOpts(talking)); // Gespräch läuft im Anschau-Modus
     if (mode === 'intro') cam = introCamera(performance.now());
+    if (mode === 'figur' && figurWahl) { updateFigurWahl(1.2); cam = figurCamera(); }
     if (erfolg && fw) { for (let t = 0; t < 4; t += 1 / 60) fw.update(t); } // Schnappschuss: Raketen und Bursts gleichzeitig im Bild
     if (!SCENE || SCENE !== 'szene') { updateSzenen(performance.now()); updateSzenenFiguren(performance.now() / 1000, 0.5); } // Ambient-Szenen auch im Schnappschuss
     applyCamera();
@@ -2079,6 +2125,8 @@ if (SNAP) {
     // Kamera: Folge-Kamera oder Hinschau-Kamera (weich)
     if (mode === 'intro') {
       cam = introCamera(now);
+    } else if (mode === 'figur' && figurWahl) {
+      updateFigurWahl(now / 1000); cam = figurCamera();
     } else if (((mode === 'inspect' || mode === 'dialog') && talking?.npc && talking.group) || mode === 'bar') { // Gespräch und Hinschauen: Kamera vors Gesicht
       const want = mode === 'bar' ? barCamera() : inspectCamera(talking.npc, state, inspectOpts(talking));
       const t = 1 - Math.exp(-5 * dt);

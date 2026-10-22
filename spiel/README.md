@@ -18,7 +18,9 @@ Sprechblasen nur bei Figuren in Hörweite (18) und im Bild. Jeden Tag mindestens
 (`harmloseFuerTag`, `pickKunden`), und die Fähre bringt bei jedem Anlegen 1–2 Besucher, die eine Runde Hafen → Markt →
 Dorf drehen, am Steg warten und mit der nächsten Fähre abfahren (`besucherWahl`/`besucherStep`, getestet). Der Wasserball
 am Startstrand ist kickbar (`ballStep`: Stoß beim Drüberlaufen, rollt aus, prallt an Collidern und am Wasser ab).
-Figurenwahl nach „Neues Spiel“ (Stirnband, Flatcap, Strohhut, Bandana — `schluffi({ kopf })`, im Spielstand als `kopf`).
+Figurenwahl nach „Neues Spiel“: vier Schluffis nebeneinander auf dem Sand (Stirnband, Flatcap, Strohhut, Bandana, langsam
+drehend), Leuchtring unter der gewählten Figur, Wahl per Klick/Tipp auf die Figur, Knopf oder Taste 1–4, Enter bestätigt
+(`schluffi({ kopf })`, im Spielstand als `kopf`; `?scene=figur_wahl&kopf=strohhut`).
 Info-Seite über den Titel oder ⚙ → Hilfe (`ui.info` in texte.json). Snaps: `?scene=titel`, `?scene=intro&bei=2`,
 `?scene=erfolg`, `?tag=2` setzt den Spieltag.
 
