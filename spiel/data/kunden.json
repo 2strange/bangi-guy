@@ -9,7 +9,7 @@
       "zivi": false, "zahlt": 20, "feilschen": 0.7, "heat": 0, "tempo": 0.5, "spawn": "K3", "stimme": "stammkunde",
       "stimmung_start": "zufrieden",
       "mimik": "Augen halb zu, Mund leicht offen, immer ein bisschen am Grinsen. Beim Kauf: beide Augenbrauen hoch, als wäre Weihnachten. Bei Ablehnung: zuckt nur mit den Schultern.",
-      "tells": ["Sandalen, abgelaufen", "Hawaiihemd mit Fleck", "Sonnenbrand", "steht seit Stunden am selben Fleck"],
+      "tells": ["Sandalen, abgelaufen", "Hawaiihemd mit Fleck", "Sonnenbrand", "steht seit Stunden am selben Fleck", "Goldkette: zahlt den Aufschlag, meistens"],
       "saetze": {
         "gruss": ["Duuude.", "Du bist ja immer noch da. Ich auch.", "Hab gerade über Wolken nachgedacht."],
         "kauf": ["Du bist ein Heiliger, Mann.", "Das hält den Nachmittag zusammen.", "Ich schulde dir was. Also, noch mehr."],
@@ -70,10 +70,10 @@
       "schuhe": "flipflop", "hemd": "kittel", "hose": "rock", "accessoire": "gehstock",
       "hautton": "mittel", "bart": "keiner", "brille": "lesebrille", "haare": "weiss",
       "extras": ["rollator", "einkaufskorb"],
-      "zivi": false, "zahlt": 60, "feilschen": 0.95, "heat": 0, "tempo": 0.3, "spawn": "K4", "stimme": "oma",
+      "zivi": false, "zahlt": 60, "feilschen": 0.95, "heat": 0, "tempo": 0.3, "spawn": "K5", "stimme": "oma",
       "stimmung_start": "misstrauisch",
       "mimik": "Zusammengekniffene Augen, prüfender Blick über den Brillenrand, Mund ein schmaler Strich. Beim Kauf: ein winziges, zahnloses Grinsen. Bei Ablehnung: Augenrollen, Stock-Klopfen.",
-      "tells": ["Flip-Flops, Kittel, Rollator", "handelt immer um den Preis", "kennt jeden Polizisten beim Vornamen", "beste Kundin, zahlt am meisten"],
+      "tells": ["Flip-Flops, Kittel, Rollator", "handelt immer um den Preis", "kennt jeden Polizisten beim Vornamen", "beste Kundin, zahlt am meisten", "Goldkette: zahlt jeden Aufschlag (die Knie sind es ihr wert)"],
       "saetze": {
         "gruss": ["Du siehst dünn aus. Hast du gegessen?", "Für meine Knie, verstehst du.", "Psst. Nicht so laut. Ich bin hier bekannt."],
         "kauf": ["Mein Enkel sagt, das sei Medizin. Mein Enkel ist Arzt. Also fast.", "Gib her, und vergiss das Wechselgeld nicht.", "Pong fragt nie bei mir nach. Ich hab ihn gewickelt."],
@@ -89,7 +89,7 @@
       "zivi": false, "zahlt": 25, "feilschen": 0.9, "heat": 1, "tempo": 0.7, "spawn": "K5", "stimme": "erstkaeufer",
       "stimmung_start": "erschrocken",
       "mimik": "Augen zu weit offen, Pupillen klein, Mund zittert, schaut ständig über die Schulter. Beim Kauf: kurz erleichtert, dann sofort wieder Panik. Bei Ablehnung: fast erleichtert.",
-      "tells": ["Flip-Flops (stolpert beim Rennen)", "schaut sich alle 2 Sekunden um", "spricht VIEL zu laut", "Handy in der Hand, Taschenlampe an, tagsüber"],
+      "tells": ["Flip-Flops (stolpert beim Rennen)", "schaut sich alle 2 Sekunden um", "spricht VIEL zu laut", "Handy in der Hand, Taschenlampe an, tagsüber", "Goldkette: zahlt jeden Aufschlag, vor Nervosität"],
       "saetze": {
         "gruss": ["HALLO. ICH BIN GANZ NORMAL HIER.", "Ist das… also… machst du… du weißt schon?", "Ich hab das noch nie gemacht. Also DAS. Das hier. Kaufen."],
         "kauf": ["DANKE. Also, leise danke. DANKE.", "Wo tu ich das jetzt hin? In die Hand? Ist die Hand okay?", "Ich lauf jetzt normal weg. Ganz normal. Normal."],
@@ -121,7 +121,7 @@
       "zivi": true, "zahlt": 50, "feilschen": 1.0, "heat": 2, "tempo": 1.6, "spawn": "K1", "stimme": "zivi_polo",
       "stimmung_start": "misstrauisch",
       "mimik": "Starrer Blick, kein Blinzeln, Lächeln nur mit dem Mund, nicht mit den Augen. Beim Kauf: ein Mundwinkel geht hoch. Beim Reveal: Augen werden schmal, Hand ans Ohr.",
-      "tells": ["Turnschuhe blütenweiß", "Polo mit Bügelfalte", "Ohrknopf", "sagt 'ganz normal' auffällig oft"],
+      "tells": ["Turnschuhe blütenweiß", "Polo mit Bügelfalte", "Ohrknopf", "sagt 'ganz normal' auffällig oft", "Goldkette, aber: Zivi zahlt jeden Preis, es ist Beweismaterial (Gier-Falle)"],
       "saetze": {
         "gruss": ["Hallo! Ich bin ein ganz normaler Tourist.", "Schöner Strand. Für ganz normale Aktivitäten.", "Ich hätte gern das, was alle hier haben. Das Übliche."],
         "kauf": ["Interessant. Sehr interessant.", "Danke. Das wird… vermerkt. Ich meine: genossen.", "Könnten Sie das noch einmal wiederholen, etwas lauter?"],
@@ -137,7 +137,7 @@
       "zivi": true, "zahlt": 70, "feilschen": 1.0, "heat": 3, "tempo": 1.0, "spawn": "K3", "stimme": "zivi_verkleidet",
       "stimmung_start": "zufrieden",
       "mimik": "Übertrieben entspannt: Lächeln zu breit, Augen hinter der Sonnenbrille hellwach. Beim Kauf: Sonnenbrille rutscht, darunter Polizistenaugen. Beim Reveal: Lächeln bleibt, nur die Brauen fallen.",
-      "tells": ["SANDALEN, trotzdem Zivi: Ohrknopf", "Hawaiihemd nagelneu, Preisschild hängt noch", "Socken in Sandalen (wie ein Rentner, aber 30 Jahre zu jung)", "schreibt heimlich mit"],
+      "tells": ["SANDALEN, trotzdem Zivi: Ohrknopf", "Hawaiihemd nagelneu, Preisschild hängt noch", "Socken in Sandalen (wie ein Rentner, aber 30 Jahre zu jung)", "schreibt heimlich mit", "Goldkette, aber: Zivi zahlt jeden Preis, Aufschlag = mehr Beweismaterial"],
       "saetze": {
         "gruss": ["Yo, Dude. Bro. Alter. Habe ich was vergessen?", "Ich bin total entspannt. Schau, Hawaiihemd.", "Was kostet denn so… die Ware, Bruder?"],
         "kauf": ["Nice. Groovy. Weitere Jugendworte.", "Darf ich kurz notieren… ich meine, genießen?", "Das ist exakt die Menge, die ich gebraucht habe. Für die Akte. Für mich!"],
@@ -153,7 +153,7 @@
       "zivi": true, "zahlt": 40, "feilschen": 0.8, "heat": 2, "tempo": 1.2, "spawn": "K2", "stimme": "zivi_hund",
       "stimmung_start": "neutral",
       "mimik": "Er selbst: gelangweilt, halb geschlossene Augen, Kaugummi. Der Hund: hellwach, Ohren oben, Nase arbeitet. Beim Kauf: der Hund setzt sich, der Mann lächelt zum ersten Mal. Beim Reveal: Hund bellt, Mann zuckt nicht.",
-      "tells": ["BARFUSS und Tanktop sehen harmlos aus, aber:", "Schäferhund mit blauem Halstuch (die Hunde am Strand haben keine Halstücher)", "Funkgerät am Gürtel, als 'Flaschenöffner' getarnt", "der Hund schnüffelt an deiner Tasche"],
+      "tells": ["BARFUSS und Tanktop sehen harmlos aus, aber:", "Schäferhund mit blauem Halstuch (die Hunde am Strand haben keine Halstücher)", "Funkgerät am Gürtel, als 'Flaschenöffner' getarnt", "der Hund schnüffelt an deiner Tasche", "Goldkette, aber: Rex entscheidet, nicht der Preis"],
       "saetze": {
         "gruss": ["Rex ist nur ein ganz normaler Strandhund.", "Sitz, Rex. Nein, nicht du. Ich meinte den Hund.", "Schöner Tag für… was auch immer du dabeihast."],
         "kauf": ["Rex, markieren. Äh, ich meine: Rex, Sitz.", "Danke. Rex hat sich jedenfalls schon entschieden.", "Das riecht ja… interessant. Sagt Rex."],
@@ -185,7 +185,7 @@
       "zivi": false, "zahlt": 30, "feilschen": 0.8, "heat": 2, "tempo": 0.8, "spawn": "K4", "stimme": "lauter_typ",
       "stimmung_start": "zufrieden",
       "mimik": "Mund immer offen, Augen weit, alles ist ein Ausrufezeichen. Beim Kauf: brüllt vor Freude, Arme hoch. Bei Ablehnung: kurz beleidigt, dann noch lauter freundlich.",
-      "tells": ["Sandalen, Trikot, Bierdose: harmlos", "aber: man hört ihn über den ganzen Markt (Heat 2 beim Verkauf)", "Bauchtasche voller Kleingeld", "Sonnenbrand in Trikot-Form"],
+      "tells": ["Sandalen, Trikot, Bierdose: harmlos", "aber: man hört ihn über den ganzen Markt (Heat 2 beim Verkauf)", "Bauchtasche voller Kleingeld", "Sonnenbrand in Trikot-Form", "Goldkette: zahlt den Aufschlag, LAUT"],
       "saetze": {
         "gruss": ["HEY! HAST DU GRAS?!", "DU! JA DU! BIST DU DER TYP?!", "ALTER, ICH HAB VON DIR GEHÖRT! ALLE HABEN VON DIR GEHÖRT!"],
         "kauf": ["GEIL! LEUTE, ER HAT'S! ER HAT'S WIRKLICH!", "DANKE, MANN! WIE HEISST DU? WO WOHNST DU?!", "ICH SAG'S KEINEM! HÖRT IHR? KEINEM!"],
@@ -217,7 +217,7 @@
       "zivi": true, "zahlt": 55, "feilschen": 1.0, "heat": 2, "tempo": 1.5, "spawn": "K1", "stimme": "zivi_frager",
       "stimmung_start": "neutral",
       "mimik": "Freundliches Backpacker-Gesicht, aber die Augen scannen ständig den Markt statt dich anzuschauen. Beim Kauf: ein kurzes, zufriedenes Augenschließen, wie beim Abhaken. Beim Reveal: Lächeln bleibt, Augen werden Polizei.",
-      "tells": ["sieht aus wie Jonas, ABER: Turnschuhe statt Trekkingsandalen", "Rucksack hängt flach: leer (kein Backpacker reist mit leerem Rucksack)", "Fährenticket von HEUTE, Stoppeln von gestern", "fragt nicht nach Ware, sondern WOHER sie kommt", "Umriss von Handschellen in der Hosentasche"],
+      "tells": ["sieht aus wie Jonas, ABER: Turnschuhe statt Trekkingsandalen", "Rucksack hängt flach: leer (kein Backpacker reist mit leerem Rucksack)", "Fährenticket von HEUTE, Stoppeln von gestern", "fragt nicht nach Ware, sondern WOHER sie kommt", "Umriss von Handschellen in der Hosentasche", "Goldkette, aber: der Aufschlag landet in der Akte"],
       "saetze": {
         "gruss": ["Hey! Bin gerade mit der Fähre gekommen. Wo kriegt man hier denn… du weißt schon?", "Cooler Markt. Wer beliefert eigentlich wen hier so?", "Ich sammel Erfahrungen. Und Namen. Also, Erfahrungen."],
         "kauf": ["Super. Und woher genau kommt das? Nur aus Interesse.", "Danke! Dein Lieferant, ist der auch so nett?", "Perfekt, das reicht. Ich meine: das reicht mir für heute."],
@@ -265,7 +265,7 @@
       "zivi": true, "zahlt": 45, "feilschen": 1.0, "heat": 2, "tempo": 0.7, "spawn": "K6", "stimme": "zivi_pfeife",
       "stimmung_start": "zufrieden",
       "mimik": "Freundliches Urlaubslächeln, aber die Stirn hat einen blassen Streifen genau dort, wo sonst die Dienstmütze sitzt. Beim Kauf: schiebt die Sonnenbrille hoch, der Streifen leuchtet, Lächeln bleibt. Beim Reveal: Pfeife in den Mund, Augen zu, pfeift.",
-      "tells": ["Schuhe und Hemd sind unverdächtig: Flip-Flops, fleckiges Hawaiihemd (geliehen), Sonnenbrand", "ABER: blasser Mützen-Streifen auf der Stirn, Sonnenbrand nur darunter", "Trillerpfeife am Band um den Hals, als Schmuck getarnt", "steht kerzengerade, kein Schluffi steht so", "kann nicht rennen (Flip-Flops), pfeift stattdessen Verstärkung"],
+      "tells": ["Schuhe und Hemd sind unverdächtig: Flip-Flops, fleckiges Hawaiihemd (geliehen), Sonnenbrand", "ABER: blasser Mützen-Streifen auf der Stirn, Sonnenbrand nur darunter", "Trillerpfeife am Band um den Hals, als Schmuck getarnt", "steht kerzengerade, kein Schluffi steht so", "kann nicht rennen (Flip-Flops), pfeift stattdessen Verstärkung", "Goldkette, aber: der Aufschlag ist der Pfiff wert"],
       "saetze": {
         "gruss": ["Guten Tag! Ich meine: Hey. Hey, Dude.", "Schöner Strand. Ich bin hier privat. Ganz privat.", "Haben Sie… hast du vielleicht etwas Entspannendes? Zum Entspannen?"],
         "kauf": ["Vielen Dank. Das wird… genossen. Privat.", "Sehr gut. Sehr, sehr gut. Bleiben Sie bitte kurz stehen.", "Perfekt. Entschuldigung, ich muss nur kurz… pfeifen."],

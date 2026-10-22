@@ -613,3 +613,27 @@ test('Kamera-Neigung: Grenzen 15°…80°, Standard 38° (flacher als vorher), A
   assert.ok(flach.y < steil.y && Math.abs(flach.z - p.z) > Math.abs(steil.z - p.z), 'flach: tiefer und weiter hinten');
   assert.ok(Math.abs(flach.tx - (p.x)) < 1e-6 && Math.abs(flach.ty - CAM_OFFSET.targetY) < 1e-6, 'Blickpunkt unverändert');
 });
+
+import { SPUR, imSand, spurSchritt, spurAlter, spurenAufraeumen } from '../js/logic.js';
+test('Fußspuren: alle 0,8 Einheiten eine Spur, links/rechts wechselnd, quer zur Laufrichtung; verblassen nach 20 s; Pool gedeckelt; nur im Sand', () => {
+  let track = null; const alle = [];
+  let pos = { x: 0, z: 0 };
+  for (let i = 0; i < 100; i++) { const to = { x: 0, z: pos.z + 0.05 }; const r = spurSchritt(track, pos, to, 0, 'sandale', i * 0.02); track = r.track; alle.push(...r.spuren); pos = to; }
+  assert.equal(alle.length, Math.floor(5 / SPUR.abstand), '5 Einheiten Weg → 6 Spuren');
+  assert.deepEqual(alle.map((s) => s.seite), [-1, 1, -1, 1, -1, 1], 'links/rechts wechselnd');
+  assert.ok(alle.every((s) => Math.abs(Math.abs(s.x) - SPUR.seitlich) < 1e-9 && s.yaw === 0 && s.schuhe === 'sandale'), 'seitlich versetzt, quer zur Richtung +z');
+  assert.ok(alle[1].z > alle[0].z);
+  // Richtung +x (yaw π/2): Versatz in z
+  const r = spurSchritt({ rest: 0.79, seite: 1 }, { x: 0, z: 0 }, { x: 0.02, z: 0 }, Math.PI / 2, 'turnschuh', 1);
+  assert.equal(r.spuren.length, 1); assert.equal(r.spuren[0].seite, -1);
+  assert.ok(Math.abs(Math.abs(r.spuren[0].z) - SPUR.seitlich) < 1e-6 && Math.abs(r.spuren[0].x - 0.02) < 1e-9, 'Versatz quer zu +x liegt in z');
+  assert.equal(spurSchritt(null, { x: 0, z: 0 }, { x: 0, z: 0 }, 0, 'x', 0).spuren.length, 0, 'stehen: nichts');
+  // Alter und Aufräumen
+  assert.equal(spurAlter({ t: 0 }, 0), 0); assert.equal(spurAlter({ t: 0 }, 10), 0.5); assert.equal(spurAlter({ t: 0 }, 25), 1);
+  const list = Array.from({ length: 200 }, (_, i) => ({ t: i * 0.05 }));
+  const clean = spurenAufraeumen(list, 12);
+  assert.ok(clean.every((s) => 12 - s.t < SPUR.ttl) && clean.length <= SPUR.max && clean[clean.length - 1].t === list[199].t, 'alte raus, neueste bleiben, Deckel');
+  assert.equal(spurenAufraeumen(list, 100).length, 0);
+  // Sand: Strandband; Hecke/Dorf, Wasser und Furt nicht
+  assert.equal(imSand({ x: 0, z: 3 }), true); assert.equal(imSand({ x: 0, z: -30 }), false); assert.equal(imSand({ x: 0, z: 200 }), false);
+});

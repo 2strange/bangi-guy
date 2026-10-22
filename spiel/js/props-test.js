@@ -9,10 +9,13 @@
 // ?what=neue  → die neuen Kunden (Fischhändler, lauter Typ, Kreuzfahrt-Tante, Fragesteller) mit kundenExtras()
 // ?what=neue2 → Bauer Nok, Kletterer Dao, Frau Trillerpfeife (Zivi), Flitterwochen-Paar
 // ?what=bauch → Schluffi von vorn und von der Seite (Bauch unterm Hemd)
+// ?what=liege → Strandliegen mit Kunden in der Pose „liegestuhl“ (userData.sitz), dazu der schlafende Surfer
+// ?what=kletterer → Kokos-Kletterer außen am Stamm (amStamm), von zwei Seiten
 import * as THREE from 'three';
 import { toonMesh, textTexture } from './toon.js';
 import { schluffi, runner, sandal, sneaker, pose, POSES, buildNong, updateNong, setNongMood, kundenExtras, updateKundenExtras } from './figures.js';
-import { hotel, beachBar, finaleHuette, setHuette, HUETTE_ZUSTAENDE, signpost, setWegweiserText } from './props.js';
+import { hotel, beachBar, finaleHuette, setHuette, HUETTE_ZUSTAENDE, signpost, setWegweiserText, lounger, sleepingSurfer, palm } from './props.js';
+import { climber, amStamm } from './zone-reisfeld.js';
 import { buildingScale } from './logic.js';
 import { buildKunde } from './kunden.js';
 import { normalizeKatalog } from './game.js';
@@ -54,6 +57,27 @@ if (WHAT === 'feet') {
   const b = schluffi(); b.position.set(1.6, 0, 0); b.rotation.y = Math.PI / 2; scene.add(b);
   camera.position.set(0, 1.9, 5.6);
   camera.lookAt(0, 1.5, 0);
+} else if (WHAT === 'liege') {
+  const kat = await fetch('./data/kunden.json').then((r) => r.json());
+  const kunden = normalizeKatalog(kat);
+  [['touristin_1', -3.2, 0.2], ['rentner_1', 0, -0.1], ['surfer_1', 3.2, 0.15]].forEach(([id, x, yaw], i) => {
+    const lo = lounger(i % 2 ? ['#3a7bd5', '#ffffff'] : ['#e8463a', '#fff5e0']); lo.position.set(x, 0, 0); lo.rotation.y = yaw; lo.scale.setScalar(1.3); scene.add(lo);
+    const k = kunden.find((q) => q.id === id); const fig = buildKunde(k, 7 + i); kundenExtras(fig, k);
+    const { offsetY, offsetZ } = pose(fig, 'liegestuhl');
+    const sitz = new THREE.Vector3(lo.userData.sitz.x, lo.userData.sitz.y, lo.userData.sitz.z); lo.localToWorld(sitz); // Sitzpunkt in Welt
+    fig.position.set(sitz.x + Math.sin(yaw) * offsetZ, sitz.y + offsetY, sitz.z + Math.cos(yaw) * offsetZ); fig.rotation.y = yaw; scene.add(fig);
+  });
+  const leer = lounger(['#3bb84a', '#ffffff']); leer.position.set(-6.6, 0, 0); leer.rotation.y = 0.4; leer.scale.setScalar(1.3); scene.add(leer); // leer: Rückenteil sichtbar
+  const su = sleepingSurfer(); su.position.set(7.2, 0, 0.8); su.rotation.y = -0.5; su.userData.update(1.0); scene.add(su);
+  camera.position.set(0.5, 7.5, 16);
+  camera.lookAt(0.5, 0.3, 0);
+} else if (WHAT === 'kletterer') {
+  [[-3, 0.2], [3, Math.PI - 0.6]].forEach(([x, ry]) => {
+    const p = palm({ lean: new THREE.Vector3(-0.6, 0, 0.9), seed: 32, height: 5.2 }); p.position.set(0, 0, 0); p.scale.setScalar(1.4);
+    const g = new THREE.Group(); g.add(p); const cl = climber(); amStamm(cl, p, 0.55, 1.4); g.add(cl); g.position.set(x, 0, 0); g.rotation.y = ry; scene.add(g);
+  });
+  camera.position.set(0, 5.5, 9);
+  camera.lookAt(0, 3.2, 0);
 } else if (WHAT === 'shoes') {
   const items = [[sandal(0xf0b98a, 'L'), -2.4], [sandal(0xf0b98a, 'R'), -0.8], [sneaker(0xe8463a, 'L'), 0.8], [sneaker(0xe8463a, 'R'), 2.4]];
   for (const [shoe, x] of items) { shoe.position.set(x, 0, 0); shoe.scale.setScalar(1.6); scene.add(shoe); }

@@ -405,6 +405,27 @@ export function zoneMix(pos, defs = {}, { strandMin = 0.2, heckeZ = -24, fade = 
   return out;
 }
 
+// ---------- Fußspuren im Sand: alle `abstand` Einheiten Weg eine Spur, links/rechts wechselnd, verblasst nach ttl ----------
+export const SPUR = { abstand: 0.8, seitlich: 0.2, ttl: 20, max: 160 };
+export const imSand = (pos) => pos.z > -24 && pos.z < shoreZ(pos.x) - 0.3 && !inUntiefe(pos); // Strandband zwischen Hecke und Wasserkante
+/** track = { rest, seite }; from→to ist der Schritt dieses Frames. Rückgabe { track, spuren: [{ x, z, yaw, seite, schuhe, t }] } */
+export function spurSchritt(track, from, to, yaw, schuhe, now, o = SPUR) {
+  const d = Math.hypot(to.x - from.x, to.z - from.z);
+  const t = { rest: (track?.rest ?? 0) + d, seite: track?.seite ?? 1 };
+  const spuren = [];
+  const sx = Math.cos(yaw), sz = -Math.sin(yaw); // rechte Hand der Laufrichtung (yaw 0 = +z)
+  while (t.rest >= o.abstand) {
+    t.rest -= o.abstand; t.seite = -t.seite;
+    spuren.push({ x: to.x + sx * o.seitlich * t.seite, z: to.z + sz * o.seitlich * t.seite, yaw, seite: t.seite, schuhe, t: now });
+  }
+  return { track: t, spuren };
+}
+export const spurAlter = (spur, now, ttl = SPUR.ttl) => Math.max(0, Math.min(1, (now - spur.t) / ttl)); // 0 frisch … 1 verblasst
+export function spurenAufraeumen(list, now, { ttl = SPUR.ttl, max = SPUR.max } = {}) {
+  const l = list.filter((s) => now - s.t < ttl);
+  return l.length > max ? l.slice(l.length - max) : l;
+}
+
 // ---------- Streife P1: Wegfolgen auf einer Polylinie (hin und zurück, Pause an den Enden) + Sichtkegel ----------
 export const PATROL_SPEED = 2.2;
 export const PATROL_WAIT = 2.5;

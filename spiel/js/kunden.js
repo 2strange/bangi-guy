@@ -513,10 +513,11 @@ export function buildKunde(k, seed = 1, outfit = null) {
 
   // Feilsch-Hinweis: zahlungskräftige Gäste (feilschen ≥ 0,7) tragen eine Goldkette – wer mehr verlangt, sollte darauf achten
   if (zahlungskraeftig(k)) {
-    const kette = toonMesh(new THREE.TorusGeometry(0.3, 0.035, 8, 20), 0xffc53d, { outline: 0.015 });
-    kette.position.set(0, shoulderY + 0.02, 0.12); kette.rotation.x = Math.PI / 2 - 0.35; root.add(kette);
-    const anhaenger = toonMesh(new THREE.SphereGeometry(0.06, 8, 6), 0xffc53d, { outline: 0.012 });
-    anhaenger.position.set(0, shoulderY - 0.22, 0.42); root.add(anhaenger);
+    const vorn = (belly ? 0.6 : 0.5) + 0.05; // knapp vor der Brust, sonst verschwindet die Kette im Rumpf
+    const kette = toonMesh(new THREE.TorusGeometry(0.24, 0.035, 8, 20, Math.PI), 0xffc53d, { outline: 0.015 }); // halber Ring, hängt als U vor der Brust
+    kette.position.set(0, shoulderY + 0.04, vorn); kette.rotation.z = Math.PI; root.add(kette);
+    const anhaenger = toonMesh(new THREE.SphereGeometry(0.07, 8, 6), 0xffc53d, { outline: 0.012 });
+    anhaenger.position.set(0, shoulderY - 0.24, vorn + 0.02); root.add(anhaenger);
   }
   // Surfbrett: quer vor dem Körper in beiden Händen (lange Achse links–rechts, ragt beidseitig über den Körper, Deck nach
   // vorn/leicht oben, Bauchhöhe). Beim Sitzen/Liegen liegt ein zweites Brett daneben im Sand (holdPose).

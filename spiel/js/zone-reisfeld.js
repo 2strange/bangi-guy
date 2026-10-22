@@ -216,6 +216,20 @@ export function buildReisfeld(parent, colliders) {
 
 // ---------- Kokoshain ----------
 // Kokos-Kletterer: klammert am Stamm, Sack über der Schulter, lässt ab und zu eine Nuss fallen
+// Kletterer außen an den Stamm hängen: Stammpunkt bei t, dann um Stammradius + Rumpf nach außen versetzt (Oberseite
+// der Neigung), Körperachse längs des Stamms, Bauch (Arme/Beine umklammern nach lokal −z) zur Rinde.
+export function amStamm(cl, palmObj, t = 0.55, palmScale = 1.4) {
+  const curve = palmObj.userData.curve;
+  const pos = curve.getPointAt(t).multiplyScalar(palmScale), tan = curve.getTangentAt(t).normalize();
+  const n = V(0, 1, 0).sub(tan.clone().multiplyScalar(tan.y)); // Anteil von „oben“ quer zum Stamm
+  if (n.lengthSq() < 1e-4) n.set(1, 0, 0); n.normalize();
+  const stammR = 0.30 * (1 - 0.45 * t) * 1.12 * palmScale;
+  cl.position.copy(palmObj.position).add(pos).add(n.clone().multiplyScalar(stammR + 0.42)); // 0.42 = Rumpfradius + Luft
+  const m = new THREE.Matrix4().makeBasis(tan.clone().cross(n).normalize(), tan, n);                // x, y = Stamm, z = nach außen
+  cl.quaternion.setFromRotationMatrix(m);
+  return cl;
+}
+
 export function climber(skin = 0x8d5a3a) {
   const g = new THREE.Group();
   const torso = toonMesh(new THREE.CylinderGeometry(0.3, 0.33, 0.8, 10), 0xffd54a, { outline: 0.04 }); torso.position.set(0, 0.4, 0); g.add(torso);
@@ -253,11 +267,7 @@ export function buildKokoshain(parent, colliders) {
   const kp = PALMEN.findIndex((p) => p.kletterer);
   let cl = null, fallingNut = null;
   if (kp >= 0) {
-    const pObj = palms[kp], curve = pObj.userData.curve;
-    const pos = curve.getPointAt(0.55).multiplyScalar(1.4), tan = curve.getTangentAt(0.55);
-    cl = climber(); cl.position.copy(pObj.position).add(pos);
-    cl.quaternion.setFromUnitVectors(V(0, 1, 0), tan.clone().normalize()); cl.rotateY(Math.PI);
-    add(cl);
+    cl = climber(); amStamm(cl, palms[kp], 0.55, 1.4); add(cl);
     fallingNut = coconut(false); fallingNut.position.set(PALMEN[kp].x + 0.8, 0, PALMEN[kp].z + 0.6); add(fallingNut);
   }
   // Hängematte zwischen den beiden südwestlichen Palmen, Helm am Boden, Schild

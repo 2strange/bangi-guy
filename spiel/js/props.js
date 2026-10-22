@@ -749,18 +749,29 @@ export function hotel() {
 }
 
 // ---------- Liege mit Handtuch ----------
+// Strandliege: Fußende bei +z, Kopfende bei −z. Dort steht das Rückenteil schräg hoch (55°, Oberkante nach hinten),
+// man sitzt bzw. liegt halb drauf. userData.sitz = Hüftpunkt auf der Liege (lokal) für die Sitzpose „liegestuhl“
+// aus figures.js (Figur schaut nach +z, also zum Fußende).
 export function lounger(stripes = ['#3a7bd5', '#ffffff']) {
   const g = new THREE.Group();
   const frame = toonMesh(new THREE.BoxGeometry(0.9, 0.12, 2.2), 0xffffff, { outline: 0.035 });
   frame.position.y = 0.4; g.add(frame);
-  const back = toonMesh(new THREE.BoxGeometry(0.9, 0.12, 0.9), 0xffffff, { outline: 0.035 });
-  back.position.set(0, 0.7, -1.3); back.rotation.x = -0.9; g.add(back);
   const tex = stripeTexture([stripes[0], stripes[1], stripes[0], stripes[1], stripes[0]], { vertical: false });
-  const towel = toonMesh(new THREE.BoxGeometry(0.8, 0.06, 1.9), toon(0xffffff, { map: tex }), { outline: 0.03 });
-  towel.position.set(0, 0.5, 0.1); g.add(towel);
+  const cloth = toon(0xffffff, { map: tex });
+  const towel = toonMesh(new THREE.BoxGeometry(0.8, 0.06, 1.5), cloth, { outline: 0.03 });
+  towel.position.set(0, 0.49, 0.25); g.add(towel);
+  // Rückenteil: Scharnier am Sitz (z −0.5), Oberkante nach −z geneigt
+  const tilt = 0.96, len = 1.0, hinge = new THREE.Vector3(0, 0.46, -0.5);
+  const back = toonMesh(new THREE.BoxGeometry(0.9, 0.1, len), toon(0xffffff, { map: tex }), { outline: 0.035 });
+  back.position.copy(hinge).add(new THREE.Vector3(0, Math.sin(tilt) * len / 2, -Math.cos(tilt) * len / 2));
+  back.rotation.x = tilt; g.add(back);
+  for (const s of [-1, 1]) { // Stützstreben hinter dem Rückenteil
+    g.add(limb(new THREE.Vector3(s * 0.4, 0.4, -1.05), new THREE.Vector3(s * 0.4, 0.46 + Math.sin(tilt) * 0.7, -0.5 - Math.cos(tilt) * 0.7), 0.035, 0xdddddd, { outline: 0.015 }));
+  }
   for (const [x, z] of [[-0.4, 0.9], [0.4, 0.9], [-0.4, -0.9], [0.4, -0.9]]) {
     g.add(limb(new THREE.Vector3(x, 0, z), new THREE.Vector3(x, 0.38, z), 0.05, 0xdddddd, { outline: 0.02 }));
   }
+  g.userData.sitz = { x: 0, y: 0.52, z: -0.35 };
   return g;
 }
 
@@ -812,11 +823,11 @@ export function sleepingSurfer() {
   hair.position.set(0, 0.55, -1.0); hair.rotation.x = -1.2; g.add(hair);
   // geschlossene Augen + offener Mund als Striche
   for (const s of [-1, 1]) {
-    const eye = toonMesh(new THREE.BoxGeometry(0.16, 0.03, 0.03), BLACK, { outline: 0, basic: true });
-    eye.position.set(s * 0.16, 0.9, -0.95); g.add(eye);
+    const eye = toonMesh(new THREE.BoxGeometry(0.2, 0.04, 0.03), BLACK, { outline: 0, basic: true });
+    eye.position.set(s * 0.16, 0.9, -0.95); eye.rotation.x = -0.3; g.add(eye);
   }
-  const mouth = toonMesh(new THREE.SphereGeometry(0.09, 8, 6), BLACK, { outline: 0, basic: true });
-  mouth.position.set(0.05, 0.86, -0.75); g.add(mouth);
+  const mouth = toonMesh(new THREE.TorusGeometry(0.09, 0.016, 5, 10, Math.PI), BLACK, { outline: 0, basic: true }); // zufriedener Schlafmund, zu
+  mouth.position.set(0.03, 0.85, -0.72); mouth.rotation.set(-1.0, 0, Math.PI); g.add(mouth);
   for (const s of [-1, 1]) {
     g.add(limb(new THREE.Vector3(s * 0.2, 0.3, 0.4), new THREE.Vector3(s * 0.35, 0.25, 1.1), 0.09, skin, { outline: 0.035 }));
     const foot = toonMesh(new THREE.BoxGeometry(0.22, 0.12, 0.42), skin, { outline: 0.03 });
@@ -828,6 +839,7 @@ export function sleepingSurfer() {
   const z = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.8), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
   z.position.set(0.9, 1.6, -1.1); z.rotation.set(-0.6, 0.3, 0.2);
   g.add(z);
+  g.userData.update = (t) => { z.position.y = 1.6 + 0.15 * Math.sin(t * 1.3); z.position.x = 0.9 + 0.08 * Math.sin(t * 0.9); z.material.opacity = 0.75 + 0.25 * Math.sin(t * 2.1); }; // Zzz schweben
   return g;
 }
 

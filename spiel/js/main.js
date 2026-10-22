@@ -9,6 +9,7 @@ import { pose as figurePose, updateNong, setNongMood } from './figures.js';
 import { initLicht } from './licht.js';
 import { zielMarker, updateMarker } from './marker.js';
 import { ereignisSteuerung } from './ereignisse.js';
+import { createSpuren } from './spuren.js';
 import { setHuetteZiel, setHuette, setWegweiserText } from './props.js';
 import { mentorBarSpot } from './zone-huegel.js';
 import { createUI, isTouchDevice, hintSeen, markHint } from './ui.js';
@@ -16,7 +17,7 @@ import { prepareGags, playGag, stopGag } from './gags.js';
 import {
   inputToDir, dirToTarget, stepPlayer, followCamera, waddlePose, CAM_OFFSET, DEFAULT_CAM_YAW, isOccluder, joystickInput, rotateDir,
   ANCHORS, assignAnchors, zoneMix, patrolStart, seesTarget, chaseStep, inHideout, CHASE_SPEED, PATROL_SPEED, WORLD, BUILDING_POS, STREIFE_P2_ROUTE,
-  CAM_PITCH, clampPitch,
+  CAM_PITCH, clampPitch, spurSchritt, imSand,
 } from './logic.js';
 import {
   initialState, normalizeKatalog, pickKunden, startDialog, advanceDialog, chooseOption, isArrested, newDay, moodFor,
@@ -198,6 +199,15 @@ let tagesuhr = initialClock();
 let phase = phaseFor(0);
 // Licht über den Tag (licht.js: Himmel, Nebel, Sonnen-/Hemisphärenlicht, Nachtlichter, Sonne/Mond) + Musik-/Ambience-Stimmung
 const licht = initLicht(scene, { sonne: world.sonne });
+// Fußspuren im Sand (Schluffi + Kundschaft): Pool in spuren.js, Logik in logic.js
+const spuren = createSpuren(scene);
+let spielerSpur = null;
+function spurLegen(trackHolder, key, from, to, yaw, schuhe, now) {
+  if (!imSand(to)) { trackHolder[key] = null; return; }
+  const r = spurSchritt(trackHolder[key], from, to, yaw, schuhe, now);
+  trackHolder[key] = r.track;
+  for (const sp of r.spuren) spuren.add(sp, groundY(sp.x, sp.z));
+}
 // Ereignis-Requisiten (ereignisse.js): Möwe mit Beutel, Regenwolke mit Regentüten, Schiff, Party, Stromausfall, Fähre fällt aus
 const ereignisSteuer = ereignisSteuerung({ scene, markt: world.markt, pier: world.pier, licht, figuren: () => [player, ...kunden.flatMap((k) => (k.group.userData.partner ? [k.group, k.group.userData.partner] : [k.group]))] });
 world.setEreignis = (id, an = true, opts) => ereignisSteuer.setEreignis(id, an, opts);
@@ -1243,6 +1253,7 @@ function updateKunden(dt) {
       const before = k.npc;
       k.npc = wanderStep(k.npc, dt);
       k.npc.phase = (before.phase || 0) + Math.hypot(k.npc.x - before.x, k.npc.z - before.z) * (Math.PI * 2 / 1.6);
+      if (k.npc.moving && k.group.visible) spurLegen(k, 'spurTrack', before, k.npc, k.npc.yaw, regenAktiv ? 'gummistiefel' : k.def.schuhe, performance.now() / 1000);
       const want = kundeLookYaw(k.npc, state);
       k.look += (want - k.look) * (1 - Math.exp(-3 * dt));
     }
@@ -1380,6 +1391,16 @@ function setupScene() {
     return;
   }
   if (SCENE === 'menue') { openMenu(); return; }
+  if (SCENE === 'spuren') { // Schluffi-Sandalen und Turnschuh-Spur eines Kunden im Sand, verschieden alt
+    const t0 = 3.2;
+    let tr = null, pos = { x: state.x - 6, z: state.z - 3 };
+    for (let i = 0; i < 60; i++) { const to = { x: pos.x + 0.1, z: pos.z + 0.05 }; const r = spurSchritt(tr, pos, to, Math.atan2(0.1, 0.05), 'sandale', t0 - 12 + i * 0.2); tr = r.track; for (const sp of r.spuren) spuren.add(sp, 0); pos = to; }
+    let tr2 = null; pos = { x: state.x + 5, z: state.z + 6 };
+    for (let i = 0; i < 50; i++) { const to = { x: pos.x - 0.02, z: pos.z - 0.1 }; const r = spurSchritt(tr2, pos, to, Math.atan2(-0.02, -0.1), 'turnschuh', t0 - 4 + i * 0.08); tr2 = r.track; for (const sp of r.spuren) spuren.add(sp, 0); pos = to; }
+    spuren.update(t0);
+    mode = 'free';
+    return;
+  }
   if (SCENE === 'ereignis') { // ?scene=ereignis&id=regenschauer: Tag 2, Ereignis läuft sofort
     const ev = ereignisse.find((e) => e.id === SCENE_ID) || ereignisse[0];
     game = { ...game, tag: 2, ereignis: ev, ereignisAktiv: false }; refreshHud();
@@ -1521,7 +1542,9 @@ if (SNAP) {
         dir = dirToTarget(state, clickTarget);
         if (!dir) clickTarget = null;
       }
+      const vorher = { x: state.x, z: state.z };
       state = stepPlayer(state, { dir, run }, dt, colliders, WORLD, { schuhe: PLAYER_SCHUHE });
+      if (state.moving) { const h = { s: spielerSpur }; spurLegen(h, 's', vorher, state, state.yaw, regenAktiv ? 'gummistiefel' : PLAYER_SCHUHE, now / 1000); spielerSpur = h.s; }
       if (state.stumbled) sfx('schritt');
     } else {
       state = stepPlayer(state, { dir: null, run: false }, dt, colliders);
@@ -1546,6 +1569,7 @@ if (SNAP) {
     if (hinweisBis && now > hinweisBis) { hinweisBis = 0; if (mode === 'free') ui.showPrompt(null); }
     flushPitch(now);
     try { ereignisSteuer.update(now / 1000); } catch (e) { /* ohne Requisiten */ }
+    spuren.update(now / 1000);
     for (const k of kunden) updateKundenExtras(k.group, now / 1000);
     updateTutorial(now);
     updatePatrol(dt, now);

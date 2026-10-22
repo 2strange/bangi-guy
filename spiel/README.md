@@ -209,6 +209,14 @@ Standbild (für die PNGs in `shots/`).
   Meshes zusammengeführt — mit `?stats=1` lässt sich der Draw-Call-Stand ablesen, das ist der erste Hebel, wenn
   es auf einem Laptop ruckelt. Pixel-Ratio ist auf 1.5 gedeckelt.
 
+## Fußspuren
+Die festen Spuren im Sand sind weg; stattdessen hinterlassen der Schluffi und die Kundschaft beim Gehen echte Abdrücke
+(alle 0,8 Einheiten, links/rechts wechselnd, nur im Strandband zwischen Hecke und Wasserkante), die über 20 s verblassen.
+Je Schuhwerk ein Abdruck: Sandale mit Riemen, Turnschuh mit Profil, Flip-Flop mit Y-Riemen, barfuß mit Zehen,
+Gummistiefel beim Regen – Turnschuh-Spuren lassen sich also lesen. Logik rein in `js/logic.js` (`spurSchritt`, `spurAlter`,
+`spurenAufraeumen`, `imSand`, getestet), Darstellung als Ringpuffer aus 160 Ebenen in `js/spuren.js`
+(`?snap=1&scene=spuren`).
+
 ## Kamera-Neigung
 Die Kamera lässt sich hoch- und runterneigen: **T/G**, **Mausrad**, **Maus-Ziehen** (senkrecht neigt, waagerecht dreht
 wie Q/R; ein Klick ohne Ziehen läuft weiter hin) und mobil **Zwei-Finger-Wisch**. Grenzen 15°…80° (nicht unter den

@@ -27,10 +27,10 @@ export const BEETE = [
 ];
 export const ZAUN = { minX: -42, maxX: -31, minZ: -63.5, maxZ: -52.5, gate: { z0: -59.2, z1: -56.6 } }; // Tor im Westen
 export const PROPS = [
-  { kind: 'vogelscheuche', x: -36.7, z: -58, r: 0.5 },
+  { kind: 'vogelscheuche', x: -39, z: -63.1, r: 0.5 },      // an den Südzaun, wo der Mentor stand
   { kind: 'bank', x: -37, z: -50.5, w: 2.6, d: 1.0, rot: 0.1 },
   { kind: 'schild', x: -43.5, z: -53.5, r: 0.3 },
-  { kind: 'mentor', x: -39, z: -63.1, r: 0.7, rot: 0 }, // schaut nach Süden aufs Beet
+  { kind: 'mentor', x: -36.7, z: -58, r: 0.7, rot: -Math.PI / 2 }, // mittig zwischen den Beeten, Blick zum Tor im Westen — frei erreichbar über den Mittelgang
 ];
 export const HUEGEL_SPOTS = {
   huegel: { x: -43, z: -57, yaw: Math.PI },

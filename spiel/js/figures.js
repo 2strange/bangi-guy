@@ -384,7 +384,7 @@ export function runner() {
 // pose(figur, name) setzt Beine/Arme/Kopf (und Requisiten) für eine feste Tätigkeit und gibt den
 // Höhenversatz der Figur zurück ({ offsetY }), z. B. fürs Sitzen auf dem Boden. Die Figur merkt sich die
 // Pose in userData.pose; wer pro Frame Geh-Posen setzt, lässt Figuren mit gesetzter Pose aus.
-export const POSES = ['stehen', 'sitzen', 'liegen', 'handy', 'foto', 'meer', 'winken'];
+export const POSES = ['stehen', 'sitzen', 'liegen', 'liegestuhl', 'handy', 'foto', 'meer', 'winken'];
 
 function poseProp(figur, name, build, parent, pos, rot) {
   const props = figur.userData.poseProps ?? (figur.userData.poseProps = {});
@@ -408,7 +408,7 @@ export function pose(figur, name = 'stehen') {
   const sc = figur.scale.y;
   const armR = arms[1], armL = arms[0];
   const hand = V(0.22, -0.92, 0.1); // hängende Hand im Arm-Pivot (kunden.js/figures.js)
-  let offsetY = 0;
+  let offsetY = 0, offsetZ = 0;
   switch (name) {
     case 'sitzen': // auf dem Boden, Beine nach vorn, Hände auf den Knien
       for (const l of legs) l.rotation.x = -Math.PI / 2;
@@ -416,6 +416,18 @@ export function pose(figur, name = 'stehen') {
       if (P.head) P.head.rotation.x = 0.1;
       offsetY = -(hipY - 0.32) * sc;
       break;
+    case 'liegestuhl': { // halb liegend auf der Strandliege: Rücken 20° zurück, Beine flach nach vorn, Arme locker
+      const a = 0.35;
+      figur.rotation.x = -a;
+      for (const l of legs) l.rotation.x = -Math.PI / 2 + a;
+      for (const arm of arms) arm.rotation.x = -0.25;
+      if (armL) armL.rotation.z = 0.2;
+      if (armR) armR.rotation.z = -0.2;
+      if (P.head) P.head.rotation.x = 0.15;
+      offsetY = (0.3 - hipY * Math.cos(a)) * sc;   // Hüfte 0.3 über der Sitzfläche (Sitzhöhe addiert der Aufrufer)
+      offsetZ = hipY * Math.sin(a) * sc;             // Hüfte bleibt über dem Sitzpunkt, obwohl der Rumpf zurückkippt
+      break;
+    }
     case 'liegen': // auf dem Rücken, Arme hinter dem Kopf
       figur.rotation.x = -Math.PI / 2;
       for (const a of arms) a.rotation.x = -3.0;
@@ -461,8 +473,8 @@ export function pose(figur, name = 'stehen') {
       break;
   }
   figur.userData.pose = name === 'stehen' ? null : name;
-  figur.userData.poseOffsetY = offsetY;
-  return { offsetY };
+  figur.userData.poseOffsetY = offsetY; figur.userData.poseOffsetZ = offsetZ;
+  return { offsetY, offsetZ }; // offsetZ in Blickrichtung der Figur (lokal +z), nur bei „liegestuhl“ ≠ 0
 }
 
 // ---------- Barkeeper Nong: poliert seit Jahren dasselbe Glas; die Möwe „Chef“ sitzt auf der Schulter ----------

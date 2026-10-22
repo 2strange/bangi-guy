@@ -3,7 +3,7 @@
   "kunden": {
     "stammkunde_1": {
       "name": "The Walrus Guy", "typ": "Regular slacker",
-      "tells": ["sandals, worn flat", "Hawaiian shirt with a stain", "sunburn", "has been standing in the same spot for hours"],
+      "tells": ["sandals, worn flat", "Hawaiian shirt with a stain", "sunburn", "has been standing in the same spot for hours", "gold chain: pays the markup, mostly"],
       "saetze": {
         "gruss": ["Duuude.", "You're still here. Me too.", "Was just thinking about clouds."],
         "kauf": ["You're a saint, man.", "That holds the afternoon together.", "I owe you. Like, even more."],
@@ -43,7 +43,7 @@
     },
     "oma_1": {
       "name": "Grandma Lek", "typ": "Grandma (big customer)",
-      "tells": ["flip-flops, smock, walker", "always haggles", "knows every cop by first name", "best customer, pays the most"],
+      "tells": ["flip-flops, smock, walker", "always haggles", "knows every cop by first name", "best customer, pays the most", "gold chain: pays any markup (her knees are worth it)"],
       "saetze": {
         "gruss": ["You look thin. Have you eaten?", "For my knees, you understand.", "Psst. Not so loud. I'm known around here."],
         "kauf": ["My grandson says it's medicine. My grandson is a doctor. Well, almost.", "Hand it over, and don't forget the change.", "Pong never asks me. I changed his diapers."],
@@ -53,7 +53,7 @@
     },
     "erstkaeufer_1": {
       "name": "Timo", "typ": "Nervous first-timer",
-      "tells": ["flip-flops (trips when running)", "looks over his shoulder every 2 seconds", "talks WAY too loud", "phone in hand, flashlight on, in daylight"],
+      "tells": ["flip-flops (trips when running)", "looks over his shoulder every 2 seconds", "talks WAY too loud", "phone in hand, flashlight on, in daylight", "gold chain: pays any markup, out of nerves"],
       "saetze": {
         "gruss": ["HELLO. I AM TOTALLY NORMAL HERE.", "Is this... so... do you... you know?", "I've never done this. Like, THIS. This here. Buying."],
         "kauf": ["THANKS. I mean, quiet thanks. THANKS.", "Where do I put it now? In my hand? Is my hand okay?", "I'll walk away normally now. Totally normal. Normal."],
@@ -73,7 +73,7 @@
     },
     "zivi_1": {
       "name": "Inspector Polo", "typ": "Too-clean tourist",
-      "tells": ["sneakers, blinding white", "polo with an ironed crease", "earpiece", "says 'totally normal' suspiciously often"],
+      "tells": ["sneakers, blinding white", "polo with an ironed crease", "earpiece", "says 'totally normal' suspiciously often", "gold chain, but: undercover pays any price, it is evidence (greed trap)"],
       "saetze": {
         "gruss": ["Hello! I'm a totally normal tourist.", "Nice beach. For totally normal activities.", "I'd like what everyone here has. The usual."],
         "kauf": ["Interesting. Very interesting.", "Thanks. This will be... noted. I mean: enjoyed.", "Could you repeat that, a little louder?"],
@@ -83,7 +83,7 @@
     },
     "zivi_2": {
       "name": "Shirt with a Price Tag", "typ": "The costume cop",
-      "tells": ["SANDALS, still undercover: earpiece", "brand-new Hawaiian shirt, price tag still on", "socks in sandals (like a retiree, but 30 years too young)", "secretly takes notes"],
+      "tells": ["SANDALS, still undercover: earpiece", "brand-new Hawaiian shirt, price tag still on", "socks in sandals (like a retiree, but 30 years too young)", "secretly takes notes", "gold chain, but: undercover pays any price, markup = more evidence"],
       "saetze": {
         "gruss": ["Yo, dude. Bro. Mate. Did I miss one?", "I'm totally relaxed. Look, Hawaiian shirt.", "So what does the... merchandise go for, brother?"],
         "kauf": ["Nice. Groovy. Further youth words.", "May I quickly note... I mean, enjoy?", "That's exactly the amount I needed. For the file. For me!"],
@@ -93,7 +93,7 @@
     },
     "zivi_3": {
       "name": "The Guy with Rex", "typ": "Dog handler",
-      "tells": ["BAREFOOT and tank top look harmless, but:", "German shepherd with a blue bandana (beach dogs don't wear bandanas)", "radio on the belt, disguised as a 'bottle opener'", "the dog sniffs your bag"],
+      "tells": ["BAREFOOT and tank top look harmless, but:", "German shepherd with a blue bandana (beach dogs don't wear bandanas)", "radio on the belt, disguised as a 'bottle opener'", "the dog sniffs your bag", "gold chain, but: Rex decides, not the price"],
       "saetze": {
         "gruss": ["Rex is just a normal beach dog.", "Sit, Rex. No, not you. I meant the dog.", "Nice day for... whatever you've got on you."],
         "kauf": ["Rex, mark. I mean: Rex, sit.", "Thanks. Rex has made up his mind anyway.", "That smells... interesting. Says Rex."],
@@ -113,7 +113,7 @@
     },
     "lauter_typ_1": {
       "name": "Lars, Volume 11", "typ": "The loud guy",
-      "tells": ["sandals, jersey, beer can: harmless", "but: you can hear him across the whole market (heat 2 on sale)", "fanny pack full of change", "sunburn in the shape of a jersey"],
+      "tells": ["sandals, jersey, beer can: harmless", "but: you can hear him across the whole market (heat 2 on sale)", "fanny pack full of change", "sunburn in the shape of a jersey", "gold chain: pays the markup, LOUDLY"],
       "saetze": {
         "gruss": ["HEY! YOU GOT WEED?!", "YOU! YEAH YOU! ARE YOU THE GUY?!", "DUDE, I'VE HEARD ABOUT YOU! EVERYONE'S HEARD ABOUT YOU!"],
         "kauf": ["SWEET! GUYS, HE'S GOT IT! HE REALLY HAS!", "THANKS, MAN! WHAT'S YOUR NAME? WHERE DO YOU LIVE?!", "I WON'T TELL ANYONE! YOU HEAR? ANYONE!"],
@@ -133,7 +133,7 @@
     },
     "zivi_4": {
       "name": "Backpacker with Questions", "typ": "The question guy",
-      "tells": ["looks like Jonas, BUT: sneakers instead of trekking sandals", "backpack hangs flat: empty (no backpacker travels with an empty backpack)", "ferry ticket from TODAY, stubble from yesterday", "doesn't ask for the goods, asks WHERE they come from", "outline of handcuffs in the pocket"],
+      "tells": ["looks like Jonas, BUT: sneakers instead of trekking sandals", "backpack hangs flat: empty (no backpacker travels with an empty backpack)", "ferry ticket from TODAY, stubble from yesterday", "doesn't ask for the goods, asks WHERE they come from", "outline of handcuffs in the pocket", "gold chain, but: the markup goes in the file"],
       "saetze": {
         "gruss": ["Hey! Just got off the ferry. So where does one get... you know?", "Cool market. Who supplies who around here, anyway?", "I collect experiences. And names. I mean, experiences."],
         "kauf": ["Great. And where exactly is this from? Just curious.", "Thanks! Your supplier, is he this nice too?", "Perfect, that's enough. I mean: that's enough for me today."],
@@ -163,7 +163,7 @@
     },
     "zivi_5": {
       "name": "Mrs. Whistle", "typ": "The stroller",
-      "tells": ["shoes and shirt are innocent: flip-flops, stained Hawaiian shirt (borrowed), sunburn", "BUT: pale cap stripe on the forehead, sunburn only below it", "whistle on a cord around the neck, disguised as jewelry", "stands bolt upright, no slacker stands like that", "can't run (flip-flops), whistles for backup instead"],
+      "tells": ["shoes and shirt are innocent: flip-flops, stained Hawaiian shirt (borrowed), sunburn", "BUT: pale cap stripe on the forehead, sunburn only below it", "whistle on a cord around the neck, disguised as jewelry", "stands bolt upright, no slacker stands like that", "can't run (flip-flops), whistles for backup instead", "gold chain, but: the markup is worth the whistle"],
       "saetze": {
         "gruss": ["Good day! I mean: hey. Hey, dude.", "Nice beach. I'm here privately. Very privately.", "Do you have... do you maybe have something relaxing? For relaxing?"],
         "kauf": ["Thank you. This will be... enjoyed. Privately.", "Very good. Very, very good. Please stay right there for a moment.", "Perfect. Excuse me, I just need to... whistle."],
