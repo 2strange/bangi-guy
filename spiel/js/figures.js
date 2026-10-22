@@ -599,7 +599,8 @@ export function setNongMood(g, mood) {
 // Spec data/texte.json → kokosverkaeufer.aussehen: Flip-Flops, Tanktop, lange Hose, dunkle Haut, Schnauzer, Strohhut,
 // Bauchladen voller Kokosnüsse mit Strohhalm, kleine Machete im Gürtel, Strohhalm hinterm Ohr, Handtuch über der Schulter,
 // Dauerlächeln mit Goldzahn. buildKokosVerkaeufer() → Gruppe (Füße auf y = 0, Blick +z), userData.parts, und:
-//   userData.update(t)         Gehen (Beine, Arm, Wippen, Nüsse klappern, Kopf sucht Kundschaft) + laufende Gags
+//   userData.update(t, opts)   Gehen (Beine, Arm, Wippen, Nüsse klappern, Kopf sucht Kundschaft) + laufende Gags;
+//                              opts { beine: false } = Beine macht das Spiel, { gehen: false } = Pause in Ruhestellung
 //   userData.setRuf(an)        rechte Hand als Megafon an den Mund, Kopf hoch, Mund weit auf
 //   userData.gag(name, t)      'verkauf' = Machetenhieb auf die Nuss ohne hinzusehen (1,2 s), 'besonderes' = Brauen zweimal hoch
 //                              und runter wie ein Scheibenwischer (1,4 s); t = aktuelle Zeit wie in update(t)
@@ -716,15 +717,19 @@ export function kokosGag(g, name, t) {
   if (!g.userData.parts) return;
   g.userData.gagLauf = { name, t0: t, dauer: name === 'verkauf' ? 1.2 : 1.4 };
 }
-// opts.beine = false: Beine lässt das Spiel laufen (eigene Geh-Animation), hier nur Oberkörper, Laden, Kopf, Gags
-export function updateKokosVerkaeufer(g, t, { beine = true } = {}) {
+// opts.beine = false: Beine lässt das Spiel laufen (eigene Geh-Animation), hier nur Oberkörper, Laden, Kopf, Gags.
+// opts.gehen = false: Pause — Beine und Arme in Ruhestellung (weich eingeblendet), Nüsse ruhig, Kopf schaut sich weiter um.
+export function updateKokosVerkaeufer(g, t, { beine = true, gehen = true } = {}) {
   const P = g.userData.parts; if (!P) return;
-  const w = t * 7, gang = Math.sin(w);
+  const S = g.userData.schritt ?? (g.userData.schritt = { amp: 1, tLast: t });
+  const dt = Math.min(0.1, Math.max(0, t - S.tLast)); S.tLast = t;
+  S.amp += ((gehen ? 1 : 0) - S.amp) * Math.min(1, dt * 6); // Gang in ~0,3 s aus- bzw. einblenden
+  const w = t * 7, gang = Math.sin(w) * S.amp;
   if (beine) { P.legs[0].rotation.x = 0.55 * gang; P.legs[1].rotation.x = -0.55 * gang; }
-  P.body.position.y = (P.legs[0].position.y - 0.05) + 0.03 * Math.abs(Math.cos(w));
+  P.body.position.y = (P.legs[0].position.y - 0.05) + 0.03 * Math.abs(Math.cos(w)) * S.amp;
   P.body.rotation.z = 0.04 * gang;
-  P.laden.rotation.x = 0.05 * Math.cos(w * 2);
-  P.nuesse.forEach((n, i) => { n.position.y = 0.05 + 0.02 * Math.max(0, Math.sin(w * 2 + i)); });
+  P.laden.rotation.x = 0.05 * Math.cos(w * 2) * S.amp;
+  P.nuesse.forEach((n, i) => { n.position.y = 0.05 + 0.02 * Math.max(0, Math.sin(w * 2 + i)) * S.amp; });
   P.towel.rotation.x = 0.08 * gang;
   const G = g.userData.gagLauf;
   const armR = P.arms[1], mh = armR.userData.macheteHand;

@@ -65,7 +65,7 @@
     "polizei": " ({anZivis} to the cops)",
     "titel": { "feierabend": "Closing time.", "verhaftet": "BUSTED." },
     "optionen": { "tag_beenden": "End the day", "weiter": "Keep wandering", "neuer_tag": "New day" },
-    "dialog": { "was_laeuft": "What's up?", "verkaufen": "Sell", "lieber_nicht": "Better not", "weiter": "Next", "hinschauen": "Take a closer look", "beenden": "Leave", "mehr_verlangen": "Ask for more" },
+    "dialog": { "was_laeuft": "What's up?", "verkaufen": "Sell", "lieber_nicht": "Better not", "weiter": "Next", "hinschauen": "Take a closer look", "beenden": "Leave", "mehr_verlangen": "Ask for more", "kokosnuss": "Coconut ({preis})", "besonderes": "Something special" },
     "verhandeln": {
       "angenommen": ["Okay, okay. But only today.", "You're pricey, man. But you're here.", "Pff. Fine. Don't tell grandma."],
       "weg": ["Too pricey, man. I'll ask the guy at the pier.", "For that price I'll walk up the hill myself.", "Nah. Mangoes it is."]
@@ -138,6 +138,7 @@
 
   "kokosverkaeufer": {
     "name": "Mister Coconut",
+    "ruf": "Co-co-nut-juice!",
     "gruss": [
       "'My friend! Coconut? Cold, fresh, five coins. Or... something special?'",
       "'You again! Good. Coconut? Or do we talk about the special?'",

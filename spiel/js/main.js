@@ -11,7 +11,7 @@ import { initLicht } from './licht.js';
 import { zielMarker, updateMarker } from './marker.js';
 import { ereignisSteuerung } from './ereignisse.js';
 import { createSpuren } from './spuren.js';
-import { setHuetteZiel, setHuette, setWegweiserText } from './props.js';
+import { setHuetteZiel, setHuette, setWegweiserText, coconut } from './props.js';
 import { mentorBarSpot } from './zone-huegel.js';
 import { createUI, isTouchDevice, hintSeen, markHint } from './ui.js';
 import { prepareGags, playGag, stopGag } from './gags.js';
@@ -452,19 +452,19 @@ scene.add(kokosFig);
 let kokos = kokosStart();
 const kokosCollider = { x: kokos.x, z: kokos.z, r: 0.6 };
 colliders.push(kokosCollider);
-let kokosSpur = null, kokosRufBis = 0, kokosGangT = 0; // Gang-Zeit läuft nur beim Gehen, sonst friert die Figur mitten im Schritt ein
-function applyKokos(dt = 0) {
+let kokosSpur = null, kokosRufBis = 0, kokosGagBis = 0, kokosGangT = 0;
+function applyKokos(dt = 0, now = performance.now()) {
   kokosFig.position.set(kokos.x, 0, kokos.z); kokosFig.rotation.y = kokos.yaw;
   kokosCollider.x = kokos.x; kokosCollider.z = kokos.z;
-  if (kokos.moving) kokosGangT += dt;
-  if (kokosFig.userData.update) { kokosFig.userData.update(kokosGangT); return; } // Figur aus figures.js animiert Gang, Bauchladen, Ruf-Pose selbst
+  kokosGangT += dt;
+  if (kokosFig.userData.update) { kokosFig.userData.update(now / 1000, { gehen: kokos.moving && now > kokosGagBis }); return; } // Figur aus figures.js: Gang (Pause in Ruhestellung), Laden, Ruf-Pose, Gags
   const P = kokosFig.userData.parts; if (!P?.legs) return;
   const pose = waddlePose(kokos.phase || 0, kokos.moving ? 1.6 : 0);
   P.legs[0].rotation.x = pose.legL; P.legs[1].rotation.x = pose.legR;
   P.arms[0].rotation.x = pose.armL; P.arms[1].rotation.x = pose.armR;
 }
 function updateKokos(dt, now) {
-  if (mode !== 'free' && mode !== 'inspect') { applyKokos(0); return; } // im Gespräch bleibt er stehen
+  if (mode !== 'free' && mode !== 'inspect') { applyKokos(0, now); return; } // im Gespräch bleibt er stehen
   const vorher = { x: kokos.x, z: kokos.z };
   const hind = [kokosHindernisse(), { x: state.x, z: state.z, r: 0.8 }].flat();
   kokos = kokosStep(kokos, dt, hind);
@@ -476,9 +476,14 @@ function updateKokos(dt, now) {
   }
   if (kokosRufBis && now > kokosRufBis) { kokosRufBis = 0; try { kokosFig.userData.setRuf?.(false); } catch (e) { /* ignorieren */ } }
   if (kokos.moving) { const h = { s: kokosSpur }; spurLegen(h, 's', vorher, kokos, kokos.yaw, 'flipflop', now / 1000); kokosSpur = h.s; }
-  applyKokos(dt);
+  applyKokos(dt, now);
 }
 const kokosHindernisse = () => kunden.filter((k) => k.group.visible).map((k) => ({ x: k.npc.x, z: k.npc.z, r: 0.8 }));
+function kokosGagSpielen(name) { const now = performance.now(); try { kokosFig.userData.gag?.(name, now / 1000); } catch (e) { /* ohne Gag */ } kokosGagBis = now + 1500; kokos = { ...kokos, wait: Math.max(kokos.wait, 1.5) }; }
+// Ab Tag 2 liegt die „Bangi-Kokos“ (Filzstift-Blatt) auf dem Tablett; Kokosnuss in Schluffis linker Hand, solange der Tourist-Schutz läuft
+function refreshKokos() { try { kokosFig.userData.setBangiKokos?.(game.tag >= 2); } catch (e) { /* ohne Tablett */ } }
+const spielerNuss = coconut(true); spielerNuss.scale.setScalar(0.75); spielerNuss.position.set(-0.25, -0.95, 0.25); spielerNuss.visible = false;
+if (P.arms?.[0]) P.arms[0].add(spielerNuss);
 // gesungener Strandruf (sfx leitet an audio.gesang weiter, echter Clip sobald geladen), gain = nur Abstand; Megafon-Pose so lang wie der Ruf
 function kokosRufen(now, gain) {
   const d = sfx('kokos_ruf', { pan: panFor(kokosFig), gain });
@@ -504,10 +509,10 @@ function kokosChoice(i) {
   if (i === 0) { // Kokosnuss kaufen: 60 s Tourist-Schutz (Streife sieht halb so weit)
     const r = buyKokos(game, K.preis, tagesuhr.t01);
     game = r.state; refreshHud();
-    if (r.result === 'gekauft') { sfx('kasse'); antwort(pickLine(K.kauf, lineIdx++), 'kauf'); }
+    if (r.result === 'gekauft') { sfx('kasse'); antwort(pickLine(K.kauf, lineIdx++), 'kauf'); kokosGagSpielen('verkauf'); } // Machetenhieb
     else { sfx('ablehnung'); antwort(pickLine(K.kein_geld, lineIdx++), 'ablehnung'); }
   } else if (i === 1) { // Running Gag: er will dein Konkurrent werden, eine Zeile pro Tag
-    antwort(kokosGag(K, game.tag).text, 'gruss');
+    antwort(kokosGag(K, game.tag).text, 'besonderes'); kokosGagSpielen('besonderes'); // Brauen-Scheibenwischer
   } else { ui.hideBubble(); talking = null; mode = 'free'; }
 }
 function pongSay(situation) {
@@ -825,6 +830,7 @@ function startChoice(i) {
   if (i === 0 && saved) {
     game = { ...game, ...saved };
     if (game.finale) applyFinale(game.finale);
+    refreshKokos();
     spawnKunden(game.tag);
     for (const s of streifen) s.patrol = { ...patrolStart(s.route), mode: 'patrol' };
     tagesuhr = initialClock(); applyTageszeit(); placeMentor(false);
@@ -1039,6 +1045,7 @@ function setEreignisRequisite(ev, an) {
 }
 function morgen() {
   zielGemeldet = false;
+  refreshKokos();
   // Tagesereignis: Einblendung, Requisite (world.setEreignis, falls vorhanden), Sound (audio.ereignis, falls vorhanden)
   const ev = game.ereignis;
   ui.showPrompt(null);
@@ -1473,9 +1480,10 @@ function setupScene() {
   if (SCENE === 'menue') { openMenu(); return; }
   if (SCENE === 'kokos') { // Verkäufer neben dem Schluffi am Wasser, Ruf-Blase, Kauf-Blase
     kokos = { ...kokos, x: state.x + 2.2, z: state.z + 2.5, yaw: -Math.PI / 2, moving: true, phase: 1.2 };
-    kokosGangT = 0.3; applyKokos(0); try { kokosFig.userData.setRuf?.(true); } catch (e) { /* ignorieren */ } applyKokos(0);
+    applyKokos(0, 300); try { kokosFig.userData.setRuf?.(true); } catch (e) { /* ignorieren */ } applyKokos(0, 300);
     ui.showBark('kokos', kokosTexte.ruf, 999);
     startKokos();
+    if (q('kauf')) { game = { ...game, geld: 20 }; kokosChoice(0); spielerNuss.visible = true; try { kokosFig.userData.setRuf?.(false); kokosFig.userData.update?.(0.6, { gehen: false }); } catch (e) { /* ignorieren */ } } // ?kauf=1: Machetenhieb + Nuss in Schluffis Hand
     return;
   }
   if (SCENE === 'liegen') { // zwei Kunden auf den Hotel-Liegen (Pose liegestuhl), Spieler davor am Strand
@@ -1675,6 +1683,7 @@ if (SNAP) {
     updateTutorial(now);
     updatePatrol(dt, now);
     updateKokos(dt, now);
+    spielerNuss.visible = kokosSchutz(game, tagesuhr.t01);
     // Schritt im Sand: jede volle Watschel-Periode (1.6 Einheiten ≈ 0.4 s Gehen)
     if (state.moving && Math.floor(state.phase / (Math.PI * 2)) !== Math.floor(lastStepPhase / (Math.PI * 2))) sfx('schritt');
     lastStepPhase = state.phase;

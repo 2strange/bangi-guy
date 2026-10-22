@@ -245,7 +245,7 @@
     "polizei": " ({anZivis} an die Polizei)",
     "titel": { "feierabend": "Feierabend.", "verhaftet": "VERHAFTET." },
     "optionen": { "tag_beenden": "Tag beenden", "weiter": "Weiterbummeln", "neuer_tag": "Neuer Tag" },
-    "dialog": { "was_laeuft": "Was läuft?", "verkaufen": "Verkaufen", "lieber_nicht": "Lieber nicht", "weiter": "Weiter", "hinschauen": "Genauer hinschauen", "beenden": "Beenden", "mehr_verlangen": "Mehr verlangen" },
+    "dialog": { "was_laeuft": "Was läuft?", "verkaufen": "Verkaufen", "lieber_nicht": "Lieber nicht", "weiter": "Weiter", "hinschauen": "Genauer hinschauen", "beenden": "Beenden", "mehr_verlangen": "Mehr verlangen", "kokosnuss": "Kokosnuss ({preis})", "besonderes": "Was Besonderes" },
     "verhandeln": {
       "angenommen": ["Okay, okay. Aber nur heute.", "Du bist teuer, Mann. Aber du bist da.", "Pff. Na gut. Sag's nicht der Oma."],
       "weg": ["Zu teuer, Mann. Ich frag den Typ am Pier.", "Für den Preis geh ich selbst auf den Hügel.", "Nee. Dann lieber Mangos."]
@@ -319,11 +319,12 @@
   },
 
   "kokosverkaeufer": {
-    "_ablauf": "Laufende Figur (Nicht-Kunde) am Strand: pendelt auf der Promenade zwischen Verleih und Hotel, ruft alle 20–30 s (Bark-Situation ruf, Clip kokos_ruf). Ansprechen: gruss[] → Auswahl ui-Optionen kokosnuss (Preis preis_kokosnuss) oder besonderes (Running Gag) oder weiter. Kokosnuss kaufen: kauf[] bzw. kein_geld[]; Wirkung als Vorschlag: kokosnuss im Inventar = 60 s lang gilt der Spieler für die Streife als Tourist (Sichtweite der Streife halbiert), danach leer getrunken. besonderes: der Verkäufer will dein Konkurrent werden; running_gag[] hat je Tag 1–7 eine Zeile (Index = Tag − 1, danach letzte Zeile wiederholen); tag 3 und 6 haben eine optionale Wirkung (wirkung) für die Logik.",
+    "_ablauf": "Laufende Figur (Nicht-Kunde) am Strand: läuft am Wasser entlang über den ganzen Strand (Verleih ↔ Ostende), ruft alle 20–30 s (ruf = Blasentext, Bark-Situation ruf, Clip kokos_ruf). Ansprechen: gruss[] → Auswahl ui-Optionen kokosnuss (Preis preis_kokosnuss) oder besonderes (Running Gag) oder weiter. Kokosnuss kaufen: kauf[] bzw. kein_geld[]; Wirkung als Vorschlag: kokosnuss im Inventar = 60 s lang gilt der Spieler für die Streife als Tourist (Sichtweite der Streife halbiert), danach leer getrunken. besonderes: der Verkäufer will dein Konkurrent werden; running_gag[] hat je Tag 1–7 eine Zeile (Index = Tag − 1, danach letzte Zeile wiederholen); tag 3 (kunden_faktor 0.9) und tag 6 (preis_faktor 0.95) haben eine Wirkung (wirkung), die wie ein Tages-Ereignis angewendet wird.",
     "name": "Mister Coconut",
     "beschreibung": "Läuft seit elf Jahren denselben Strand auf und ab, singt denselben Ruf und verkauft dieselbe Kokosnuss. Hat alles gesehen, was am Strand passiert, und daraus genau einen Schluss gezogen: Er will auch in dein Geschäft.",
     "aussehen": { "schuhe": "flipflop", "hemd": "tanktop", "hose": "lang", "hautton": "dunkel", "bart": "schnauzer", "brille": "keine", "haare": "kurz", "accessoire": "kokos_bauchladen", "extras": ["strohhut", "machete_klein", "strohhalm_hinterm_ohr", "handtuch_schulter"], "stimmung_start": "zufrieden", "mimik": "Dauerlächeln mit Goldzahn, Augen, die nie Pause machen. Beim Verkauf: schlägt die Nuss mit einem Hieb auf, ohne hinzusehen. Beim Thema 'Besonderes': Augenbrauen hoch und runter, zweimal, wie ein Scheibenwischer.", "stimme": "kokosverkaeufer" },
     "preis_kokosnuss": 5,
+    "ruf": "Co-co-nut-juice!",
     "gruss": [
       "„My friend! Kokosnuss? Kalt, frisch, fünf Münzen. Oder… was Besonderes?“",
       "„Du wieder! Gut. Kokosnuss? Oder reden wir über das Besondere?“",
