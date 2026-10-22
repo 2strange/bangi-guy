@@ -198,9 +198,12 @@ export function buildKunde(k, seed = 1, outfit = null) {
     }
     root.add(leg); legs.push(leg);
   }
-  if (hose === 'rock') {
-    const skirt = toonMesh(new THREE.ConeGeometry(0.62, 0.9, 14, 1, true), toon(pantsColor, { side: THREE.DoubleSide }), { outline: 0.045 });
-    skirt.position.set(0, hipY - 0.35, 0); root.add(skirt);
+  if (hose === 'rock') { // Glockenrock: oben Hüftbreite, unten weiter als der Beinabstand, Saum wellig; die Beine kommen unten raus
+    const skirtGeo = new THREE.CylinderGeometry(0.42, 0.78, 0.85, 16, 1, true);
+    deform(skirtGeo, (v) => { if (v.y < 0) v.y += 0.04 * Math.sin(Math.atan2(v.z, v.x) * 6); });
+    const skirt = toonMesh(skirtGeo, toon(pantsColor, { side: THREE.DoubleSide }), { outline: 0.045 });
+    skirt.position.set(0, hipY - 0.37, 0); root.add(skirt);
+    const bund = toonMesh(new THREE.CylinderGeometry(0.43, 0.43, 0.08, 16), pantsColor, { outline: 0.03 }); bund.position.set(0, hipY + 0.04, 0); root.add(bund);
   }
 
   // Rumpf je Hemd
