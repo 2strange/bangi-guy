@@ -176,7 +176,7 @@ export function keinSchattenwurf(...objs) {
 
 // Kopfbedeckungen für den Spieler (Auswahl offen): stirnband (bisher) | radkappe | flatcap | strohhut | bandana
 export const SCHLUFFI_KOEPFE = ['stirnband', 'radkappe', 'flatcap', 'strohhut', 'bandana'];
-function punkteTextur(bg = '#e8463a', punkt = '#ffffff') { // uni mit kleinen Punkten (Bandana)
+export function punkteTextur(bg = '#e8463a', punkt = '#ffffff') { // uni mit kleinen Punkten (Bandana)
   const c = document.createElement('canvas'); c.width = 128; c.height = 128;
   const ctx = c.getContext('2d'); ctx.fillStyle = bg; ctx.fillRect(0, 0, 128, 128); ctx.fillStyle = punkt;
   for (let y = 0; y < 128; y += 16) for (let x = 0; x < 128; x += 16) { ctx.beginPath(); ctx.arc(x + 8 + (y / 16 % 2) * 8, y + 8, 2.6, 0, Math.PI * 2); ctx.fill(); }

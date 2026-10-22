@@ -48,7 +48,7 @@ add('nong', 'Nong (Barkeeper)', 'Feste Figuren', () => { const n = buildNong(); 
 add('pong', 'Pong (Polizist)', 'Feste Figuren', () => pong());
 add('mister_coconut', 'Mister Coconut', 'Feste Figuren', () => buildKokosVerkaeufer(), (g, t) => g.userData.update(t));
 kunden.forEach((k, i) => add(k.id, `${k.name ?? k.id} (${k.typ})`, 'Kundschaft', () => { const f = buildKunde(k, 7 + i); kundenExtras(f, k); return f; }, (g, t) => updateKundenExtras(g, t)));
-for (const slug of ['kind_1', 'kind_2', 'kind_3', 'ehe_sie', 'ehe_er', 'werfer_1', 'werfer_2', 'chad', 'influencerin', 'reflektor_freund']) add(slug, slug.replace('_', ' '), 'Szenen', () => buildAmbientFigur(slug), (g, t) => g.userData.update(t));
+for (const slug of ['kind_1', 'kind_2', 'kind_3', 'ehe_sie', 'ehe_er', 'werfer_1', 'werfer_2', 'chad', 'influencerin', 'reflektor_freund', 'dieb', 'schlaeferin', 'tourist_kamera']) add(slug, slug.replace('_', ' '), 'Szenen', () => buildAmbientFigur(slug), (g, t) => g.userData.update(t));
 add('nok', 'Bauer Nok (Reisfeld)', 'Statisten', () => nok());
 add('kletterer', 'Kokos-Kletterer', 'Statisten', () => climber());
 add('fischer', 'Fischer (Pier)', 'Statisten', () => fisherman());

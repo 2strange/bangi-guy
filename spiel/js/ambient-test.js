@@ -5,11 +5,13 @@
 // ?what=strand → Chad (an_tresen_lehnen · kippen_fangen · moewe_anreden · einschlafen_tresen) · Influencerin (pose_steg · foto)
 //                mit Reflektor-Freund (reflektor_heben · blick_ins_meer) und Stativ
 // ?what=pong   → Pong am Pausentisch: fuesse_hoch · schnarchen · aufwachen
+// ?what=dieb   → Dieb (schleichen · greifen mit Tasche · rennen mit Kamera), Schläferin auf der Liege (schlafen · aufschrecken), Tourist (fotografieren · aufschrecken)
 // ?what=paar   → das Ehepaar von vorn: drei Pose-Paare, beide leicht zur Kamera gedreht
 import * as THREE from 'three';
 import { toonMesh, BLACK } from './toon.js';
 import { lounger, limb } from './props.js';
-import { buildAmbientFigur, handtuchAufLiege, handtuchRolle, HANDTUCH_FARBEN, sandburgKaputt, bierdosenHaufen, stativ } from './ambient.js';
+import { buildAmbientFigur, handtuchAufLiege, handtuchRolle, HANDTUCH_FARBEN, sandburgKaputt, bierdosenHaufen, stativ, handtasche } from './ambient.js';
+import { pose } from './figures.js';
 import { pong, pongPose, updatePongPose } from './zone-markt.js';
 
 const q = (name) => (location.search.match(new RegExp('[?&]' + name + '=([-a-z0-9.]+)')) || [])[1];
@@ -70,6 +72,21 @@ if (WHAT === 'kinder') {
   stelle(buildAmbientFigur('reflektor_freund'), 8.4, 0.8, -0.6, 'blick_ins_meer', 0.6, 5);
   const st = stativ(); st.position.set(4.9, 0, 1.6); scene.add(st);
   camera.position.set(0.8, 3.6, 17); camera.lookAt(0.8, 1.3, 0);
+} else if (WHAT === 'dieb') {
+  stelle(buildAmbientFigur('dieb'), -6.5, 0, 0.5, 'schleichen', 0.4, 5);
+  const d2 = buildAmbientFigur('dieb'); d2.userData.setBeute('tasche'); stelle(d2, -4.0, 0, 0.2, 'greifen', 0.8, 2);
+  const d3 = buildAmbientFigur('dieb'); d3.userData.setBeute('kamera'); stelle(d3, -1.6, 0, -0.4, 'rennen', 0.5, 6);
+  [['schlafen', 1.2], ['aufschrecken', 4.2]].forEach(([p, x], i) => {
+    const lo = lounger(HANDTUCH_FARBEN[i]); lo.position.set(x, 0, 0.4); lo.rotation.y = 0.2; lo.scale.setScalar(1.3); scene.add(lo);
+    const f = buildAmbientFigur('schlaeferin'); const { offsetY, offsetZ } = pose(f, 'liegestuhl');
+    const sitz = new THREE.Vector3(lo.userData.sitz.x, lo.userData.sitz.y, lo.userData.sitz.z); lo.localToWorld(sitz);
+    f.position.set(sitz.x + Math.sin(0.2) * offsetZ, sitz.y + offsetY, sitz.z + Math.cos(0.2) * offsetZ); f.rotation.y = 0.2;
+    f.userData.pose(p, T - 0.5 * 3, 3); f.userData.update(T); scene.add(f);
+    const ht = handtasche(); ht.position.set(x - 1.1, 0, 1.2); ht.rotation.y = 0.5; scene.add(ht);
+  });
+  stelle(buildAmbientFigur('tourist_kamera'), 7.0, 0, 0.3, 'fotografieren', 0.18, 3);
+  stelle(buildAmbientFigur('tourist_kamera'), 9.4, 0, -0.2, 'aufschrecken', 0.5, 3).userData.ambient.props.kamera.visible = false;
+  camera.position.set(1.2, 3.6, 16.5); camera.lookAt(1.2, 1.2, 0);
 } else if (WHAT === 'paar') {
   const paare = [['handy_hochhalten', 'dose_heben'], ['zeitschrift_rollen', 'schnorchel_runter'], ['hinterherrufen', 'zurueckkommen_nass']];
   paare.forEach(([ps, pe], i) => {

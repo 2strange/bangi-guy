@@ -6,7 +6,7 @@
 // Kinder haben einen eigenen Bau (kurze Beine, großer Kopf).
 //
 //   buildAmbientFigur(slug, aussehen)  Figur nach szenen.json-Slug: kind_1|kind_2|kind_3, ehe_sie|ehe_er, werfer_1|werfer_2,
-//                                     chad, influencerin|reflektor_freund (aussehen = Felder wie kunden.json, optional)
+//                                     chad, influencerin|reflektor_freund, dieb, schlaeferin, tourist_kamera (aussehen = Felder wie kunden.json)
 //   fig.userData.update(t)             pro Frame; Grundverhalten (Gestikulieren, Schwanken, Rennen …) + laufende Pose
 //   fig.userData.pose(name, t0, dauer) Pose aus szenen.json starten (t0 = Startzeit in derselben Uhr wie update)
 //   handtuchAufLiege / handtuchRolle / handtuchPlan   Handtuch-Reservierung (siehe ambient-logik.js)
@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import { toonMesh, toon, deform, rng, stripeTexture, textTexture, BLACK } from './toon.js';
 import { limb, sandcastle } from './props.js';
 import { faceDecal, face, setFace } from './faces.js';
-import { kopfOhneSchattenwurf, pose, sneaker, kundenExtras } from './figures.js';
+import { kopfOhneSchattenwurf, pose, sneaker, sandal, kundenExtras, punkteTextur } from './figures.js';
 import { buildKunde, setMood, flipflop } from './kunden.js';
 import { normalizeKunde } from './game.js';
 import { HANDTUCH_FARBEN, handtuchPlan } from './ambient-logik.js';
@@ -37,6 +37,12 @@ export function zzz({ size = 1.4 } = {}) {
 
 // ---------- Pose-Läufe (gemeinsam für alle Figuren) ----------
 function startPose(fig, name, t0 = 0, dauer = 4) { fig.userData.poseLauf = { name, t0, dauer }; }
+// userData.pose als Accessor: lesen = Startfunktion (name, t0, dauer); figures.pose() schreibt dort den Posen-Namen hinein
+// (z. B. 'liegestuhl' für die Schläferin auf der Liege) — das landet in userData.poseName statt die Funktion zu überschreiben.
+function poseApi(fig) {
+  const start = (name, t0, dauer) => startPose(fig, name, t0, dauer);
+  Object.defineProperty(fig.userData, 'pose', { get: () => start, set: (v) => { fig.userData.poseName = v; }, configurable: true, enumerable: true });
+}
 function poseU(fig, t) { // laufende Pose → { name, u } oder null (und Aufräumen, wenn vorbei)
   const L = fig.userData.poseLauf; if (!L) return null;
   const u = (t - L.t0) / L.dauer;
@@ -151,7 +157,7 @@ export function buildKind(slug = 'kind_1', aussehen = null) {
   root.userData.rennt = true;
   root.scale.setScalar(D.groesse);
   root.userData.update = (t) => updateKind(root, t);
-  root.userData.pose = (name, t0, dauer) => startPose(root, name, t0, dauer);
+  poseApi(root);
   return root;
 }
 export function updateKind(k, t) {
@@ -244,6 +250,22 @@ function reflektorScheibe(r = 0.95) {
 function stativ() { const g = new THREE.Group(); for (let i = 0; i < 3; i++) { const a = i * 2.1; g.add(limb(V(Math.cos(a) * 0.45, 0, Math.sin(a) * 0.45), V(0, 1.5, 0), 0.025, 0x333333, { outline: 0.012 })); } const kopf = toonMesh(new THREE.BoxGeometry(0.12, 0.08, 0.12), 0x333333, { outline: 0.015 }); kopf.position.y = 1.55; g.add(kopf); const r = toonMesh(new THREE.TorusGeometry(0.28, 0.03, 8, 24), 0xffffff, { outline: 0.012 }); r.material = toon(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.5 }); r.position.y = 1.9; g.add(r); return g; }
 export function bierdosenHaufen(n = 7, seed = 3) { const g = new THREE.Group(); const r = rng(seed); for (let i = 0; i < n; i++) { const d = bierdose(); d.position.set((r() - 0.5) * 1.2, 0.08, (r() - 0.5) * 0.8); d.rotation.set(Math.PI / 2 + (r() - 0.5) * 0.4, r() * 6, 0); if (i % 3 === 0) { d.rotation.x = 0; d.position.y = 0.12; } g.add(d); } return g; }
 export function sandburgKaputt() { const g = sandcastle(); g.children.forEach((c, i) => { if (i > 1 && i % 2 === 0) c.rotation.z += 0.9; if (i === 3) c.position.y -= 0.6; }); const kerbe = toonMesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), 0xe8c47a, { outline: 0.03 }); kerbe.position.set(0.9, 0.3, 0.5); kerbe.rotation.set(0.3, 0.4, 0.6); g.add(kerbe); return g; }
+export function handtasche(color = 0xff5fa2) { // offene Handtasche mit Riemen, Portemonnaie guckt raus (Beute 1)
+  const g = new THREE.Group();
+  const korpus = toonMesh(new THREE.BoxGeometry(0.42, 0.3, 0.16), color, { outline: 0.03 }); korpus.position.y = 0.15; g.add(korpus);
+  const klappe = toonMesh(new THREE.BoxGeometry(0.42, 0.12, 0.17), color, { outline: 0.025 }); klappe.position.set(0, 0.32, -0.04); klappe.rotation.x = -0.9; g.add(klappe);
+  const riemen = toonMesh(new THREE.TorusGeometry(0.22, 0.02, 6, 16, Math.PI), 0x5a3b1a, { outline: 0.01 }); riemen.position.y = 0.3; g.add(riemen);
+  const geld = toonMesh(new THREE.BoxGeometry(0.16, 0.1, 0.04), 0x5a3b1a, { outline: 0.015 }); geld.position.set(0.08, 0.33, 0.02); geld.rotation.z = 0.3; g.add(geld);
+  return g;
+}
+export function kamera() { // Touristenkamera mit Objektiv und Riemen (Beute 2)
+  const g = new THREE.Group();
+  const body = toonMesh(new THREE.BoxGeometry(0.34, 0.22, 0.18), 0x222233, { outline: 0.03 }); g.add(body);
+  const lens = toonMesh(new THREE.CylinderGeometry(0.08, 0.08, 0.12, 10), 0x555566, { outline: 0.02 }); lens.position.set(0, 0, 0.14); lens.rotation.x = Math.PI / 2; g.add(lens);
+  const fl = toonMesh(new THREE.BoxGeometry(0.1, 0.06, 0.04), 0xffffff, { outline: 0.012 }); fl.position.set(0.1, 0.14, 0.04); g.add(fl);
+  const riemen = toonMesh(new THREE.TorusGeometry(0.3, 0.015, 6, 16, Math.PI), 0x5a3b1a, { outline: 0.01 }); riemen.position.y = 0.1; g.add(riemen);
+  return g;
+}
 export { reflektorScheibe, stativ, zeitschrift, bierdose, kaffeebecher, handtuchstapel };
 
 // ---------- Figuren nach Slug ----------
@@ -255,8 +277,11 @@ const AUSSEHEN_DEFAULT = {
   chad: { id: 'chad', typ: 'Tourist', schuhe: 'flipflop', hemd: 'trikot', hose: 'shorts', hautton: 'sonnenbrand', brille: 'sonnenbrille', haare: 'kurz', accessoire: 'bierdose', extras: ['blumenkranz'], stimmung_start: 'zufrieden' },
   influencerin: { id: 'influencerin', typ: 'Content', schuhe: 'barfuss', hemd: 'tanktop', hose: 'rock', hautton: 'hell', brille: 'sonnenbrille', haare: 'lang', accessoire: 'handy', extras: ['riesenhut'], stimmung_start: 'zufrieden' },
   reflektor_freund: { id: 'reflektor_freund', typ: 'Freund', schuhe: 'turnschuh', hemd: 'polo_sauber', hose: 'chino', hautton: 'hell', bart: 'stoppel', haare: 'kurz', accessoire: 'rucksack', extras: ['socken'], stimmung_start: 'neutral' },
+  dieb: { id: 'dieb', typ: 'Dieb', schuhe: 'barfuss', hemd: 'tanktop', hose: 'shorts', hautton: 'mittel', bart: 'stoppel', brille: 'sonnenbrille', haare: 'kurz', accessoire: null, extras: ['bauchtasche'], stimmung_start: 'zufrieden' },
+  schlaeferin: { id: 'schlaeferin', typ: 'Strandgast', schuhe: 'flipflop', hemd: 'hawaii', hose: 'shorts', hautton: 'sonnenbrand', brille: 'sonnenbrille', haare: 'lang', accessoire: null, extras: ['strohhut'], stimmung_start: 'zufrieden' },
+  tourist_kamera: { id: 'tourist_kamera', typ: 'Tourist', schuhe: 'sandale', hemd: 'polo_sauber', hose: 'shorts', hautton: 'hell', bart: 'schnauzer', brille: 'lesebrille', haare: 'glatze', accessoire: null, extras: ['socken', 'bauchtasche'], stimmung_start: 'neutral' },
 };
-const SEEDS = { ehe_sie: 41, ehe_er: 42, werfer_1: 43, werfer_2: 44, chad: 61, influencerin: 51, reflektor_freund: 52 };
+const SEEDS = { ehe_sie: 41, ehe_er: 42, werfer_1: 43, werfer_2: 44, chad: 61, influencerin: 51, reflektor_freund: 52, dieb: 71, schlaeferin: 72, tourist_kamera: 73 };
 
 /** Figur nach szenen.json-Slug; aussehen überschreibt die Defaults feldweise (unbekannte Accessoires/Extras werden hier ergänzt). */
 export function buildAmbientFigur(slug, aussehen = null) {
@@ -266,6 +291,8 @@ export function buildAmbientFigur(slug, aussehen = null) {
   // Felder, die kunden.js nicht kennt, hier abfangen (normalizeKunde filtert sie sonst nur weg)
   const extrasWunsch = new Set(rec.extras ?? []), accWunsch = rec.accessoire;
   if (accWunsch === 'reflektor' || accWunsch === 'wasserpistole' || accWunsch === 'eimer') rec.accessoire = slug === 'reflektor_freund' ? 'rucksack' : null;
+  if (accWunsch === 'bauchtasche_voll') { rec.accessoire = null; rec.extras = [...new Set([...(rec.extras ?? []), 'bauchtasche'])]; }
+  if ((slug === 'schlaeferin' || slug === 'tourist_kamera') && accWunsch === 'kamera') rec.accessoire = null; // Kamera kommt als eigene Requisite (ausblendbar)
   const g = figur(rec, SEEDS[slug] ?? 7);
   const P = g.userData.parts, hipY = P.legs[0].position.y;
   const E = g.userData.ambient = { art: slug, props: {} };
@@ -290,6 +317,31 @@ export function buildAmbientFigur(slug, aussehen = null) {
     g.userData.faceOpts = { ...g.userData.faceOpts, look: [[-34, 34], [0, 12]] }; setMood(g, 'zufrieden'); // Augen in zwei Richtungen
   }
   if (slug === 'influencerin') { E.props.ringlicht = ringlicht(P.arms[1]); const b = toonMesh(new THREE.SphereGeometry(0.24, 10, 8), 0xffffff, { outline: 0, basic: true, shadow: false }); b.visible = false; inHand(P.arms[1], b, V(-0.1, 0.25, 0.3), 1); E.props.blitz = b; }
+  if (slug === 'dieb') { // Bandana rot gepunktet, Sandalen am Gürtel, Narbe durch die Braue, Beute in der linken Hand (unsichtbar bis zum Griff)
+    const tuch = toonMesh(new THREE.SphereGeometry(0.57, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.44), toon(0xffffff, { map: punkteTextur('#e8463a', '#ffffff') }), { outline: 0.045 }); tuch.position.set(0, 0.1, -0.03); tuch.rotation.x = -0.2; P.head.add(tuch);
+    const knoten = toonMesh(new THREE.SphereGeometry(0.11, 8, 6), 0xe8463a, { outline: 0.025 }); knoten.position.set(0, 0.05, -0.57); P.head.add(knoten);
+    for (const sd of [-1, 1]) { const z = toonMesh(new THREE.BoxGeometry(0.09, 0.36, 0.04), 0xe8463a, { outline: 0.025 }); z.position.set(sd * 0.1, -0.14, -0.6); z.rotation.set(0.3, 0, sd * 0.5); P.head.add(z); }
+    tuch.castShadow = knoten.castShadow = false;
+    const narbe = toonMesh(new THREE.BoxGeometry(0.03, 0.16, 0.02), 0x8d5a3a, { outline: 0.012 }); narbe.position.set(0.2, 0.2, 0.5); narbe.rotation.set(-0.3, 0, 0.25); P.head.add(narbe);
+    for (const sd of [-1, 1]) { const sa = sandal(0xd9a06e, sd < 0 ? 'L' : 'R'); sa.scale.setScalar(0.7); sa.position.set(sd * 0.45, hipY + 0.05, -0.25); sa.rotation.set(1.2, 0, sd * 0.4); g.add(sa); } // Sandalen am Gürtel baumelnd
+    E.props.beute = { tasche: inHand(P.arms[0], handtasche(), V(0, -0.1, 0.05), -1), kamera: inHand(P.arms[0], kamera(), V(0, 0, 0.1), -1) };
+    E.props.beute.tasche.visible = false; E.props.beute.kamera.visible = false;
+    E.beuteArt = 'tasche';
+    const zunge = toonMesh(new THREE.SphereGeometry(0.06, 8, 6), 0xff7b9c, { outline: 0.015 }); zunge.geometry.scale(1, 0.6, 1.3); zunge.position.set(0.04, -0.24, 0.47); zunge.visible = false; P.head.add(zunge); E.props.zunge = zunge;
+    g.userData.setBeute = (art) => { E.beuteArt = art; E.props.beute.tasche.visible = art === 'tasche'; E.props.beute.kamera.visible = art === 'kamera'; };
+  }
+  if (slug === 'schlaeferin') { // Kamera um den Hals (ausblendbar), Tasche kommt als freie Requisite handtasche() neben die Liege; Zzz
+    E.props.kamera = kamera(); E.props.kamera.position.set(0.1, hipY + 0.55, 0.5); E.props.kamera.rotation.x = 0.3; g.add(E.props.kamera);
+    const z = zzz(); z.position.set(0.5, 3.0, 0.2); z.userData.y0 = 3.0; z.visible = false; g.add(z); E.props.zzz = z;
+  }
+  if (slug === 'tourist_kamera') { // Kamera am Riemen vor der Brust (ausblendbar), Sonnenhut mit Nackenschutz, Blitz
+    E.props.kamera = kamera(); E.props.kamera.position.set(0.05, hipY + 0.5, 0.5); E.props.kamera.rotation.x = 0.25; g.add(E.props.kamera);
+    const hut = toonMesh(new THREE.CylinderGeometry(0.46, 0.5, 0.32, 14), 0xe8e0c8, { outline: 0.04 }); hut.position.set(0, 0.5, -0.02); P.head.add(hut);
+    const krempe = toonMesh(new THREE.CylinderGeometry(0.72, 0.74, 0.05, 18), 0xe8e0c8, { outline: 0.035 }); krempe.position.set(0, 0.36, -0.02); krempe.rotation.x = 0.08; P.head.add(krempe);
+    const nacken = toonMesh(new THREE.BoxGeometry(0.6, 0.5, 0.05), 0xe8e0c8, { outline: 0.03 }); nacken.position.set(0, 0.05, -0.62); nacken.rotation.x = 0.25; P.head.add(nacken);
+    hut.castShadow = krempe.castShadow = nacken.castShadow = false;
+    const b = toonMesh(new THREE.SphereGeometry(0.2, 10, 8), 0xffffff, { outline: 0, basic: true, shadow: false }); b.visible = false; b.position.set(0.1, hipY + 0.55, 0.75); g.add(b); E.props.blitz = b;
+  }
   if (slug === 'reflektor_freund') {
     E.props.reflektor = reflektorScheibe(1.0); E.props.reflektor.position.set(0, hipY + 0.9, 0.8); g.add(E.props.reflektor);
     for (const [i, a] of P.arms.entries()) a.rotation.set(-1.5, 0, (i === 0 ? 1 : -1) * 0.35);
@@ -297,7 +349,7 @@ export function buildAmbientFigur(slug, aussehen = null) {
     setFace(P.decal, face('kunde', 'muede', g.userData.faceOpts)); // leerer Blick
   }
   g.userData.update = (t) => updateAmbient(g, t);
-  g.userData.pose = (name, t0, dauer) => startPose(g, name, t0, dauer);
+  poseApi(g);
   return g;
 }
 
@@ -371,6 +423,59 @@ export function updateAmbient(g, t) {
       else g.rotation.z = 0;
       if (name === 'foto') { const k = (u * 3) % 1; E.props.blitz.visible = k > 0.55 && k < 0.62; E.props.blitz.scale.setScalar(1 + 2 * (k - 0.55) / 0.07); head.rotation.set(-0.3, 0.2 * Math.sin(u * 9), 0.15); } // drei Blitze
       if (name === 'pose_wechseln') { armL.rotation.set(-2.7, 0, 0.5); armR.rotation.set(-2.7, 0, -0.5); head.rotation.set(-0.4, -0.5, -0.25); } // beide Hände hoch, anderer Winkel
+      break;
+    }
+    case 'dieb': {
+      // Grund: Dauergrinsen, Kopf pendelt zur nächsten Tasche, Beute (falls gesetzt) baumelt links
+      armL.rotation.set(-0.3, 0, 0.3); armR.rotation.set(-0.2, 0, -0.25); head.rotation.set(0.05, 0.5 * Math.sin(t * 0.8), 0.05);
+      E.props.zunge.visible = false; g.rotation.x = 0; P.legs[0].rotation.x = 0; P.legs[1].rotation.x = 0; g.position.y = 0;
+      if (name === 'schleichen') { // geduckt auf Zehenspitzen, Arme vor, Zunge zwischen den Zähnen; große langsame Schritte
+        const w = t * 4; g.rotation.x = 0.35; g.position.y = -0.12;
+        P.legs[0].rotation.x = -0.35 + 0.6 * Math.sin(w); P.legs[1].rotation.x = -0.35 - 0.6 * Math.sin(w);
+        armL.rotation.set(-1.4, 0, 0.5); armR.rotation.set(-1.2 + 0.2 * Math.sin(w), 0, -0.5); head.rotation.set(-0.3, 0.4 * Math.sin(t * 1.3), 0.1);
+        E.props.zunge.visible = true;
+      }
+      if (name === 'greifen') { // zur Seite beugen, linker Arm nach unten greifen, Brille kurz hoch, ab u 0.6 ist die Beute in der Hand
+        const r = puls(u, 0, 0.9);
+        g.rotation.z = -0.35 * r; armL.rotation.set(-0.4 - 1.2 * r, 0, 0.9 * r); armR.rotation.set(-2.6 * puls(u, 0.1, 0.5), 0, -0.6); head.rotation.set(0.4 * r, -0.4, -0.2 * r);
+        E.greifMoment = u >= 0.6;
+        if (u >= 0.6) { E.props.beute.tasche.visible = E.beuteArt === 'tasche'; E.props.beute.kamera.visible = E.beuteArt === 'kamera'; }
+      } else { g.rotation.z = 0; E.greifMoment = false; }
+      if (name === 'rennen') { // Beute links gepackt, rechte Hand winkt nach hinten, Grinsen breit, schnelle Beine, Körper vor
+        const w = t * 13; g.rotation.x = 0.2;
+        P.legs[0].rotation.x = 0.9 * Math.sin(w); P.legs[1].rotation.x = -0.9 * Math.sin(w);
+        armL.rotation.set(-1.5, 0, 0.4); armR.rotation.set(-2.7, 0.4, -0.7 + 0.25 * Math.sin(t * 10)); head.rotation.set(-0.1, 2.2, 0.1); // schaut nach hinten
+        if (!E.grinst) { setMood(g, 'selig'); E.grinst = true; }
+      } else if (E.grinst) { setMood(g, 'zufrieden'); E.grinst = false; }
+      break;
+    }
+    case 'schlaeferin': {
+      // Grund: döst (Pose auf der Liege setzt das Spiel mit figures.pose('liegestuhl')), Zzz nur beim Schlafen
+      E.props.zzz.visible = false; armL.rotation.set(-0.3, 0, 0.3); armR.rotation.set(-0.3, 0, -0.3);
+      if (name === 'schlafen') { E.props.zzz.visible = true; E.props.zzz.userData.update(t); if (!E.schlaeft) { setMood(g, 'schlaeft'); E.schlaeft = true; } head.rotation.set(0.25, 0.2, 0.15); }
+      else if (E.schlaeft && name !== 'aufschrecken') { setMood(g, 'zufrieden'); E.schlaeft = false; }
+      if (name === 'aufschrecken') { // Augen groß, Hut rutscht, Mund wird ein Rechteck (erschrocken), Arme hoch
+        if (E.schlaeft) { setMood(g, 'erschrocken'); E.schlaeft = false; }
+        const r = smoothstep(u, 0, 0.25);
+        armL.rotation.set(-2.6 * r, 0, 0.6); armR.rotation.set(-2.6 * r, 0, -0.6); head.rotation.set(-0.3 * r, 0.6 * Math.sin(t * 7) * r, 0.25 * r);
+      }
+      break;
+    }
+    case 'tourist_kamera': {
+      E.props.blitz.visible = false;
+      armL.rotation.set(-0.2, 0, 0.3); armR.rotation.set(-0.2, 0, -0.3); head.rotation.set(0.05, 0.3 * Math.sin(t * 0.5), 0);
+      E.props.kamera.position.set(0.05, P.legs[0].position.y + 0.5, 0.5); E.props.kamera.rotation.set(0.25, 0, 0);
+      if (name === 'fotografieren') { // Kamera vors Gesicht, ein Auge zu (misstrauisch kneift), drei Blitze
+        armL.rotation.set(-2.0, 0, 0.55); armR.rotation.set(-2.0, 0, -0.55); head.rotation.set(-0.05, 0.2, 0);
+        E.props.kamera.position.set(0.05, P.legs[0].position.y + 1.55, 0.55); E.props.kamera.rotation.set(0, 0, 0);
+        const k = (u * 3) % 1; E.props.blitz.visible = k > 0.5 && k < 0.58; E.props.blitz.position.set(0.1, P.legs[0].position.y + 1.6, 0.8);
+        if (!E.kneift) { setFace(P.decal, face('kunde', 'misstrauisch', { ...g.userData.faceOpts, lids: [0.95, 0.1] })); E.kneift = true; }
+      } else if (E.kneift) { setMood(g, 'neutral'); E.kneift = false; }
+      if (name === 'aufschrecken') { // beide Augen auf, Hand greift dreimal ins Leere am Hals
+        if (!E.erschrocken) { setMood(g, 'erschrocken'); E.erschrocken = true; }
+        const griff = Math.abs(Math.sin(u * Math.PI * 3));
+        armR.rotation.set(-2.1 * griff - 0.2, 0.3, -0.3); armL.rotation.set(-0.6, 0, 0.8); head.rotation.set(0.35 * griff, -0.3, 0);
+      } else if (E.erschrocken) { setMood(g, 'neutral'); E.erschrocken = false; }
       break;
     }
     case 'reflektor_freund': {
