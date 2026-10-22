@@ -1175,6 +1175,8 @@ function endDay(vorspann = null, { fuss = null } = {}) {
 // Bilanz-Karte bestätigt: am letzten Wochentag erst die Finale-Karte (Weiterspielen / Neue Woche), sonst neuer Tag
 let finaleKarteOffen = null;
 function cardWeiter() {
+  // Finale auch ohne Bar-Abend (Hängematte, Verhaftung): sonst lief die Woche ohne Ende weiter
+  if (!game.finale && tagesziel(woche, game.tag) && game.tag === woche.tage.length) { game = { ...game, finale: finaleStufe(game, woche) }; applyFinale(game.finale); }
   if (game.finale && tagesziel(woche, game.tag) && game.tag === woche.tage.length) { showFinaleKarte(); return; }
   startNewDay();
 }
