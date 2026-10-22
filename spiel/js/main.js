@@ -24,7 +24,7 @@ import {
   initialState, normalizeKatalog, pickKunden, startDialog, advanceDialog, chooseOption, isArrested, newDay, moodFor,
   kundeStatus, nearestKunde, wanderStep, inspectCamera, kundeLookYaw, TALK_DIST, idSeed,
   normalizeTexte, soldOutDialog, isSoldOut, dayEndCard, assignOutfits, START_WARE, gagFor, nextIdleGagDelay,
-  mergeTexte, mergeKundenKatalog, normalizeOptionen, toSave, fromSave, hatFortschritt, fillText, buyKokos, kokosSchutz, normalizeKokos, kokosGag, pickLine,
+  mergeTexte, mergeKundenKatalog, normalizeOptionen, toSave, fromSave, hatFortschritt, fillText, buyKokos, kokosSchutz, normalizeKokos, kokosGag, kokosWirkung, pickLine,
   normalizeTutorial, tutorialStart, tutorialEvent, tutorialSkip,
   normalizeWoche, tagesziel, tagModifikator, hudZiel, finaleStufe, KUNDEN_PRO_TAG, kalibriereWoche, neueWoche, finaleKarte,
   normalizeEreignisse, ereignisFuerTag, ereignisKundenFaktor, ereignisZiviExtra, kundenFuerTag, ereignisFenster,
@@ -258,7 +258,7 @@ function clearKunden() {
 function spawnKunden(day = 1, { erzwinge = null } = {}) {
   clearKunden();
   // „Großer Markt“: doppelt so viele; Ereignisse (Regen, Kreuzfahrt) skalieren mit, ein Zivi extra bei zivi_extra
-  const list = kundenFuerTag(katalog, Math.max(1, Math.round(KUNDEN_PRO_TAG * (tagModifikator(woche, day).kunden_faktor || 1) * ereignisKundenFaktor(game.ereignis))), Math.max(0, 2 + ereignisZiviExtra(game.ereignis)), day, game.ereignis, tagesziel(woche, day)); // Tagesziel „Oma“ garantiert die Oma
+  const list = kundenFuerTag(katalog, Math.max(1, Math.round(KUNDEN_PRO_TAG * (tagModifikator(woche, day).kunden_faktor || 1) * ereignisKundenFaktor(game.ereignis) * (game.kokosWirkung?.kunden_faktor || 1))), Math.max(0, 2 + ereignisZiviExtra(game.ereignis)), day, game.ereignis, tagesziel(woche, day)); // Tagesziel „Oma“ garantiert die Oma
   if (erzwinge && !list.some((k) => k.id === erzwinge)) { const def = katalog.find((k) => k.id === erzwinge); if (def) list.push(def); } // Snap/Szene: bestimmten Kunden erzwingen
   const outfits = assignOutfits(list, day); // keine Doppel-Outfits pro Tag
   const anchors = assignAnchors(list, ANCHORS, { day }); // feste Plätze über alle Zonen (Markt-Plätze stecken in ANCHORS), Zivis mit Abstand
@@ -481,7 +481,10 @@ function updateKokos(dt, now) {
 const kokosHindernisse = () => kunden.filter((k) => k.group.visible).map((k) => ({ x: k.npc.x, z: k.npc.z, r: 0.8 }));
 function kokosGagSpielen(name) { const now = performance.now(); try { kokosFig.userData.gag?.(name, now / 1000); } catch (e) { /* ohne Gag */ } kokosGagBis = now + 1500; kokos = { ...kokos, wait: Math.max(kokos.wait, 1.5) }; }
 // Ab Tag 2 liegt die „Bangi-Kokos“ (Filzstift-Blatt) auf dem Tablett; Kokosnuss in Schluffis linker Hand, solange der Tourist-Schutz läuft
-function refreshKokos() { try { kokosFig.userData.setBangiKokos?.(game.tag >= 2); } catch (e) { /* ohne Tablett */ } }
+function refreshKokos() {
+  try { kokosFig.userData.setBangiKokos?.(game.tag >= 2); } catch (e) { /* ohne Tablett */ }
+  game = { ...game, kokosWirkung: kokosWirkung(kokosTexte, game.tag) }; // Tag 3: weniger Kundschaft (Bangi-Kokos-Touristen), Tag 6: er unterbietet dich
+}
 const spielerNuss = coconut(true); spielerNuss.scale.setScalar(0.75); spielerNuss.position.set(-0.25, -0.95, 0.25); spielerNuss.visible = false;
 if (P.arms?.[0]) P.arms[0].add(spielerNuss);
 // gesungener Strandruf (sfx leitet an audio.gesang weiter, echter Clip sobald geladen), gain = nur Abstand; Megafon-Pose so lang wie der Ruf

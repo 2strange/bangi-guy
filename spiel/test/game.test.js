@@ -1002,7 +1002,7 @@ test('Rotation: über 7 Tage kommt jeder Kunde des echten Katalogs mindestens ei
 });
 
 import { buyKokos, KOKOS_PREIS } from '../js/game.js';
-import { kokosSchutz, KOKOS_SCHUTZ_S, normalizeKokos, kokosGag, DEFAULT_KOKOS, DAY_LENGTH as DLK } from '../js/game.js';
+import { kokosSchutz, KOKOS_SCHUTZ_S, normalizeKokos, kokosGag, kokosWirkung, DEFAULT_KOKOS, DAY_LENGTH as DLK } from '../js/game.js';
 test('Kokosnuss: Preis aus den Daten, Zähler hoch, 60 s Tourist-Schutz, ohne Geld nichts; Running Gag je Tag, Datei lädt', () => {
   assert.equal(KOKOS_PREIS, 5);
   const r = buyKokos({ ...initialState(), geld: 12 }, 5, 0.1);
@@ -1018,4 +1018,9 @@ test('Kokosnuss: Preis aus den Daten, Zähler hoch, 60 s Tourist-Schutz, ohne Ge
   const echt = normalizeKokos(JSON.parse(readFileSync(new URL('../data/texte.json', import.meta.url), 'utf8')));
   assert.equal(echt.preis, 5); assert.ok(echt.running_gag.length >= 7 && echt.gruss.length >= 1);
   assert.equal(nT(null).dialog.kokosnuss, 'Kokosnuss ({preis})'); assert.equal(nT(null).dialog.besonderes, 'Was Besonderes');
+  // Running-Gag-Wirkungen: nur an Tagen mit eigener Zeile; Preisfaktor wirkt im Verkauf, Kundenfaktor beim Spawn
+  assert.deepEqual(kokosWirkung(K, 1), { preis_faktor: 0.95 }); assert.deepEqual(kokosWirkung(K, 2), {}); assert.deepEqual(kokosWirkung(K, 9), {}, 'wiederholte Endzeile ohne Wirkung');
+  assert.deepEqual(kokosWirkung(echt, 3), { kunden_faktor: 0.9 }); assert.deepEqual(kokosWirkung(echt, 6), { preis_faktor: 0.95 });
+  const billig = { ...initialState(), kokosWirkung: kokosWirkung(echt, 6) };
+  assert.equal(sell(billig, schluffi).state.geld, 19, '20 × 0,95 = 19'); assert.equal(sell(initialState(), schluffi).state.geld, 20);
 });

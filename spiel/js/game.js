@@ -97,7 +97,7 @@ export function pickLine(list, idx = 0) {
 export function kundeStatus(state, id) { return state.status[id] || 'neutral'; }
 
 export function sell(state, kunde, lineIdx = 0, { beschlagnahmt = ZIVI_BESCHLAGNAHMT, posten = null, pos = null, preis = null } = {}) {
-  const faktor = Number.isFinite(wirkungAktiv(state).preis_faktor) ? wirkungAktiv(state).preis_faktor : 1; // Tagesereignis (Stromausfall), nur im Zeitfenster
+  const faktor = (Number.isFinite(wirkungAktiv(state).preis_faktor) ? wirkungAktiv(state).preis_faktor : 1) * (Number.isFinite(state.kokosWirkung?.preis_faktor) ? state.kokosWirkung.preis_faktor : 1); // Tagesereignis (im Zeitfenster) × Mister Coconuts Running Gag (Tag 6: unterbietet dich)
   const zahlt = Math.round((Number.isFinite(preis) ? preis : kunde.zahlt) * faktor); // Verhandlung kann den Preis anheben
   if (state.verhaftet) return { state, result: 'verhaftet', text: '' };
   if (kundeStatus(state, kunde.id) !== 'neutral') return { state, result: 'schon_erledigt', text: '' };
@@ -905,6 +905,15 @@ export function normalizeKokos(json) {
 }
 /** Running Gag des Tages: Zeile mit tag === Tag, sonst die letzte (ab Tag 8 wiederholt sich das Ende) */
 export const kokosGag = (K, tag) => K.running_gag.find((g) => g.tag === tag) || K.running_gag[K.running_gag.length - 1];
+/** Wirkung des Running Gags am Tag (nur an Tagen mit eigener Zeile, nichts wiederholt sich): kunden_faktor / preis_faktor */
+export function kokosWirkung(K, tag) {
+  const g = K.running_gag.find((x) => x.tag === tag);
+  const w = g?.wirkung || {};
+  const out = {};
+  if (Number.isFinite(w.kunden_faktor) && w.kunden_faktor > 0) out.kunden_faktor = w.kunden_faktor;
+  if (Number.isFinite(w.preis_faktor) && w.preis_faktor > 0) out.preis_faktor = w.preis_faktor;
+  return out;
+}
 // Mango am Markt-Stand kaufen (Geld −, Mango +); zu wenig Geld → unverändert
 export function buyMango(state, preis = MANGO_PREIS) {
   if (state.geld < preis) return { state, result: 'kein_geld' };
