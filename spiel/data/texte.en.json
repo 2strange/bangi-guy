@@ -1,13 +1,11 @@
 {
   "_schema": "English mirror of texte.json: same paths, string fields only (numbers, ids, actions and triggers live in texte.json). Missing branches fall back to German. List lengths match the German lists so cyclic line counters stay in sync. Placeholders like {tag}, {geld}, {rest} are identical in both languages. Tone: Lebowski / surfer, not a literal translation.",
-
   "ausverkauft": [
     "All gone. The mentor's up on the hill watering the beds. Up you go.",
     "Pockets empty, heart full. Resupply is with the gardener upstairs.",
     "Nothing left. Is this closing time or a business model?",
     "Sold out. Bar's open. The mentor's probably there already, pretending it's a coincidence."
   ],
-
   "tagesende": {
     "gut": [
       "Good day. The sun is stoned, you're rich, nobody noticed a thing.",
@@ -30,112 +28,376 @@
       "The mentor says: 'There are worse nights than a night at Pong's. His coffee's okay.'"
     ]
   },
-
   "ereignisse": [
-    { "id": "moewe_klaut", "titel": "Seagull Day",
+    {
+      "id": "moewe_klaut",
+      "titel": "Seagull Day",
       "ankuendigung": "Chef was at your hammock this morning. One bag less. She flies it to the bar. Of course the bar.",
       "hinweis": "The seagull stole a bag. One bag less today.",
-      "kommentar": { "text": "'Chef brought something today. I didn't touch it. Neither did Chef. Chef only collects.'" } },
-    { "id": "regenschauer", "titel": "Rain Shower",
+      "kommentar": {
+        "text": "'Chef brought something today. I didn't touch it. Neither did Chef. Chef only collects.'"
+      }
+    },
+    {
+      "id": "regenschauer",
+      "titel": "Rain Shower",
       "ankuendigung": "Rain today. Around noon. Everyone runs for cover and pulls rubber boots or plastic bags over their feet. The shoe rule wobbles: then you read shirts.",
       "hinweis": "Rain shower: everyone in rubber boots, shoes unreadable now. Read the shirts.",
       "ende": "Rain's over. The boots vanish as fast as they came. Two people kept theirs on. Remember those.",
-      "kommentar": { "text": "'Rain is the test. When the shoes are gone, the shirt remains. And the shirt lies less often than you think.'" } },
-    { "id": "kreuzfahrtschiff", "titel": "Ship Day",
+      "kommentar": {
+        "text": "'Rain is the test. When the shoes are gone, the shirt remains. And the shirt lies less often than you think.'"
+      }
+    },
+    {
+      "id": "kreuzfahrtschiff",
+      "titel": "Ship Day",
       "ankuendigung": "Hear the horn? Cruise ship, big as the island. In an hour the beach is full of hats. Hats pay little, but there are many.",
       "hinweis": "Cruise ship off the coast: more tourists, more hats.",
-      "kommentar": { "text": "'Ship day. Forty hats, forty photos, zero tips. Chef took a nap on one of the hats.'" } },
-    { "id": "pong_geburtstag", "titel": "Pong's Birthday",
+      "kommentar": {
+        "text": "'Ship day. Forty hats, forty photos, zero tips. Chef took a nap on one of the hats.'"
+      }
+    },
+    {
+      "id": "pong_geburtstag",
+      "titel": "Pong's Birthday",
       "ankuendigung": "It's Pong's birthday. The board says: 'No incidents today. Please.' He sits outside the station with cake and whistles only out of politeness.",
       "hinweis": "Pong's birthday: heat won't rise above 1 today.",
-      "kommentar": { "text": "'I gave him a mango. He cried. He cries every year. It's always the same kind of mango.'" } },
-    { "id": "stromausfall", "titel": "Power Cut",
+      "kommentar": {
+        "text": "'I gave him a mango. He cried. He cries every year. It's always the same kind of mango.'"
+      }
+    },
+    {
+      "id": "stromausfall",
+      "titel": "Power Cut",
       "ankuendigung": "No power since last night. The bar can't chill anything, the music's silent, Nong has a candle. Chef is afraid of candles. People buy from you because nothing else works.",
       "hinweis": "Power cut: bar without cooling, customers pay more today.",
-      "kommentar": { "text": "'Candles. I did the count by candle. Result's right. I always count by candle, the lights are just decoration.'" } },
-    { "id": "faehre_faellt_aus", "titel": "No Ferry",
+      "kommentar": {
+        "text": "'Candles. I did the count by candle. Result's right. I always count by candle, the lights are just decoration.'"
+      }
+    },
+    {
+      "id": "faehre_faellt_aus",
+      "titel": "No Ferry",
       "ankuendigung": "The ferry's cancelled. Engine, says the captain. No backpackers today, no fresh shirts, no questions. Quiet day. Quiet days are dangerous, you unlearn.",
       "hinweis": "Ferry cancelled: fewer customers, no undercovers off the ferry.",
-      "kommentar": { "text": "'No ferry, no questions. Tomorrow it's back, with everything you didn't practise today.'" } }
+      "kommentar": {
+        "text": "'No ferry, no questions. Tomorrow it's back, with everything you didn't practise today.'"
+      }
+    }
   ],
-
   "ui": {
-    "ausverkauft_kunde": ["All out, man. Tomorrow.", "Nothing left. Ask the seagull.", "Empty. The hill is calling."],
-    "bilanz": ["Day {tag}: {weg} bags gone{polizei}, {geldHeute} coins in.", "Cash: {geld} · Heat: {heatLabel}"],
+    "ausverkauft_kunde": [
+      "All out, man. Tomorrow.",
+      "Nothing left. Ask the seagull.",
+      "Empty. The hill is calling."
+    ],
+    "bilanz": [
+      "Day {tag}: {weg} bags gone{polizei}, {geldHeute} coins in.",
+      "Cash: {geld} · Heat: {heatLabel}"
+    ],
     "polizei": " ({anZivis} to the cops)",
-    "titel": { "feierabend": "Closing time.", "verhaftet": "BUSTED." },
-    "optionen": { "tag_beenden": "End the day", "weiter": "Keep wandering", "neuer_tag": "New day" },
-    "dialog": { "was_laeuft": "What's up?", "verkaufen": "Sell", "lieber_nicht": "Better not", "weiter": "Next", "hinschauen": "Take a closer look", "beenden": "Leave", "mehr_verlangen": "Ask for more", "kokosnuss": "Coconut ({preis})", "besonderes": "Something special" },
-    "verhandeln": {
-      "angenommen": ["Okay, okay. But only today.", "You're pricey, man. But you're here.", "Pff. Fine. Don't tell grandma."],
-      "weg": ["Too pricey, man. I'll ask the guy at the pier.", "For that price I'll walk up the hill myself.", "Nah. Mangoes it is."]
+    "titel": {
+      "feierabend": "Closing time.",
+      "verhaftet": "BUSTED."
     },
-    "start": { "titel": "Bangi Beach", "stand": "Save: day {tag} · {geld} coins · {ware} bags", "weiter": "Continue", "neu": "New game" },
-    "finale": { "titel": "The week is over.", "kasse": "Cash: {geld} coins · Goal: {muenzen}", "weiterspielen": "Keep playing", "neue_woche": "New week" },
-    "heat_label": { "0": "cold", "1": "warm-ish", "2": "hot", "3": "MANHUNT" },
-    "menue": { "titel": "Options", "sprache": "Text language", "beschlagnahme": "Undercover takes the goods", "musik": "Music", "ton": "Sound", "an": "on", "aus": "off", "schliessen": "Close", "hinweis": "Voices stay English. So does the seagull." },
-    "hud": { "tag": "Day", "heat": "Heat", "ware": "Stash", "geld": "Cash", "mangos": "Mangoes", "ziel": "Goal", "uhr": { "morgen": "Morning", "mittag": "Noon", "nachmittag": "Afternoon", "abend": "Evening", "nacht": "Night" } }
+    "optionen": {
+      "tag_beenden": "End the day",
+      "weiter": "Keep wandering",
+      "neuer_tag": "New day"
+    },
+    "dialog": {
+      "was_laeuft": "What's up?",
+      "verkaufen": "Sell",
+      "lieber_nicht": "Better not",
+      "weiter": "Next",
+      "hinschauen": "Take a closer look",
+      "beenden": "Leave",
+      "mehr_verlangen": "Ask for more",
+      "kokosnuss": "Coconut ({preis})",
+      "besonderes": "Something special"
+    },
+    "verhandeln": {
+      "angenommen": [
+        "Okay, okay. But only today.",
+        "You're pricey, man. But you're here.",
+        "Pff. Fine. Don't tell grandma."
+      ],
+      "weg": [
+        "Too pricey, man. I'll ask the guy at the pier.",
+        "For that price I'll walk up the hill myself.",
+        "Nah. Mangoes it is."
+      ]
+    },
+    "start": {
+      "titel": "Bangi Beach",
+      "stand": "Save: day {tag} · {geld} coins · {ware} bags",
+      "weiter": "Continue",
+      "neu": "New game"
+    },
+    "finale": {
+      "titel": "The week is over.",
+      "kasse": "Cash: {geld} coins · Goal: {muenzen}",
+      "weiterspielen": "Keep playing",
+      "neue_woche": "New week"
+    },
+    "heat_label": {
+      "0": "cold",
+      "1": "warm-ish",
+      "2": "hot",
+      "3": "MANHUNT"
+    },
+    "menue": {
+      "titel": "Options",
+      "sprache": "Text language",
+      "beschlagnahme": "Undercover takes the goods",
+      "musik": "Music",
+      "ton": "Sound",
+      "an": "on",
+      "aus": "off",
+      "schliessen": "Close",
+      "hinweis": "Voices stay English. So does the seagull."
+    },
+    "hud": {
+      "tag": "Day",
+      "heat": "Heat",
+      "ware": "Stash",
+      "geld": "Cash",
+      "mangos": "Mangoes",
+      "ziel": "Goal",
+      "uhr": {
+        "morgen": "Morning",
+        "mittag": "Noon",
+        "nachmittag": "Afternoon",
+        "abend": "Evening",
+        "nacht": "Night"
+      }
+    },
+    "titelbild": {
+      "titel": "Bangi Bay",
+      "untertitel": "One beach. One bag. Read the shoes.",
+      "neues_spiel": "New game",
+      "weiter": "Continue",
+      "info": "Info"
+    },
+    "intro": [
+      "That's your goal: the shack by the rental. Your own hammock, your own seagull.",
+      "It costs {muenzen} coins. You've got zero, a mentor and one week.",
+      "Rule one comes from the hill in a minute. Rule zero: never to sneakers."
+    ],
+    "ende": {
+      "fail": {
+        "titel": "It's called a break.",
+        "zeilen": [
+          "The shack has a police sign now. You've got sand in your bag and time on your hands.",
+          "The mentor says 1994 to 1997 wasn't that bad either. He's lying, but lovingly.",
+          "Monday it all starts again. The shoes stay the same."
+        ],
+        "button": "Try again"
+      },
+      "erfolg": {
+        "titel": "The shack is yours.",
+        "zeilen": [
+          "Nong got fireworks. Chef is afraid of fireworks. Both are your problem now.",
+          "You're in the deck chair in front of your shack, barefoot, coconut in hand. The mentor is gardening behind the house, whistling out of tune.",
+          "Pong stands at the fence and waves. He hasn't forgotten the mango. Neither have you."
+        ],
+        "button": "New game"
+      }
+    },
+    "info": {
+      "titel": "How Bangi Bay works",
+      "abschnitte": [
+        {
+          "ueberschrift": "Goal",
+          "text": "{muenzen} coins in the cash box by Sunday and the shack by the rental is yours. You sell on the beach, the mentor supplies you on the hill in the morning, in the evening it's tally time at the bar."
+        },
+        {
+          "ueberschrift": "Reading people",
+          "text": "Shoes first: sandals and barefoot are safe, sneakers can run or are police, flip-flops trip. Then shirt and stuff: ironed crease, price tag, earpiece, notebook, dog with a bandana, cap stripe on the forehead. No single sign is enough. A closer look costs nothing, a wrong yes costs the day."
+        },
+        {
+          "ueberschrift": "Heat",
+          "text": "The thermometer. Wrong customer, loud customer, dog: it rises. At MANHUNT, Pong comes for you. It cools overnight, more at the bar than in the hammock."
+        },
+        {
+          "ueberschrift": "Mentor",
+          "text": "Mornings on the hill: supply, one piece of wisdom, heat cools. Once a day, early. In the evening he sits at the bar and tells you what you did wrong."
+        },
+        {
+          "ueberschrift": "Mango",
+          "text": "Buy at the market, hand to Pong at the station: one mango, one mercy, once a day. Mangoes also pay for the tuk-tuk."
+        },
+        {
+          "ueberschrift": "Hideouts and escape",
+          "text": "Hammock, bedsheets in the laundry lane, the market crowd, upturned boats, retiree loungers, the kids. The ford only in sandals: sneakers stop at the water's edge. The tuk-tuk at the pier takes you to the bar, for mangoes or coins."
+        },
+        {
+          "ueberschrift": "Days",
+          "text": "Every day has a bonus goal, events (rain, ship, seagull) and life on the beach. Only Sunday's cash counts."
+        }
+      ],
+      "steuerung": [
+        {
+          "taste": "WASD / joystick",
+          "text": "Walk"
+        },
+        {
+          "taste": "F",
+          "text": "Interact: talk, take a closer look, buy, enter the bar"
+        },
+        {
+          "taste": "Q / E",
+          "text": "Rotate camera"
+        },
+        {
+          "taste": "Mouse",
+          "text": "Click = walk there, drag = camera"
+        },
+        {
+          "taste": "Esc",
+          "text": "Options: language, sound, save"
+        }
+      ],
+      "schliessen": "Back"
+    }
   },
-
   "tutorial": {
     "ueberspringen": "Skip tutorial",
     "fertig": "That's it. From here on you're on your own. You and your eyes.",
     "schritte": [
-      { "id": "aufwachen", "text": "Hammock, sun, empty pockets. The guy with the weed lives on the hill. Up you go." },
-      { "id": "nachschub", "text": "One bag, one rule: sandals yes, sneakers no. Down to the beach, people are waiting. Some of them for you." },
-      { "id": "hinschauen", "text": "Look first, talk later. 'Take a closer look' shows you shoes, shirt and stuff. Shoes first. Always." },
-      { "id": "entscheiden", "text": "Sandals, stains, sunburn? Sell. White sneakers, ironed crease, earpiece? Better not. When in doubt: better not." },
-      { "id": "heat", "text": "See the thermometer? That's your heat. Wrong customer, loud customer, dog: it rises. At MANHUNT, Pong comes for you. Mangoes help." },
-      { "id": "ablehnung", "text": "Good call. A no costs nothing. A wrong yes costs the day." },
-      { "id": "leer", "text": "All gone. That's it for today, the garden has clocked off. So have you: get to the bar." },
-      { "id": "abend", "text": "The sun's closing its eyes. The mentor is already at the bar. He never walked there. Go, and the day is done." },
-      { "id": "bar", "text": "Nong nods. That's his hello. Sit down, the mentor will tell you what you did wrong today. Lovingly." }
+      {
+        "id": "aufwachen",
+        "text": "Hammock, sun, empty pockets. The guy with the weed lives on the hill. Up you go."
+      },
+      {
+        "id": "nachschub",
+        "text": "One bag, one rule: sandals yes, sneakers no. Down to the beach, people are waiting. Some of them for you."
+      },
+      {
+        "id": "hinschauen",
+        "text": "Look first, talk later. 'Take a closer look' shows you shoes, shirt and stuff. Shoes first. Always."
+      },
+      {
+        "id": "entscheiden",
+        "text": "Sandals, stains, sunburn? Sell. White sneakers, ironed crease, earpiece? Better not. When in doubt: better not."
+      },
+      {
+        "id": "heat",
+        "text": "See the thermometer? That's your heat. Wrong customer, loud customer, dog: it rises. At MANHUNT, Pong comes for you. Mangoes help."
+      },
+      {
+        "id": "ablehnung",
+        "text": "Good call. A no costs nothing. A wrong yes costs the day."
+      },
+      {
+        "id": "leer",
+        "text": "All gone. That's it for today, the garden has clocked off. So have you: get to the bar."
+      },
+      {
+        "id": "abend",
+        "text": "The sun's closing its eyes. The mentor is already at the bar. He never walked there. Go, and the day is done."
+      },
+      {
+        "id": "bar",
+        "text": "Nong nods. That's his hello. Sit down, the mentor will tell you what you did wrong today. Lovingly."
+      }
     ]
   },
-
   "woche": {
     "titel": "The Shack by the Rental",
-    "ziel": { "text": "{muenzen} coins by Sunday: then the shack next to the surf rental is yours. Your own hammock, your own seagull." },
+    "ziel": {
+      "text": "{muenzen} coins by Sunday: then the shack next to the surf rental is yours. Your own hammock, your own seagull."
+    },
     "intro": [
       "The mentor points a thumb over his shoulder. 'That shack. Next to the rental. Owner wants out, {muenzen} coins, by Sunday. Otherwise the guy with the questions buys it.'",
       "'You've got a week. Seven days, seven rules, one roof. I never had more of a plan than that either.'"
     ],
-    "zwischenstand": ["{rest} coins to go for the shack. {tage_rest} days.", "Shack: {rest} short. Sunday is in {tage_rest} days."],
+    "zwischenstand": [
+      "{rest} coins to go for the shack. {tage_rest} days.",
+      "Shack: {rest} short. Sunday is in {tage_rest} days."
+    ],
     "tage": [
-      { "tag": 1, "titel": "Monday: Sandals", "ziel": "Sell 3 bags, sandals only",
-        "mentor": "Sandals only today. Everything else is tomorrow.", "geschafft": "Three bags, three pairs of sandals. You can count and look. Rare combination.", "verfehlt": "Less than three. Were you counting or looking? You need both." },
-      { "tag": 2, "titel": "Tuesday: Crooked Lanes", "ziel": "Find grandma and sell to her",
-        "mentor": "There's a grandma in the village. Best customer on the island. Has a walker and more money than Pong.", "geschafft": "Grandma likes you. That's worth more than her money. Almost.", "verfehlt": "Grandma doesn't wait. Grandma has time, but she doesn't wait. You get the difference?" },
-      { "tag": 3, "titel": "Wednesday: Mango Market", "ziel": "Buy a mango, sell 4 bags, NOT to the loud guy",
-        "mentor": "Market day. Buy a mango, that's your insurance. And the guy who yells: let him yell.", "geschafft": "Mango in the pocket, ears still attached. Good Wednesday.", "verfehlt": "Either no mango or too loud. Both cost you tomorrow." },
-      { "tag": 4, "titel": "Thursday: The Ferry", "ziel": "Spot one undercover and turn him down, sell 5 bags",
-        "mentor": "Ferry's in at ten. Fresh shirts, fresh backpacks. One of them is empty. Find him.", "geschafft": "You found the empty one. Now he's got a full notebook and nothing in it.", "verfehlt": "One slipped past you. Or you distrusted everyone. Both are expensive." },
-      { "tag": 5, "titel": "Friday: Raid", "ziel": "Get through the day without an arrest (heat starts at 1)",
-        "mentor": "Pong's got visitors from upstairs. He whistles more today. Sell anyway, but with eyes in the back of your head. Mango ready?", "geschafft": "Raid survived. Pong caught nobody, the mango was good.", "verfehlt": "Friday at Pong's. The coffee was okay, you say. I heard." },
-      { "tag": 6, "titel": "Saturday: Big Market", "ziel": "Sell 8 bags",
-        "mentor": "Saturday. Twice the people, twice the shoes. I harvested double. Make something of it.", "geschafft": "Eight bags. Today the beach read you, not the other way round.", "verfehlt": "Under eight. The beach was full, your bag wasn't empty. Tomorrow is Sunday, man." },
-      { "tag": 7, "titel": "Sunday: Reckoning", "ziel": "{muenzen} coins in the cash box by sunset",
-        "mentor": "Last day. Sell what you can, to whoever's there. No, not whoever's there. To whoever's RIGHT.", "geschafft": "{muenzen}. The shack is yours. Go to the bar, Nong has the key. Nong has all the keys.", "verfehlt": "Not quite. Come to the bar anyway. An ending is an ending, and endings happen at the bar." }
+      {
+        "tag": 1,
+        "titel": "Monday: Sandals",
+        "ziel": "Sell 3 bags, sandals only",
+        "mentor": "Sandals only today. Everything else is tomorrow.",
+        "geschafft": "Three bags, three pairs of sandals. You can count and look. Rare combination.",
+        "verfehlt": "Less than three. Were you counting or looking? You need both."
+      },
+      {
+        "tag": 2,
+        "titel": "Tuesday: Crooked Lanes",
+        "ziel": "Find grandma and sell to her",
+        "mentor": "There's a grandma in the village. Best customer on the island. Has a walker and more money than Pong.",
+        "geschafft": "Grandma likes you. That's worth more than her money. Almost.",
+        "verfehlt": "Grandma doesn't wait. Grandma has time, but she doesn't wait. You get the difference?"
+      },
+      {
+        "tag": 3,
+        "titel": "Wednesday: Mango Market",
+        "ziel": "Buy a mango, sell 4 bags, NOT to the loud guy",
+        "mentor": "Market day. Buy a mango, that's your insurance. And the guy who yells: let him yell.",
+        "geschafft": "Mango in the pocket, ears still attached. Good Wednesday.",
+        "verfehlt": "Either no mango or too loud. Both cost you tomorrow."
+      },
+      {
+        "tag": 4,
+        "titel": "Thursday: The Ferry",
+        "ziel": "Spot one undercover and turn him down, sell 5 bags",
+        "mentor": "Ferry's in at ten. Fresh shirts, fresh backpacks. One of them is empty. Find him.",
+        "geschafft": "You found the empty one. Now he's got a full notebook and nothing in it.",
+        "verfehlt": "One slipped past you. Or you distrusted everyone. Both are expensive."
+      },
+      {
+        "tag": 5,
+        "titel": "Friday: Raid",
+        "ziel": "Get through the day without an arrest (heat starts at 1)",
+        "mentor": "Pong's got visitors from upstairs. He whistles more today. Sell anyway, but with eyes in the back of your head. Mango ready?",
+        "geschafft": "Raid survived. Pong caught nobody, the mango was good.",
+        "verfehlt": "Friday at Pong's. The coffee was okay, you say. I heard."
+      },
+      {
+        "tag": 6,
+        "titel": "Saturday: Big Market",
+        "ziel": "Sell 8 bags",
+        "mentor": "Saturday. Twice the people, twice the shoes. I harvested double. Make something of it.",
+        "geschafft": "Eight bags. Today the beach read you, not the other way round.",
+        "verfehlt": "Under eight. The beach was full, your bag wasn't empty. Tomorrow is Sunday, man."
+      },
+      {
+        "tag": 7,
+        "titel": "Sunday: Reckoning",
+        "ziel": "{muenzen} coins in the cash box by sunset",
+        "mentor": "Last day. Sell what you can, to whoever's there. No, not whoever's there. To whoever's RIGHT.",
+        "geschafft": "{muenzen}. The shack is yours. Go to the bar, Nong has the key. Nong has all the keys.",
+        "verfehlt": "Not quite. Come to the bar anyway. An ending is an ending, and endings happen at the bar."
+      }
     ],
     "finale": {
-      "gut": { "text": [
-        "Nong puts a key on the counter. It's bent. It fits.",
-        "'The shack is yours,' says the mentor. 'I take the hammock on the porch. You take everything else. The seagull moves in too, that's not negotiable.'",
-        "No more smoke from the hill. The mentor gardens behind your shack now. Pong turned the sign around: POLICE 2km. Now it's true."
-      ] },
-      "mittel": { "text": [
-        "Nong counts. Nong counts again. 'Not enough. Almost enough.'",
-        "'I'll front the rest,' says Nong, and that's the longest sentence you've ever heard from him. 'You polish glasses for a week. The same glass.'",
-        "The shack is half yours. The seagull is already sitting on it. Next week the rest is yours, or Nong's."
-      ] },
-      "fail": { "text": [
-        "The shack has a new sign: STATION 8. The guy with the questions stands in front of it, backpack finally full.",
-        "'1994 to 1997,' says the mentor. 'It's called a break. You've got one now too. Monday we start over.'",
-        "Nong puts the empty glass in front of you. At Nong's, that's compassion."
-      ] }
+      "gut": {
+        "text": [
+          "Nong puts a key on the counter. It's bent. It fits.",
+          "'The shack is yours,' says the mentor. 'I take the hammock on the porch. You take everything else. The seagull moves in too, that's not negotiable.'",
+          "No more smoke from the hill. The mentor gardens behind your shack now. Pong turned the sign around: POLICE 2km. Now it's true."
+        ]
+      },
+      "mittel": {
+        "text": [
+          "Nong counts. Nong counts again. 'Not enough. Almost enough.'",
+          "'I'll front the rest,' says Nong, and that's the longest sentence you've ever heard from him. 'You polish glasses for a week. The same glass.'",
+          "The shack is half yours. The seagull is already sitting on it. Next week the rest is yours, or Nong's."
+        ]
+      },
+      "fail": {
+        "text": [
+          "The shack has a new sign: STATION 8. The guy with the questions stands in front of it, backpack finally full.",
+          "'1994 to 1997,' says the mentor. 'It's called a break. You've got one now too. Monday we start over.'",
+          "Nong puts the empty glass in front of you. At Nong's, that's compassion."
+        ]
+      }
     }
   },
-
   "kokosverkaeufer": {
     "name": "Mister Coconut",
     "ruf": "Co-co-nut-juice!",
@@ -158,16 +420,36 @@
       "'No nut, no problem. The special? Also no problem. Yet.'"
     ],
     "running_gag": [
-      { "tag": 1, "text": "'Something special, my friend? I see you. Every day. Sandals, shirt, bag. I did coconut for eleven years. Maybe it's time for... variety.'" },
-      { "tag": 2, "text": "Mister Coconut produces a coconut with a leaf drawn on it in marker. 'Bangi Coconut. Special Edition. Ten coins. For you: fifteen, you're an expert.'" },
-      { "tag": 3, "text": "Three tourists stand on the beach holding Bangi Coconuts, waiting for something to happen. Nothing happens. Mister Coconut waves at you: 'Same customers, my friend! I take the dumb ones, you take the smart ones!'" },
-      { "tag": 4, "text": "Pong is standing at Mister Coconut's tray buying a Bangi Coconut. Pong sniffs it. Pong shrugs. Pong leaves. Mister Coconut, whispering to you: 'My product is legal, my friend. Yours isn't. Think about who the professional is here.'" },
-      { "tag": 5, "text": "'Partner? Fifty-fifty. You bring the special, I bring the call. Co-co-nut-juice, and underneath: something special. Nobody checks a coconut, my friend. Nobody.'" },
-      { "tag": 6, "text": "Mister Coconut has dropped his price to three coins and now sings 'Co-co-nut-juice, cheaper than the other guy!' There is no other guy. He means you." },
-      { "tag": 7, "text": "In the evening Mister Coconut sits at the bar next to the mentor. Nong has put the empty glass in front of him. 'Competition is also customers,' says the mentor. Mister Coconut buys a bag. He asks for five coins off, for the coconut from day one." }
+      {
+        "tag": 1,
+        "text": "'Something special, my friend? I see you. Every day. Sandals, shirt, bag. I did coconut for eleven years. Maybe it's time for... variety.'"
+      },
+      {
+        "tag": 2,
+        "text": "Mister Coconut produces a coconut with a leaf drawn on it in marker. 'Bangi Coconut. Special Edition. Ten coins. For you: fifteen, you're an expert.'"
+      },
+      {
+        "tag": 3,
+        "text": "Three tourists stand on the beach holding Bangi Coconuts, waiting for something to happen. Nothing happens. Mister Coconut waves at you: 'Same customers, my friend! I take the dumb ones, you take the smart ones!'"
+      },
+      {
+        "tag": 4,
+        "text": "Pong is standing at Mister Coconut's tray buying a Bangi Coconut. Pong sniffs it. Pong shrugs. Pong leaves. Mister Coconut, whispering to you: 'My product is legal, my friend. Yours isn't. Think about who the professional is here.'"
+      },
+      {
+        "tag": 5,
+        "text": "'Partner? Fifty-fifty. You bring the special, I bring the call. Co-co-nut-juice, and underneath: something special. Nobody checks a coconut, my friend. Nobody.'"
+      },
+      {
+        "tag": 6,
+        "text": "Mister Coconut has dropped his price to three coins and now sings 'Co-co-nut-juice, cheaper than the other guy!' There is no other guy. He means you."
+      },
+      {
+        "tag": 7,
+        "text": "In the evening Mister Coconut sits at the bar next to the mentor. Nong has put the empty glass in front of him. 'Competition is also customers,' says the mentor. Mister Coconut buys a bag. He asks for five coins off, for the coconut from day one."
+      }
     ]
   },
-
   "abend_bar": {
     "sonnenuntergang": [
       "The sun's already got its eyes shut. That's your cue: bar.",
@@ -229,7 +511,11 @@
       ]
     },
     "einschlafen": {
-      "haengematte_belegt": ["The American is lying in your hammock, snoring Bangkok. You sleep in the sand next to it. The sand is harder than it looks.", "There's a college shirt with a person in it in your hammock. He mumbles 'best city'. You take the lounger with the towel. It's reserved. Whatever.", "Chef is sitting on the American's belly like it's a hill. Both asleep. Not you. You've got sand in places that don't have names."],
+      "haengematte_belegt": [
+        "The American is lying in your hammock, snoring Bangkok. You sleep in the sand next to it. The sand is harder than it looks.",
+        "There's a college shirt with a person in it in your hammock. He mumbles 'best city'. You take the lounger with the towel. It's reserved. Whatever.",
+        "Chef is sitting on the American's belly like it's a hill. Both asleep. Not you. You've got sand in places that don't have names."
+      ],
       "text": [
         "You climb into the hammock. The mentor sits at the bar telling tonight's story to someone else. The seagull.",
         "The hammock sways. Laughter from the bar. Nong never laughs. So that was the mentor. About you.",
@@ -238,7 +524,6 @@
       ]
     }
   },
-
   "posten7": {
     "mango": {
       "gnaedig": [
@@ -269,7 +554,9 @@
         "2": "Patrol reinforced. Pong has names.",
         "3": "MANHUNT. Pong made coffee."
       },
-      "nachts": ["Station closed. Bell broken. Mango in the mailbox."]
+      "nachts": [
+        "Station closed. Bell broken. Mango in the mailbox."
+      ]
     },
     "pong": {
       "heat_0": [
@@ -290,7 +577,6 @@
       ]
     }
   },
-
   "mentor_szene": {
     "ankunft": [
       "Sit down. No, not on the beds.",
@@ -298,18 +584,29 @@
       "You walked up here in sandals. Good. That's lesson zero."
     ],
     "schritte": [
-      { "id": "ankunft", "text": "@ankunft" },
-      { "id": "lektion" },
-      { "id": "nachschub", "text": [
+      {
+        "id": "ankunft",
+        "text": "@ankunft"
+      },
+      {
+        "id": "lektion"
+      },
+      {
+        "id": "nachschub",
+        "text": [
           "Here. Fresh from the garden. One bag, make it count.",
           "Today's harvest. Don't drop it, don't sniff it in public.",
           "Organic, obviously. Everything up here is."
-        ] },
-      { "id": "abschied", "text": [
+        ]
+      },
+      {
+        "id": "abschied",
+        "text": [
           "Go sell, man. Sandals first, then shirts, then dogs.",
           "See you at the bar tonight. I'll be there by accident.",
           "Be the wave. Not the guy running from it."
-        ] }
+        ]
+      }
     ],
     "schon_geholt": [
       "Already gave you today's bag, man. The garden isn't a vending machine.",
@@ -329,24 +626,26 @@
       "See? The plants like you better than Pong does."
     ]
   },
-
   "mentor": [
     {
-      "id": "weisheit_1", "titel": "The Sandal Rule",
+      "id": "weisheit_1",
+      "titel": "The Sandal Rule",
       "mechanik": "Read the shoes: sandals/barefoot = can't run; sneakers = can run or is undercover; flip-flops = trips.",
       "einleitung": "Sit. No, not on the beds. Listen, a guy told me this back in Thailand, before he... whatever, wherever he is now.",
       "regel": "Never sell to people in sneakers. They're dressed to run. Sandal people can't chase you. And barefoot? Barefoot is family.",
       "pointe": "I haven't worn shoes since 1994. That's why I've got no record. Or toes that all point the same way."
     },
     {
-      "id": "weisheit_2", "titel": "The Too-Clean Shirt",
+      "id": "weisheit_2",
+      "titel": "The Too-Clean Shirt",
       "mechanik": "Read the clothes: brand-new or ironed shirt, price tag, crease = costume. Shirt with a stain = real. Socks in sandals = retiree, not a cop.",
       "einleitung": "See that one down there with the Hawaiian shirt? Nice shirt. Too nice. Nobody who actually lives here owns a shirt without a story.",
       "regel": "A shirt without a stain is a shirt without a past. Anyone on this beach who looks fresh out of the packet IS fresh out of the packet: price tag, crease, earpiece. But careful: socks in sandals aren't a cop, that's just Hannelore's husband.",
       "pointe": "My shirt has four stains. Three are memories, one is mango. I just don't remember which."
     },
     {
-      "id": "weisheit_3", "titel": "Dog Means Sniffer",
+      "id": "weisheit_3",
+      "titel": "Dog Means Sniffer",
       "mechanik": "Read the company: dog with a bandana = police dog, keep your distance; the owner's shoes and shirt don't matter then. Beach dogs without bandanas are harmless.",
       "einleitung": "A dog never lies. That's the problem. The guy next to it can be barefoot, tank top, chewing gum, everything right. The dog's still working.",
       "regel": "Dog with a bandana, ears up, nose on your bag: that's not a pet, that's an officer with fur. Keep your distance, don't pet, don't sell.",

@@ -95,7 +95,7 @@ const cssColor = (c, fallback) => (typeof c === 'number' ? '#' + c.toString(16).
 const pick = (v, i) => (Array.isArray(v) ? v[i] : v);
 
 // Hauttöne des Kundschaft-Katalogs (Hex für den Kopf-Mesh, CSS fürs Gesicht = dieselbe Farbe)
-export const SKIN_TONES = { hell: 0xf5c9a0, mittel: 0xd9a06e, dunkel: 0x8d5a3a, sonnenbrand: 0xf0876a };
+export const SKIN_TONES = { hell: 0xf4c9a4, mittel: 0xe8a773, dunkel: 0x8d5a3a, sonnenbrand: 0xf0907a }; // identisch mit kunden.js SKIN, sonst heben sich Lider vom Kopf ab
 export const kundeSkin = (k) => SKIN_TONES[k?.hautton] ?? SKIN_TONES.mittel;
 
 // Katalog-Felder → interne Optionen (alte Optionen bleiben gültig und gewinnen, wenn beide gesetzt sind)
@@ -115,7 +115,7 @@ function normalize(o) {
     stirnstreifen: !!o.stirnstreifen,
     goldzahn: !!o.goldzahn,
     beardColor: cssColor(o.beardColor, weiss ? '#f1f1f4' : '#6b4423'),
-    browColor: weiss ? '#d8d8e0' : null,
+    browColor: weiss ? '#b9b9c2' : null, // grau statt fast weiß: helle Brauen mit dickem Tintenrand sahen auf dunkler Haut wie weiße Balken aus
   };
 }
 
@@ -170,7 +170,7 @@ const KINDS = {
 // override: je Auge 'hoch' (eine Braue gerissen, z. B. beim Gruß) oder 'normal' (Stimmung)
 function brows(ctx, mood, eyes, r, width, light = null, override = null) {
   if (light) { // helle Brauen: erst Tinte breiter, dann die helle Farbe drüber
-    brows(ctx, mood, eyes, r, width + 8, null, override);
+    brows(ctx, mood, eyes, r, width + 4, null, override);
     const sp = strokePath;
     const lightStroke = (c, pts, w) => sp(c, pts, w, light);
     return browsWith(ctx, mood, eyes, r, width - 2, lightStroke, override);

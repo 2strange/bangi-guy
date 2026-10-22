@@ -399,7 +399,7 @@ export function finaleHuette() {
   g.add(base);
   const S = {}; // Zustandsgruppen
   const grp = (name) => { const o = new THREE.Group(); o.visible = false; g.add(o); S[name] = o; return o; };
-  const post = (o, x, z, h = 2.4) => o.add(limb(new THREE.Vector3(x, 0, z), new THREE.Vector3(x + 0.08, h, z), 0.08, 0x7a4b22, { outline: 0.035 }));
+  const post = (o, x, z, h = 2.4) => { const l = limb(new THREE.Vector3(x, 0, z), new THREE.Vector3(x + 0.08, h, z), 0.08, 0x7a4b22, { outline: 0.035 }); o.add(l); return l; };
   const schild = (o, text, x, z, y, { bg = '#fff1c2', fg = '#2b1b0b', w = 2.2, h = 0.5 } = {}) => {
     const tex = textTexture(text, { bg, fg, font: 'bold 56px sans-serif', w: 1024, h: 160 });
     const plain = toon(new THREE.Color(bg).getHex());
@@ -422,7 +422,7 @@ export function finaleHuette() {
   }
   // --- deine: Veranda mit Hängematte, Möwe, Blumen, Laterne, Flagge, Kräuterbeet hinterm Haus ---
   { const o = grp('deine');
-    post(o, 2.2, 1.6, 1.4); schild(o, 'VERKAUFT', 2.25, 1.6, 1.5, { bg: '#e8463a', fg: '#ffffff', w: 1.6, h: 0.45 });
+    const pfosten = post(o, 2.2, 1.6, 1.4); const verkauft = schild(o, 'VERKAUFT', 2.25, 1.6, 1.5, { bg: '#e8463a', fg: '#ffffff', w: 1.6, h: 0.45 }); g.userData.deineSchild = [pfosten, verkauft].filter(Boolean);
     const deck = toonMesh(new THREE.BoxGeometry(2.6, 0.14, 1.6), 0xd8a85a, { outline: 0.035 }); deck.position.set(0.2, st - 0.05, d / 2 + 1.0); o.add(deck);
     for (const [x, z] of [[-1.0, d / 2 + 1.7], [1.4, d / 2 + 1.7]]) { o.add(limb(new THREE.Vector3(x, 0, z), new THREE.Vector3(x, st + 2.4, z), 0.09, 0x7a4b22, { outline: 0.035 })); }
     o.add(hammock(new THREE.Vector3(-1.0, st + 1.6, d / 2 + 1.7), new THREE.Vector3(1.4, st + 1.7, d / 2 + 1.7)));
@@ -469,10 +469,11 @@ export function setHuetteZiel(g, betrag, { text = `${betrag} MÜNZEN · BIS SONN
   b.material[4] = lit; b.material[5] = lit; b.material.needsUpdate = true;
   g.userData.ziel = betrag;
 }
-export function setHuette(g, zustand) {
+export function setHuette(g, zustand, { schild = true } = {}) { // schild: false = „deine“ ohne Verkaufsschild (Erfolgs-Tableau)
   const S = g.userData.zustaende;
   if (!S) return;
   for (const [name, o] of Object.entries(S)) o.visible = name === zustand;
+  for (const m of g.userData.deineSchild ?? []) m.visible = schild;
   g.userData.zustand = zustand;
 }
 

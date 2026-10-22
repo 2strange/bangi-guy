@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bangi Bay – Figuren-Galerie</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f1ea; font: 15px/1.4 sans-serif; color: #2b1b0b; }
+  canvas { display: block; }
+  #ui { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 8px; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.85); border-top: 1px solid #ddd; }
+  #ui button { font: inherit; padding: 6px 14px; border: 1px solid #c9b48a; background: #fff1c2; border-radius: 6px; cursor: pointer; }
+  #ui select { font: inherit; padding: 6px; max-width: 46vw; }
+  #name { position: fixed; left: 14px; top: 12px; font-size: 22px; font-weight: bold; background: rgba(255,255,255,0.85); padding: 6px 12px; border-radius: 8px; }
+  #hint { position: fixed; right: 14px; top: 12px; font-size: 13px; opacity: 0.7; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="name">…</div>
+<div id="hint">← → blättern · Maus: drehen, Rad: zoomen</div>
+<div id="ui">
+  <button id="prev">◀</button>
+  <select id="liste"></select>
+  <button id="next">▶</button>
+  <span id="zaehler"></span>
+</div>
+<pre id="err" style="position:fixed;top:0;left:0;margin:0;padding:8px;background:#fff;color:#c00;font:14px monospace;white-space:pre-wrap;display:none;z-index:9"></pre>
+<script>
+  window.showErr = (m) => { const e = document.getElementById('err'); e.style.display = 'block'; e.textContent += m + '\n'; };
+  window.addEventListener('error', (e) => showErr((e.message || e.type) + ' @ ' + (e.filename || '') + ':' + (e.lineno || '')));
+  window.addEventListener('unhandledrejection', (e) => showErr('rejection: ' + (e.reason && (e.reason.stack || e.reason))));
+</script>
+<script type="module">import('./js/galerie.js').catch((e) => showErr('import: ' + (e.stack || e)));</script>
+</body>
+</html>

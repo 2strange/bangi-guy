@@ -11,10 +11,13 @@
 // ?what=bauch → Schluffi von vorn und von der Seite (Bauch unterm Hemd)
 // ?what=liege → Strandliegen mit Kunden in der Pose „liegestuhl“ (userData.sitz), dazu der schlafende Surfer
 // ?what=kletterer → Kokos-Kletterer außen am Stamm (amStamm), von zwei Seiten
+// ?what=koepfe → Spieler mit allen Kopfbedeckungen (SCHLUFFI_KOEPFE), vorn und schräg
+// ?what=tableau → Erfolgs-Tableau: Hütte „deine“ ohne Verkaufsschild, Spieler im Liegestuhl, Feuerwerk überm Meer
 // ?what=kokos → Kokos-Verkäufer: gehend, rufend (setRuf), Machetenhieb (gag verkauf), Brauen-Scheibenwischer (gag besonderes) + Bangi-Kokos
 import * as THREE from 'three';
 import { toonMesh, textTexture } from './toon.js';
-import { schluffi, runner, sandal, sneaker, pose, POSES, buildNong, updateNong, setNongMood, kundenExtras, updateKundenExtras, buildKokosVerkaeufer } from './figures.js';
+import { schluffi, runner, sandal, sneaker, pose, POSES, buildNong, updateNong, setNongMood, kundenExtras, updateKundenExtras, buildKokosVerkaeufer, SCHLUFFI_KOEPFE } from './figures.js';
+import { feuerwerk } from './feuerwerk.js';
 import { hotel, beachBar, finaleHuette, setHuette, HUETTE_ZUSTAENDE, signpost, setWegweiserText, lounger, sleepingSurfer, palm } from './props.js';
 import { climber, amStamm } from './zone-reisfeld.js';
 import { buildingScale } from './logic.js';
@@ -79,6 +82,27 @@ if (WHAT === 'feet') {
   });
   camera.position.set(0, 5.5, 9);
   camera.lookAt(0, 3.2, 0);
+} else if (WHAT === 'koepfe') {
+  SCHLUFFI_KOEPFE.forEach((kopf, i) => {
+    const x = (i - (SCHLUFFI_KOEPFE.length - 1) / 2) * 3.0;
+    const a = schluffi({ kopf }); a.position.set(x, 0, 1.6); a.rotation.y = 0.1; scene.add(a);
+    const b = schluffi({ kopf }); b.position.set(x, 0, -3.4); b.rotation.y = 0.9; scene.add(b);
+    const tex = textTexture(kopf, { bg: '#fff1c2', fg: '#2b1b0b', font: 'bold 56px sans-serif', w: 512, h: 96 });
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.38), new THREE.MeshBasicMaterial({ map: tex })); label.position.set(x, 3.7, 1.6); scene.add(label);
+  });
+  camera.position.set(0, 5.5, 17); camera.lookAt(0, 1.7, -1);
+} else if (WHAT === 'tableau') {
+  const meer = toonMesh(new THREE.PlaneGeometry(200, 60), 0x3dd6e0, { outline: 0, shadow: false }); meer.rotation.x = -Math.PI / 2; meer.position.set(0, 0.02, -40); scene.add(meer); // Meer hinter der Hütte, Kamera schaut von Land drauf
+  const h = finaleHuette(); setHuette(h, 'deine', { schild: false }); h.scale.setScalar(1.5); h.position.set(-2.5, 0, -4); h.rotation.y = 0.25; scene.add(h);
+  const lo = lounger(['#e8463a', '#fff5e0']); lo.position.set(2.2, 0, 1.5); lo.rotation.y = 0.15; lo.scale.setScalar(1.3); scene.add(lo);
+  const sp = schluffi({ kopf: 'strohhut' }); const { offsetY, offsetZ } = pose(sp, 'liegestuhl');
+  const sitz = new THREE.Vector3(lo.userData.sitz.x, lo.userData.sitz.y, lo.userData.sitz.z); lo.localToWorld(sitz);
+  sp.position.set(sitz.x + Math.sin(0.15) * offsetZ, sitz.y + offsetY, sitz.z + Math.cos(0.15) * offsetZ); sp.rotation.y = 0.15; scene.add(sp);
+  const fw = feuerwerk(scene, { x: 2, z: -24, hoehe: 12, breite: 22 }); fw.start();
+  for (let t = 0; t < 4.0; t += 1 / 60) fw.update(t); // vier Sekunden vorlaufen: Aufstiege und Bursts gleichzeitig im Bild
+  scene.background = new THREE.Color(0x3a2a6f); // Abend
+  sunLight.intensity = 0.9;
+  camera.position.set(0, 4.5, 14); camera.lookAt(0, 4.5, -6);
 } else if (WHAT === 'kokos') { // gehend · rufend · Machetenhieb (Mitte des Gags) · Brauen hoch (Besonderes) mit Bangi-Kokos
   [[-4.8, 0.25, (v) => v.userData.update(0.3)],
    [-1.6, 0.1, (v) => { v.userData.setRuf(true); v.userData.update(0.3); }],

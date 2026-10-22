@@ -2,7 +2,7 @@
 // userData.parts = { body, legs: [L, R], arms: [L, R], head }. Beine/Arme drehen um Hüfte/Schulter (x-Achse).
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { toonMesh, toon, deform, BLACK, textTexture } from './toon.js';
+import { toonMesh, toon, deform, BLACK, textTexture, stripeTexture } from './toon.js';
 import { limb, coconut } from './props.js';
 import { faceDecal, schluffiFace, runnerFace, face, setFace } from './faces.js';
 
@@ -174,7 +174,56 @@ export function keinSchattenwurf(...objs) {
   for (const o of objs) o.traverse((m) => { if (m.isMesh) m.castShadow = false; });
 }
 
-export function schluffi() {
+// Kopfbedeckungen für den Spieler (Auswahl offen): stirnband (bisher) | radkappe | flatcap | strohhut | bandana | sonnenschild
+export const SCHLUFFI_KOEPFE = ['stirnband', 'radkappe', 'flatcap', 'strohhut', 'bandana', 'sonnenschild'];
+function schluffiKopfbedeckung(head, kopf) {
+  const g = new THREE.Group(); head.add(g);
+  const add = (m) => { g.add(m); return m; };
+  switch (kopf) {
+    case 'radkappe': { // Fahrradmütze: knappe Kappe, kleiner Schirm, Kettenblatt-Logo vorn
+      const cap = add(toonMesh(new THREE.SphereGeometry(0.58, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.46), 0xffffff, { outline: 0.045 })); cap.position.set(0, 0.12, -0.03); cap.rotation.x = -0.12;
+      for (const s of [-1, 1]) { const streifen = toonMesh(new THREE.BoxGeometry(0.1, 0.02, 0.9), 0xe8463a, { outline: 0.012 }); streifen.position.set(s * 0.14, 0.67, -0.03); streifen.rotation.x = 0.2; add(streifen); }
+      const schirm = add(toonMesh(new THREE.BoxGeometry(0.46, 0.04, 0.24), 0xe8463a, { outline: 0.025 })); schirm.position.set(0, 0.38, 0.62); schirm.rotation.x = 0.35; // kurz, nach oben geklappt
+      const logo = add(toonMesh(new THREE.TorusGeometry(0.11, 0.025, 6, 12), 0x2b1b0b, { outline: 0.01 })); logo.position.set(0, 0.42, 0.56); logo.rotation.x = 0.3;
+      for (let i = 0; i < 5; i++) { const z = toonMesh(new THREE.BoxGeometry(0.03, 0.06, 0.02), 0x2b1b0b, { outline: 0 }); const a = i / 5 * Math.PI * 2; z.position.set(Math.cos(a) * 0.13, 0.42 + Math.sin(a) * 0.13 * Math.cos(0.3), 0.56 - Math.sin(a) * 0.13 * Math.sin(0.3)); z.rotation.z = a; add(z); } // Zähne des Kettenblatts
+      break;
+    }
+    case 'flatcap': { // Schiebermütze: flacher Teller, vorn auf den Schirm gezogen, Tweed-Streifen
+      const tellerGeo = new THREE.SphereGeometry(0.66, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.36); tellerGeo.scale(1, 0.55, 1.1);
+      const teller = add(toonMesh(tellerGeo, toon(0xffffff, { map: stripeTexture(['#8a6b4a', '#6b5238', '#8a6b4a', '#a0805c'], { vertical: true }) }), { outline: 0.045 })); teller.position.set(0, 0.3, 0.02); teller.rotation.x = 0.18;
+      const schirm = add(toonMesh(new THREE.BoxGeometry(0.5, 0.05, 0.3), 0x6b5238, { outline: 0.03 })); schirm.position.set(0, 0.34, 0.66); schirm.rotation.x = -0.1;
+      const knopf = add(toonMesh(new THREE.SphereGeometry(0.04, 6, 5), 0x6b5238, { outline: 0.012 })); knopf.position.set(0, 0.66, 0);
+      break;
+    }
+    case 'strohhut': { // zerfranster Strohhut, Krempe krumm, Band aus Gras
+      const top = add(toonMesh(new THREE.CylinderGeometry(0.4, 0.46, 0.36, 14), 0xe3b04b, { outline: 0.04 })); top.position.set(0, 0.55, -0.02); top.rotation.z = 0.08;
+      const krempeGeo = new THREE.CylinderGeometry(0.92, 0.95, 0.05, 20); deform(krempeGeo, (v) => { v.y += 0.08 * Math.sin(Math.atan2(v.z, v.x) * 4 + 1); });
+      const krempe = add(toonMesh(krempeGeo, 0xe3b04b, { outline: 0.04 })); krempe.position.set(0, 0.4, -0.02); krempe.rotation.set(0.12, 0, 0.08);
+      const band = add(toonMesh(new THREE.CylinderGeometry(0.42, 0.47, 0.08, 14), 0x3bb84a, { outline: 0.02 })); band.position.set(0, 0.43, -0.02);
+      for (let i = 0; i < 6; i++) { const f = toonMesh(new THREE.BoxGeometry(0.03, 0.12, 0.02), 0xd9a84a, { outline: 0 }); const a = i * 1.05; f.position.set(Math.cos(a) * 0.96, 0.4 + 0.08 * Math.sin(a * 4 + 1), Math.sin(a) * 0.96 - 0.02); f.rotation.set(0.4, a, 0.3); add(f); } // Fransen
+      break;
+    }
+    case 'bandana': { // Kopftuch mit Knoten im Nacken, Zipfel, Hawaii-Muster wie das Hemd
+      const tuchGeo = new THREE.SphereGeometry(0.6, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.44); deform(tuchGeo, (v) => { if (v.z < -0.3) v.y -= 0.1 * (-v.z - 0.3); });
+      const tuch = add(toonMesh(tuchGeo, toon(0xffffff, { map: hawaiiTexture('#3a7bd5', ['#ffe14a', '#ffffff']) }), { outline: 0.045 })); tuch.position.set(0, 0.1, -0.03); tuch.rotation.x = -0.2;
+      const knoten = add(toonMesh(new THREE.SphereGeometry(0.12, 8, 6), 0x3a7bd5, { outline: 0.025 })); knoten.position.set(0, 0.05, -0.6);
+      for (const s of [-1, 1]) { const z = toonMesh(new THREE.BoxGeometry(0.1, 0.4, 0.04), 0x3a7bd5, { outline: 0.025 }); z.position.set(s * 0.12, -0.15, -0.62); z.rotation.set(0.3, 0, s * 0.5); add(z); }
+      break;
+    }
+    case 'sonnenschild': { // Sonnenschild: Stirnband mit breitem, grün durchsichtigem Schirm, drüber die Locken
+      const band = add(toonMesh(new THREE.TorusGeometry(0.56, 0.06, 8, 24), 0xffffff, { outline: 0.03 })); band.position.set(0, 0.3, 0); band.rotation.set(Math.PI / 2 + 0.12, 0, 0.04);
+      const schirmGeo = new THREE.CylinderGeometry(0.72, 0.72, 0.03, 20, 1, false, -0.5, 1.0 + Math.PI); // Sektor nach vorn
+      const schirm = add(toonMesh(schirmGeo, toon(0x3bb84a, { transparent: true, opacity: 0.55, side: THREE.DoubleSide }), { outline: 0.02, shadow: false })); schirm.position.set(0, 0.28, 0.1); schirm.rotation.set(0.25, -Math.PI / 2, 0);
+      break;
+    }
+    default: { // stirnband (Original)
+      const band = add(toonMesh(new THREE.TorusGeometry(0.43, 0.065, 8, 24), 0xe8463a, { outline: 0.03 })); band.position.set(0, 0.44, 0); band.rotation.set(Math.PI / 2 + 0.1, 0, 0.05);
+      for (const s of [-1, 1]) { const tail = toonMesh(new THREE.BoxGeometry(0.08, 0.3, 0.05), 0xe8463a, { outline: 0.025 }); tail.position.set(s * 0.1, 0.28, -0.44); tail.rotation.z = s * 0.4; add(tail); }
+    }
+  }
+  return g;
+}
+export function schluffi({ kopf = 'stirnband' } = {}) {
   const root = new THREE.Group();
   const skin = 0xf0b98a;
   const stance = 0.6;
@@ -207,7 +256,11 @@ export function schluffi() {
   inner.position.set(0, -(hipY - 0.1), 0);
   body.add(inner);
 
-  hemdMitBauch(inner, toon(0xffffff, { map: hawaiiTexture() }), skin, { hipY, knoepfe: true });
+  // Hemd glatt bis zum Hosenbund (kein Bauch mehr — das Bauch-Design lebt beim Mentor und den Bauch-Kunden weiter)
+  const tg = new THREE.SphereGeometry(0.5, 16, 12); tg.scale(1.0, 1.0, 0.85);
+  const torso = toonMesh(tg, toon(0xffffff, { map: hawaiiTexture() }), { outline: 0.05 });
+  torso.position.set(0, hipY + 0.42, 0.05); torso.rotation.x = 0.12; inner.add(torso);
+  for (let i = 0; i < 3; i++) { const btn = toonMesh(new THREE.SphereGeometry(0.035, 6, 5), 0xfff5e0, { outline: 0.012 }); btn.position.set(-0.3 + i * 0.07, hipY + 0.62 - i * 0.14, 0.44 - i * 0.03); inner.add(btn); }
 
   // Arme: Pivot an der Schulter
   const shoulderY = hipY + 0.66;
@@ -265,12 +318,7 @@ export function schluffi() {
     h.rotation.z = a;
     head.add(h);
   }
-  const band = toonMesh(new THREE.TorusGeometry(0.43, 0.065, 8, 24), 0xe8463a, { outline: 0.03 });
-  band.position.set(0, 0.44, 0); band.rotation.set(Math.PI / 2 + 0.1, 0, 0.05); head.add(band);
-  for (const s of [-1, 1]) {
-    const tail = toonMesh(new THREE.BoxGeometry(0.08, 0.3, 0.05), 0xe8463a, { outline: 0.025 });
-    tail.position.set(s * 0.1, 0.28, -0.44); tail.rotation.z = s * 0.4; head.add(tail);
-  }
+  schluffiKopfbedeckung(head, kopf);
   for (const s of [-1, 1]) {
     const lens = toonMesh(new THREE.TorusGeometry(0.11, 0.03, 6, 12), BLACK, { outline: 0, basic: true });
     lens.position.set(s * 0.14, 0.6, 0.3); lens.rotation.x = -0.9; head.add(lens);
