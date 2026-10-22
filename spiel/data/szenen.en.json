@@ -394,6 +394,170 @@
         "Pong, from under the cap: 'I'm asleep. No incident. Go.' He really is asleep. He says it in his sleep.",
         "The mango from this morning is on the desk. Half eaten. Pong is dreaming about the other half."
       ]
+    },
+    {
+      "id": "dieb_tasche",
+      "titel": "The Thief and the Bag",
+      "schritte": [
+        {
+          "t": 0,
+          "wer": "dieb",
+          "aktion": "pose"
+        },
+        {
+          "t": 0,
+          "wer": "dieb",
+          "aktion": "sag",
+          "text": "A guy in a bandana sneaks across the beach as if sneaking were normal. He carries his sandals on his belt. Barefoot counts as harmless, he knows that."
+        },
+        {
+          "t": 5,
+          "wer": "schlaeferin",
+          "aktion": "pose"
+        },
+        {
+          "t": 5,
+          "wer": "schlaeferin",
+          "aktion": "sag",
+          "text": "The woman on the lounger is asleep. Bag next to the lounger, open, wallet on top. She's dreaming of wifi."
+        },
+        {
+          "t": 8,
+          "wer": "dieb",
+          "aktion": "pose"
+        },
+        {
+          "t": 8,
+          "wer": "dieb",
+          "aktion": "sag",
+          "text": "Grab, bag, gone. He even picks up the woman's sunglasses that were lying next to it and puts them back. Manners."
+        },
+        {
+          "t": 10,
+          "wer": "schlaeferin",
+          "aktion": "pose"
+        },
+        {
+          "t": 10,
+          "wer": "schlaeferin",
+          "aktion": "sag",
+          "text": "'MY BAG!' She's awake. She's very awake."
+        },
+        {
+          "t": 13,
+          "wer": "dieb",
+          "aktion": "pose"
+        },
+        {
+          "t": 13,
+          "wer": "dieb",
+          "aktion": "geh"
+        },
+        {
+          "t": 13,
+          "wer": "dieb",
+          "aktion": "sag",
+          "text": "He runs. Barefoot. Faster than anything wearing shoes around here. Waves backwards while he does it."
+        },
+        {
+          "t": 14,
+          "wer": "streife",
+          "aktion": "geh"
+        },
+        {
+          "t": 14,
+          "wer": "streife",
+          "aktion": "sag",
+          "text": "Pong whistles, Pong gives chase. Pong in sandals behind a barefoot man. The result is settled, but the patrol is gone for a while. That's your window."
+        }
+      ],
+      "ansprechen": [
+        "You talk to the thief before he steals. He grins: 'Colleague. You do your business, I do mine. Or you want to call Pong? He's got sandals. Like you.'",
+        "You whistle him on to Pong. Pong doesn't get him, but he remembers you helped. Today he looks away once.",
+        "The woman on the lounger, still half asleep: 'Are you the lounger service? Another towel, then.'"
+      ]
+    },
+    {
+      "id": "dieb_kamera",
+      "titel": "The Thief and the Camera",
+      "schritte": [
+        {
+          "t": 0,
+          "wer": "dieb",
+          "aktion": "pose"
+        },
+        {
+          "t": 0,
+          "wer": "dieb",
+          "aktion": "sag",
+          "text": "The bandana guy again. Today he's got a victim with a camera in his sights. The camera hangs on the neck, the neck hangs on the tourist, the tourist hangs on his phone."
+        },
+        {
+          "t": 5,
+          "wer": "tourist_kamera",
+          "aktion": "pose"
+        },
+        {
+          "t": 5,
+          "wer": "tourist_kamera",
+          "aktion": "sag",
+          "text": "The tourist is photographing a bin. With flash. He's taken 300 photos today. Of bins, signs and you."
+        },
+        {
+          "t": 8,
+          "wer": "dieb",
+          "aktion": "pose"
+        },
+        {
+          "t": 8,
+          "wer": "dieb",
+          "aktion": "sag",
+          "text": "One grab, the strap is open (it already was; the tourist is German and careful, but not with straps). Camera gone. The thief takes a selfie on the way."
+        },
+        {
+          "t": 10,
+          "wer": "tourist_kamera",
+          "aktion": "pose"
+        },
+        {
+          "t": 10,
+          "wer": "tourist_kamera",
+          "aktion": "sag",
+          "text": "'MY CAMERA! The bins were on there!'"
+        },
+        {
+          "t": 13,
+          "wer": "dieb",
+          "aktion": "pose"
+        },
+        {
+          "t": 13,
+          "wer": "dieb",
+          "aktion": "geh"
+        },
+        {
+          "t": 13,
+          "wer": "dieb",
+          "aktion": "sag",
+          "text": "He runs towards the market, where you vanish in the crowd. He knows what you know."
+        },
+        {
+          "t": 14,
+          "wer": "streife",
+          "aktion": "geh"
+        },
+        {
+          "t": 14,
+          "wer": "streife",
+          "aktion": "sag",
+          "text": "Pong gives chase, whistling, in sandals. The patrol is busy for a while. Your window."
+        }
+      ],
+      "ansprechen": [
+        "The thief, to you, without slowing down: 'Camera? Don't want it. Just want him to look for it. Look at him looking!'",
+        "You point Pong in the right direction. Pong nods gratefully and runs in the wrong one. Still counts.",
+        "The tourist, to you: 'Did you see that? Can you testify? Do you have a photo?' You have none of those."
+      ]
     }
   ]
 }

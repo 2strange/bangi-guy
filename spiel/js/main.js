@@ -1567,7 +1567,7 @@ function updateFade(focus) {
   for (const grp of groups) { const op = grp.userData.crown ? FADE_OPACITY_PALME : FADE_OPACITY; grp.traverse((m) => { if (m.isMesh) { fadeMesh(m, op); keep.add(m); } }); }
   unfadeAll(keep);
   // beim Hinschauen den Spieler ganz ausblenden (inkl. Schatten) — halbtransparente Hüllen würden zu Matsch
-  player.visible = mode !== 'inspect';
+  player.visible = mode !== 'inspect' && mode !== 'figur'; // Figurenwahl: der echte Schluffi bleibt hinter der Vorschau-Reihe aus
 }
 
 function resize() {

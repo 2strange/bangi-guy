@@ -1,5 +1,5 @@
 {
-  "_schema": "Ambient-Szenen (Leben ohne Spielerzwang). Eigentümer: Content. szenen[] je Eintrag: id, titel, fenster{von, bis} (Spieluhr HH:MM, Tag 06:00–24:00 = 420 s, eine Stunde ≈ 23 s; Ablauf-Länge sollte ins Fenster passen), optional tage[] (fehlt = jeden Tag), chance 0–1 (je Tag aus dem Seed gewürfelt), ab_tag (Default 2, nie Tutorial-Tag), ort (Spot: strand|markt|posten|pier|steg|bar|liegen|dorf|huegel|reisfeld|hain oder {x,z,r}), figuren[] {slug (Figur, Basis für den Figurenbau), start (Spot oder {x,z}), stimme (Slug in stimmen.json; fehlt = slug), rolle (Doku), aussehen (wie kunden.json)}, schritte[] {t (Sekunden seit Szenenstart), wer (figuren-slug | streife), aktion: pose (pose = Name) | sag (text = Sprechblase; optional bark = kurzer EN-Ausruf, den die Stimme dazu spricht) | bark | geh (ziel) | warte | sound, dauer}, ende (fenster | schritte), loop (true = Schritte wiederholen, bis das Fenster endet), ansprechen[] (Zeilen, wenn der Spieler am Ort E drückt, Radius r (Default 5), zufällig), folge (optionale Wirkung beim Ansprechen, z. B. abends_haengematte_belegt), wirkung{} (wirksam: streife_p1 'schlaeft', streife_stolpert (laufende Verfolgung bricht ab, wenn der Spieler durch den Ort läuft), verstecke[] ({spot|x,z, r} zusätzliche Verstecke im Fenster), liegen_belegt (Liegen-Kunden erst ab Fensterende bzw. 14 Uhr); gelesen, aber noch ohne Wirkung: kunden_faktor, preis_faktor), kommentar{wer: mentor|barkeeper, text} (abends an der Bar nach dem Rückblick), folge (z. B. abends_haengematte_belegt: Einschlaf-Text haengematte_belegt), requisite[] (Kulissen-Slugs), sound[] (Audio-Slugs). Grundregel: Keine Szene bestraft den Spieler. Sie geben Deckung, Fenster, Lacher.",
+  "_schema": "Ambient-Szenen (Leben ohne Spielerzwang). Eigentümer: Content. szenen[] je Eintrag: id, titel, fenster{von, bis} (Spieluhr HH:MM, Tag 06:00–24:00 = 420 s, eine Stunde ≈ 23 s; Ablauf-Länge sollte ins Fenster passen), optional tage[] (fehlt = jeden Tag), chance 0–1 (je Tag aus dem Seed gewürfelt), ab_tag (Default 2, nie Tutorial-Tag), ort (Spot: strand|markt|posten|pier|steg|bar|liegen|dorf|huegel|reisfeld|hain oder {x,z,r}), figuren[] {slug (Figur, Basis für den Figurenbau), start (Spot oder {x,z}), stimme (Slug in stimmen.json; fehlt = slug), rolle (Doku), aussehen (wie kunden.json)}, schritte[] {t (Sekunden seit Szenenstart), wer (figuren-slug | streife), aktion: pose (pose = Name) | sag (text = Sprechblase; optional bark = kurzer EN-Ausruf, den die Stimme dazu spricht) | bark | geh (ziel) | warte | sound, dauer}, ende (fenster | schritte), loop (true = Schritte wiederholen, bis das Fenster endet), ansprechen[] (Zeilen, wenn der Spieler am Ort E drückt, Radius r (Default 5), zufällig), folge (optionale Wirkung beim Ansprechen, z. B. abends_haengematte_belegt), wirkung{} (wirksam: streife_p1 'schlaeft' (bei den Dieb-Szenen gemeint als 'jagt den Dieb': Streife P1 ist für das Fenster weg), streife_stolpert (laufende Verfolgung bricht ab, wenn der Spieler durch den Ort läuft), verstecke[] ({spot|x,z, r} zusätzliche Verstecke im Fenster), liegen_belegt (Liegen-Kunden erst ab Fensterende bzw. 14 Uhr); gelesen, aber noch ohne Wirkung: kunden_faktor, preis_faktor), kommentar{wer: mentor|barkeeper, text} (abends an der Bar nach dem Rückblick), folge (z. B. abends_haengematte_belegt: Einschlaf-Text haengematte_belegt), requisite[] (Kulissen-Slugs), sound[] (Audio-Slugs; nur gemappte: moewen|regen|horn|troete|klick|stille|streit_duo|kinder_kreischen|wasserspritzer|handtuch_flattern|lallen|dose_oeffnen|selfie_klick|schnarchen_pong; Wünsche für die Dieb-Szenen: pfiff_pong, rennen_sand). Grundregel: Keine Szene bestraft den Spieler. Sie geben Deckung, Fenster, Lacher.",
   "szenen": [
     {
       "id": "ehepaar",
@@ -904,6 +904,375 @@
       ],
       "sound": [
         "schnarchen_pong"
+      ]
+    },
+    {
+      "id": "dieb_tasche",
+      "titel": "Der Dieb und die Tasche",
+      "fenster": {
+        "von": "11:00",
+        "bis": "12:00"
+      },
+      "tage": [
+        2,
+        4,
+        6
+      ],
+      "chance": 0.8,
+      "ab_tag": 2,
+      "ort": "liegen",
+      "figuren": [
+        {
+          "slug": "dieb",
+          "start": "liegen",
+          "stimme": "dieb",
+          "rolle": "Strand-Dieb, 20, schnell, frech, trägt seine Sandalen am Gürtel, damit er als barfuß durchgeht",
+          "aussehen": {
+            "schuhe": "barfuss",
+            "hemd": "tanktop",
+            "hose": "shorts",
+            "hautton": "mittel",
+            "bart": "stoppel",
+            "brille": "sonnenbrille",
+            "haare": "kurz",
+            "accessoire": "bauchtasche_voll",
+            "extras": [
+              "bandana",
+              "sandalen_am_guertel",
+              "hornhaut",
+              "narbe_augenbraue"
+            ],
+            "stimmung_start": "zufrieden",
+            "mimik": "Dauergrinsen, Augen hinter der Sonnenbrille immer auf der nächsten Tasche. Beim Schleichen: Zunge zwischen den Zähnen. Beim Rennen: Grinsen wird breiter, winkt nach hinten."
+          }
+        },
+        {
+          "slug": "schlaeferin",
+          "start": "liegen",
+          "stimme": "touristin",
+          "rolle": "Touristin, 40, schläft auf der Liege, Tasche offen daneben",
+          "aussehen": {
+            "schuhe": "flipflop",
+            "hemd": "hawaii",
+            "hose": "shorts",
+            "hautton": "sonnenbrand",
+            "bart": "keiner",
+            "brille": "sonnenbrille",
+            "haare": "lang",
+            "accessoire": "kamera",
+            "extras": [
+              "strohhut",
+              "tasche_offen",
+              "zzz"
+            ],
+            "stimmung_start": "zufrieden",
+            "mimik": "Mund zu, Augen zu, Zzz. Beim Aufschrecken: Augen groß, Hut rutscht, Mund wird ein Rechteck."
+          }
+        }
+      ],
+      "schritte": [
+        {
+          "t": 0,
+          "wer": "dieb",
+          "aktion": "pose",
+          "pose": "schleichen",
+          "dauer": 5
+        },
+        {
+          "t": 0,
+          "wer": "dieb",
+          "aktion": "sag",
+          "text": "Ein Typ in Bandana schleicht über den Strand, als wäre Schleichen normal. Er trägt seine Sandalen am Gürtel. Barfuß zählt als harmlos, das weiß er.",
+          "bark": "Not mine. Yet.",
+          "dauer": 5
+        },
+        {
+          "t": 5,
+          "wer": "schlaeferin",
+          "aktion": "pose",
+          "pose": "schlafen",
+          "dauer": 3
+        },
+        {
+          "t": 5,
+          "wer": "schlaeferin",
+          "aktion": "sag",
+          "text": "Die Frau auf der Liege schläft. Tasche neben der Liege, offen, Portemonnaie obenauf. Sie träumt von WLAN.",
+          "bark": "Zzz.",
+          "dauer": 3
+        },
+        {
+          "t": 8,
+          "wer": "dieb",
+          "aktion": "pose",
+          "pose": "greifen",
+          "dauer": 2
+        },
+        {
+          "t": 8,
+          "wer": "dieb",
+          "aktion": "sag",
+          "text": "Griff, Tasche, weg. Er hebt sogar die Sonnenbrille der Frau auf, die daneben lag, und legt sie ihr zurück. Manieren.",
+          "bark": "Not mine. Now mine.",
+          "dauer": 2
+        },
+        {
+          "t": 10,
+          "wer": "schlaeferin",
+          "aktion": "pose",
+          "pose": "aufschrecken",
+          "dauer": 3
+        },
+        {
+          "t": 10,
+          "wer": "schlaeferin",
+          "aktion": "sag",
+          "text": "„MEINE TASCHE!“ Sie ist wach. Sie ist sehr wach.",
+          "bark": "MY BAG!",
+          "dauer": 3
+        },
+        {
+          "t": 13,
+          "wer": "dieb",
+          "aktion": "pose",
+          "pose": "rennen",
+          "dauer": 6
+        },
+        {
+          "t": 13,
+          "wer": "dieb",
+          "aktion": "geh",
+          "ziel": "dorf",
+          "dauer": 6
+        },
+        {
+          "t": 13,
+          "wer": "dieb",
+          "aktion": "sag",
+          "text": "Er rennt. Barfuß. Schneller als alles, was hier Schuhe trägt. Winkt dabei nach hinten.",
+          "bark": "Catch me, sandals!",
+          "dauer": 6
+        },
+        {
+          "t": 14,
+          "wer": "streife",
+          "aktion": "geh",
+          "ziel": "dorf",
+          "dauer": 8
+        },
+        {
+          "t": 14,
+          "wer": "streife",
+          "aktion": "sag",
+          "text": "Pong pfeift, Pong rennt hinterher. Pong in Sandalen hinter einem Barfüßigen. Das Ergebnis steht fest, aber die Streife ist für eine Weile weg. Das ist dein Fenster.",
+          "bark": "Hey! You! Stop!",
+          "dauer": 8
+        }
+      ],
+      "ende": "schritte",
+      "loop": false,
+      "ansprechen": [
+        "Du sprichst den Dieb an, bevor er klaut. Er grinst: „Kollege. Du dein Geschäft, ich meins. Oder willst du Pong rufen? Der hat Sandalen. Wie du.“",
+        "Du pfeifst ihn an Pong weiter. Pong kriegt ihn nicht, aber er merkt sich, dass du geholfen hast. Heute sieht er einmal weg.",
+        "Die Frau auf der Liege, noch im Halbschlaf: „Sind Sie der Liegen-Service? Dann noch ein Handtuch.“"
+      ],
+      "folge": {
+        "verpfiffen": true
+      },
+      "wirkung": {
+        "streife_p1": "schlaeft"
+      },
+      "requisite": [
+        "liege_einzel",
+        "tasche_offen",
+        "portemonnaie"
+      ],
+      "sound": [
+        "stille"
+      ]
+    },
+    {
+      "id": "dieb_kamera",
+      "titel": "Der Dieb und die Kamera",
+      "fenster": {
+        "von": "15:00",
+        "bis": "16:00"
+      },
+      "tage": [
+        3,
+        5,
+        7
+      ],
+      "chance": 0.8,
+      "ab_tag": 2,
+      "ort": "strand",
+      "figuren": [
+        {
+          "slug": "dieb",
+          "start": "strand",
+          "stimme": "dieb",
+          "rolle": "Strand-Dieb, 20, schnell, frech, trägt seine Sandalen am Gürtel, damit er als barfuß durchgeht",
+          "aussehen": {
+            "schuhe": "barfuss",
+            "hemd": "tanktop",
+            "hose": "shorts",
+            "hautton": "mittel",
+            "bart": "stoppel",
+            "brille": "sonnenbrille",
+            "haare": "kurz",
+            "accessoire": "bauchtasche_voll",
+            "extras": [
+              "bandana",
+              "sandalen_am_guertel",
+              "hornhaut",
+              "narbe_augenbraue"
+            ],
+            "stimmung_start": "zufrieden",
+            "mimik": "Dauergrinsen, Augen hinter der Sonnenbrille immer auf der nächsten Tasche. Beim Schleichen: Zunge zwischen den Zähnen. Beim Rennen: Grinsen wird breiter, winkt nach hinten."
+          }
+        },
+        {
+          "slug": "tourist_kamera",
+          "start": "strand",
+          "stimme": "rentner",
+          "rolle": "Deutscher Tourist, 60, Kamera am Hals, fotografiert Mülleimer",
+          "aussehen": {
+            "schuhe": "sandale",
+            "hemd": "polo_sauber",
+            "hose": "shorts",
+            "hautton": "hell",
+            "bart": "schnauzer",
+            "brille": "lesebrille",
+            "haare": "glatze",
+            "accessoire": "kamera",
+            "extras": [
+              "socken",
+              "bauchtasche",
+              "sonnenhut_nackenschutz"
+            ],
+            "stimmung_start": "neutral",
+            "mimik": "Konzentriert auf den Sucher, ein Auge zu. Beim Aufschrecken: beide Augen auf, Hand greift ins Leere am Hals, dreimal."
+          }
+        }
+      ],
+      "schritte": [
+        {
+          "t": 0,
+          "wer": "dieb",
+          "aktion": "pose",
+          "pose": "schleichen",
+          "dauer": 5
+        },
+        {
+          "t": 0,
+          "wer": "dieb",
+          "aktion": "sag",
+          "text": "Der Bandana-Typ wieder. Heute hat er ein Opfer mit Kamera im Blick. Die Kamera hängt am Hals, der Hals hängt am Tourist, der Tourist hängt am Handy.",
+          "bark": "Smile.",
+          "dauer": 5
+        },
+        {
+          "t": 5,
+          "wer": "tourist_kamera",
+          "aktion": "pose",
+          "pose": "fotografieren",
+          "dauer": 3
+        },
+        {
+          "t": 5,
+          "wer": "tourist_kamera",
+          "aktion": "sag",
+          "text": "Der Tourist fotografiert einen Mülleimer. Mit Blitz. Er hat heute schon 300 Fotos. Von Mülleimern, Schildern und dir.",
+          "bark": "Lovely bin.",
+          "dauer": 3
+        },
+        {
+          "t": 8,
+          "wer": "dieb",
+          "aktion": "pose",
+          "pose": "greifen",
+          "dauer": 2
+        },
+        {
+          "t": 8,
+          "wer": "dieb",
+          "aktion": "sag",
+          "text": "Ein Griff, der Riemen ist offen (war er schon, der Tourist ist Deutscher und vorsichtig, aber nicht mit Riemen). Kamera weg. Der Dieb macht noch ein Selfie.",
+          "bark": "Say cheese.",
+          "dauer": 2
+        },
+        {
+          "t": 10,
+          "wer": "tourist_kamera",
+          "aktion": "pose",
+          "pose": "aufschrecken",
+          "dauer": 3
+        },
+        {
+          "t": 10,
+          "wer": "tourist_kamera",
+          "aktion": "sag",
+          "text": "„MEINE KAMERA! Da waren die Mülleimer drauf!“",
+          "bark": "MY CAMERA!",
+          "dauer": 3
+        },
+        {
+          "t": 13,
+          "wer": "dieb",
+          "aktion": "pose",
+          "pose": "rennen",
+          "dauer": 6
+        },
+        {
+          "t": 13,
+          "wer": "dieb",
+          "aktion": "geh",
+          "ziel": "markt",
+          "dauer": 6
+        },
+        {
+          "t": 13,
+          "wer": "dieb",
+          "aktion": "sag",
+          "text": "Er rennt Richtung Markt, wo man im Gedränge verschwindet. Er weiß, was du weißt.",
+          "bark": "Catch me, sandals!",
+          "dauer": 6
+        },
+        {
+          "t": 14,
+          "wer": "streife",
+          "aktion": "geh",
+          "ziel": "markt",
+          "dauer": 8
+        },
+        {
+          "t": 14,
+          "wer": "streife",
+          "aktion": "sag",
+          "text": "Pong hinterher, pfeifend, in Sandalen. Die Streife ist eine Weile beschäftigt. Dein Fenster.",
+          "bark": "Stop! Please!",
+          "dauer": 8
+        }
+      ],
+      "ende": "schritte",
+      "loop": false,
+      "ansprechen": [
+        "Der Dieb, zu dir, ohne zu bremsen: „Kamera? Will ich nicht. Will nur, dass er sie sucht. Schau, wie er sucht!“",
+        "Du zeigst Pong die Richtung. Pong nickt dankbar und rennt in die falsche. Zählt trotzdem.",
+        "Der Tourist, zu dir: „Haben Sie das gesehen? Können Sie das bezeugen? Haben Sie ein Foto?“ Du hast nichts davon."
+      ],
+      "folge": {
+        "verpfiffen": true
+      },
+      "wirkung": {
+        "streife_p1": "schlaeft"
+      },
+      "requisite": [
+        "kamera",
+        "muelleimer_strand"
+      ],
+      "sound": [
+        "selfie_klick"
       ]
     }
   ]
