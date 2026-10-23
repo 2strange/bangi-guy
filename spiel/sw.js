@@ -1,7 +1,7 @@
 // sw.js — Bangi Bay installierbar und offline spielbar.
 // Netz zuerst: online kommt bei jedem Start der aktuelle Stand (und landet im Cache), offline springt der Cache ein.
 // Beim Installieren wird das ganze Spiel vorab geladen (precache.json, entsteht beim Veröffentlichen).
-const VERSION = 'ffae798'; // beim Veröffentlichen ersetzt: neuer Stand → neuer Service Worker → frischer Vorab-Cache
+const VERSION = '6a93a9d'; // beim Veröffentlichen ersetzt: neuer Stand → neuer Service Worker → frischer Vorab-Cache
 const CACHE = 'bangi-' + VERSION;
 const THREE = 'https://cdn.jsdelivr.net/npm/three@0.170.0/';
 const THREE_FILES = ['build/three.module.js', 'examples/jsm/controls/OrbitControls.js', 'examples/jsm/geometries/RoundedBoxGeometry.js', 'examples/jsm/utils/BufferGeometryUtils.js'].map((f) => THREE + f);
